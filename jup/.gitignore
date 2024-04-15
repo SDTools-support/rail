@@ -1,0 +1,10 @@
+*.asv
+*.bak
+.*.bak
+_build
+_build\.doctrees\*
+__pycache__
+_toc.yml
+_config.yml
+_icons
+_images

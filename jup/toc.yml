@@ -1,0 +1,17 @@
+
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: railjup
+options:
+  numbered: 3
+parts:
+
+
+- caption: SDT-rail (open source meshing scripts for rail applications)
+  numbered: 3
+  chapters:
+      - file: mapRailComp
+      - file: urnRailMesh
+      - file: d_rail
