@@ -12,6 +12,9 @@ parts:
 - caption: SDT-rail (open source meshing scripts for rail applications)
   numbered: 3
   chapters:
-      - file: mapRailComp
-      - file: urnRailMesh
-      - file: d_rail
+      - file: railjup
+        sections:
+          - file: mapRailComp
+          - file: urnRailMesh
+          - file: d_rail
+          - file: railjup_Install

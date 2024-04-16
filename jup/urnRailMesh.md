@@ -7,7 +7,26 @@
 
 Meshing scripts use base components. The list of predefined elements is show with `d_rail('nmap')` 
  
- 
+|key      |def     |ToolTip                           |fmt|
+|---      |---     |---                               |---|
+|gr.All   |        |Experiment parameters             |   |
+|gr.s1    |        |Slice definition                  |   |
+|rail     |        |Rail Urn, eg U60                  |%s |
+|pad      |        |Pad Urn, eg PadFuSn{io4}          |%s |
+|sleeper  |        |Sleeper Urn, eg mass{4}           |%s |
+|sub      |        |Sub-structure Urn, eg spring{k,c} |%s |
+|gr.Track |        |Track definition parameters       |   |
+|top      |-700 300|contact refine start end          |%g |
+|topCoarse|        |do not refine coarse              |31 |
+|sw       |.6      |slice width                       |%s |
+|quad     |        |use quadratic elements            |31 |
+|Lc       |50      |characteristic length             |%g |
+|gr.Wheel |        |Wheel refinement parameters       |   |
+|Wref     |coarse1 |wheel refinement strategy         |%s |
+|gr.Ctc   |        |Contact parameters                |   |
+|Kc       |-23e9   |contact stiffness (>0 lin,<0 sqrt)|%ug|
+|delta    |20      |contact lowpass                   |%ug|
+
 The mesh is obtained using by extruding and combining base elements separated by `:`. For example 
  `U30{5,Gc,tc-350_400}:Ec41{Air}:W2{XaZa}` (from `rail19('nmap.Trk21ref.Ref21')`) combines
 

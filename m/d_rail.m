@@ -1,7 +1,8 @@
 function [out,out1]=d_rail(varargin)
 
 % d_rail: meshing utilities for rail applications
-
+%
+% <a href="matlab:d_rail('nmap')">List configurations</a>
 
 %  Etienne Balmes, Guillaume Vermot des Roches
 % Copyright SDTools & SNCF I&R, 2019-2024
@@ -9,6 +10,7 @@ function [out,out1]=d_rail(varargin)
 %#ok<*ASGLU,*NASGU,*NOSEM,*NBRAK>
 obj=[];evt=[];
 if nargin==0; help d_rail
+    return; 
 else; [CAM,Cam]=comstr(varargin{1},1);carg=2;
 end
 
@@ -556,7 +558,7 @@ if ~isfield(RM,'KC')
  C=[linspace(RM.Cedge,RM.C,RM.Ngrad)]'; % Built the gradient for C from input data
  RM.KC=struct('X',{{[],{'K';'C'}}},'Y',[K,C]);% define sleeper gradient
 end
-out=struct('KC',RM.KC,'rail',{li}); 
+out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
 
   %% #MeshList.wc4 parameters see sdtweb rail19 MeshRailDb -3
   % sdtw('_ewt','should be done MeshRailDb')
@@ -1646,8 +1648,16 @@ cinM=projM('Map:Cin');% Create a default CinCell structures to be used for vhand
 cinM.add=['top(-700 300#%g#"contact refine start end")' ...
           'topCoarse(0#31#"do not refine coarse")' ...
           'gKC( #%g#"sleeper gradient properties")' ...
+          'rail( #%s#"Rail Urn, eg U60")' ...
           'pad( #%s#"Pad Urn, eg PadFuSn{io4}")' ...
-     ... %          
+          'sleeper( #%s#"Sleeper Urn, eg mass{4}")' ...
+          'sub( #%s#"Sub-structure Urn, eg spring{k,c}")' ...
+          'sw(.6#%s#"slice width")' ...
+          'quad(#31#"use quadratic elements")' ...
+          'spos(#31#"position of sleeper in slice 1=half, 0=centered ")' ...
+          'unit(SI#%s#"unit system SI/TM/MM, ... ")' ...
+          'Tgrad(gc#%s#"type of gradient at the end xxx/ track ends")' ...
+     ... % #Cin.contact          
           'Kc(-23e9#%ug#"contact stiffness (>0 lin,<0 sqrt)")' ...
           'delta(20#%ug#"contact lowpass")' ...
           'Fl(20#%ug#"contact saturation")' ...
@@ -1663,14 +1673,17 @@ cinM.add=['top(-700 300#%g#"contact refine start end")' ...
           ];  
 
 
-cinM.add={'gr.Ctc','Contact parameters', ...
+cinM.add={
+'gr.Ctc','Contact parameters', ...
       {'Kc','delta'}
-      'gr.Wheel','Wheel refinement parameters', ...
-      {'Wref'}
-      'gr.Track','Track definition parameters', ...
-      {'top','topCoarse'}
-      'gr.All','Experiment parameters', ...
-      {'gr.Track','gr.Wheel','gr.Ctc'}
+'gr.Wheel','Wheel refinement parameters', ...
+        {'Wref'}
+'gr.s1','Slice definition', ...
+    {'rail','pad','sleeper','sub','unit'}
+ 'gr.Track','Track definition parameters', ...
+      {'top','topCoarse','sw','quad','Lc','unit','TGrad'}
+ 'gr.All','Experiment parameters', ...
+      {'gr.s1','gr.Track','gr.Wheel','gr.Ctc'}
       };
 
 % vhandle.uo('',C3.info,rail19('nmap.Map:Cin'))
@@ -1932,7 +1945,16 @@ RM.Track=r2.rail;RM.KC=r2.KC;
 if isempty(evt);evt=struct;end
 st=intersect(fieldnames(evt),fieldnames(RM));
 for j1=1:length(st);RM.(st{j1})=evt.(st{j1});end
+try
+    cinM=d_rail('nmap.Map:Cin');%evt.projM('Map:Cin');
+    r2=sdtm.pcin(cinM,'gr.All','asTabUo');
+    st1=fieldnames(RM);st1(ismember(st1,r2.table(:,1)))=[];
+    st1(sdtm.regContains(st1,'(gr.|ToolTip|projM|name'))=[];
+    fprintf('%s not in sdtweb d_rail cinM',sdtm.toString(st1(:)'))
 end
+
+end % nameToMeshRO
+
 
 function RT=WheelTraj(varargin)
 %% #WeelTraj computation of wheel trajectory
