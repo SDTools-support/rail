@@ -791,14 +791,14 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   if isempty(li{j1,3});li{j1,3}=li{j1+1,2};end % xend
   % Refine along x using lc 
   r1=feutil(sprintf('refineline %g',li{j1,4}),[li{j1,2:3}]);
-  
+  if max(abs(r1))>10; RO.unit='MM';else;RO.unit='SI';end
   st=sdth.findobj('_sub:',li{j1,1}); st={st.subs};% Split at :
   mo2=sprintf('%s.%s',RO.rail,st{1});  mo2=dbM(mo2); %U30.e ...
   if length(st)>1&&RO.gap.isKey(st{2})
    % change properties for the gap 'ra+e:Air'
    r2=RO.gap(st{2});
    mo2.Elt=feutil('setsel mat 104 pro 104',mo2,'proid7');
-   mo1=feutil('setmat',mo1,fe_mat('convert SIMM', ...
+   mo1=feutil('setmat',mo1,fe_mat(['convert SI' RO.unit], ...
        [104 fe_mat('m_elastic','SI',1) r2.E,r2.nu,r2.rho]));
    mo1.info.xgap=[li{j1,2:3}];mo1.info.GapMat=st{2};
   end
@@ -820,6 +820,9 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   end
  end
  mo1.Node=feutil('getnode groupall',mo1);
+ if ~isfield(mo1,'pl')||isempty(mo1.pl)
+  mo2=dbM('Wheel');mo1.pl=mo2.pl;
+ end
 
  %%  #MeshList.Contacts -3
  mo1=feutil('joinhexa8',mo1); if ~isfield(mo1,'info');mo1.info=struct;end
@@ -837,8 +840,10 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
      RO.topsel=sprintf('selface & withnode {z>82 & x>%.15g & x<%.15g}',RO.top);
      mo1.info.top=RO.top;
    end
-   r2=struct('sel',RO.topsel);r2=sdth.sfield('addselected',r2,RO,{'topCoarse'});
-   mo1=d_rail('MeshRailTop',mo1,r2);
+   if isfield(RO,'topsel')
+    r2=struct('sel',RO.topsel);r2=sdth.sfield('addselected',r2,RO,{'topCoarse'});
+    mo1=d_rail('MeshRailTop',mo1,r2);
+   end
  end
 
  %% #MeshList.Wheel -3
@@ -846,11 +851,13 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   RW=struct('wfrom','WheelCut','wref','coarse1','Lc',RO.Lc,'integ',-1);
   RW.projM=RO.projM; 
 
-  i1=find(strncmpi(RO.Wheel{2},'in',2));%in104
-  if ~isempty(i1);RW.integ=comstr(RO.Wheel{2}{i1}(3:end),-1);end
-  i1=find(strncmpi(RO.Wheel{2},'wref',2));%wref
-  if ~isempty(i1);RW.wref=comstr(RO.Wheel{2}{i1}(5:end),1);end
-  
+  if length(RO.Wheel)>1
+   i1=find(strncmpi(RO.Wheel{2},'in',2));%in104
+   if ~isempty(i1);RW.integ=comstr(RO.Wheel{2}{i1}(3:end),-1);end
+   i1=find(strncmpi(RO.Wheel{2},'wref',2));%wref
+   if ~isempty(i1);RW.wref=comstr(RO.Wheel{2}{i1}(5:end),1);end
+  end
+
   if strcmpi(RO.Wheel{1},'wa');RO.Wheel{1}='Wheel';
       error('eb check')
   elseif strcmpi(RO.Wheel{1},'w1');
@@ -914,7 +921,7 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
  end
  if ~isempty(elt)
    mo1=feutil('addelt',mo1,'celas',elt);
-   mo1.il(mo1.il(:,2)==12,:)=[];
+   if ~isempty(mo1.il);mo1.il(mo1.il(:,2)==12,:)=[];end
  else % uniform spring
   i1=feutil('findnode z==',mo1,min(mo1.Node(:,7)));
   i1(:,3)=-3; i1(:,5)=12; mo1.nmap{'Map:ProName'}(12)='UniSoil'; 
@@ -922,19 +929,24 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
  end
  
  %% #MeshList.Rail_end dampers (proid 13) -3
- i1=feutil('findnode x== | x== & matid7',mo1,min(mo1.Node(:,5)),max(mo1.Node(:,5)));
- i1(:,3)=-3; i1(:,5)=13; mo1.nmap{'Map:ProName'}(13)='RailEnd'; 
- mo1=feutil('addelt',mo1,'celas',i1);
- if isfield(RO,'CRailEdge');
-  mo1.il(mo1.il(:,1)==13,5)=RO.CRailEdge;
+ if RO.Ns==1&&~isfield(RO,'CRailEdge') 
+  %% use the periodic solution for a single slide
+  mo1=fe_cyclic('build -1 600 0 0',mo1);
+ else
+  i1=feutil('findnode x== | x== & matid7',mo1,min(mo1.Node(:,5)),max(mo1.Node(:,5)));
+  i1(:,3)=-3; i1(:,5)=13; mo1.nmap{'Map:ProName'}(13)='RailEnd'; 
+  mo1=feutil('addelt',mo1,'celas',i1);
+  if isfield(RO,'CRailEdge');
+   mo1.il(mo1.il(:,1)==13,5)=RO.CRailEdge;
+  end
+  % boundary condition for multiple slices
+  st=sprintf('x==%g|x==%g& proid 7 -DOF 1 2',min(mo1.Node(:,5)),max(mo1.Node(:,5)));
+  mo1=fe_case(mo1,'fixdof','RailEdge',st);
  end
- 
 
  %% Boundary conditions 
- st=sprintf('x==%g|x==%g& proid 7 -DOF 1 2',min(mo1.Node(:,5)),max(mo1.Node(:,5)));
- mo1=fe_case(mo1,'fixdof','RailEdge',st);
- mo1=fe_case(mo1,'fixdof','Sol',sprintf('z==%g -DOF 1 2',min(mo1.Node(:,7))));
- mo1=fe_case(mo1,'fixdof','Sym',sprintf('y==%g -DOF 2',max(mo1.Node(:,6))));
+ mo1=fe_case(mo1,'fixdof','Ground',sprintf('z==%g -DOF 1 2',min(mo1.Node(:,7))));
+ mo1=fe_case(mo1,'fixdof','SymY',sprintf('y==%g -DOF 2',max(mo1.Node(:,6))));
  
  %% how prepare output
  mo1=p_solid('default;',mo1);
@@ -1662,7 +1674,10 @@ cinM.add=['top(-700 300#%g#"contact refine start end")' ...
           'delta(20#%ug#"contact lowpass")' ...
           'Fl(20#%ug#"contact saturation")' ...
      ... %
-          'Lc(50#%g#"characteristic length")' ...
+          'Lc(50#%g#"characteristic length for rail/wheel mesh")' ...
+          'CLc(2#%g#"characteristic length for rail/wheel contact")' ...
+          'CWide(2#%g#"width of potential contact")' ...
+          'CDeep(2#%g#"thickness of contact refined zone")' ...
      ... %
           'Wref(coarse1#%s#"wheel refinement strategy")' ...
      ... %
@@ -1681,7 +1696,7 @@ cinM.add={
 'gr:s1','Slice definition', ...
     {'rail','pad','sleeper','sub','unit'}
  'gr:Track','Track definition parameters', ...
-      {'top','topCoarse','sw','quad','Lc','unit','TGrad'}
+      {'top','topCoarse','sw','quad','Lc','CLc','CWide','CDeep','unit','TGrad'}
  'gr:All','Experiment parameters', ...
       {'gr:s1','gr:Track','gr:Wheel','gr:Ctc'}
       };
