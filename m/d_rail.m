@@ -154,7 +154,7 @@ elseif comstr(Cam,'anatraj')
     d1.def=d1.def(:,3)*RO.z(:)'; d1.data=RO.t(:);
   end
   out=d1;
-
+elseif comstr(Cam,'none');out=model;
 else; error('Case%s',CAM);
 end
 
@@ -304,6 +304,11 @@ elseif comstr(Cam,'wheelcut')
    mo1=feutil('addsetnodeid',mo1,'profile',n4);
    mo1.Elt=feutil('selelt proid1 8 & withnode{setname sectors} & selface & innode{setname profile}',mo1);
    mo1.Node=feutil('getnodegroupall',mo1);
+   if ~isfield(r1,'profile')
+     load('mat/ProfWheel_U30_24.mat','n1');
+     n1(:,3)=0;n1=[n1(:,2) n1(:,3) -n1(:,1)];figure(1);plot(n1(:,1),n1(:,3))
+     r1.profile=n1;% [r theta z] 
+   end
    mo1.info=r1;
    dbM('WheelCut')=mo1; 
    
@@ -312,6 +317,22 @@ elseif comstr(Cam,'wheel')
  RO=varargin{carg};carg=carg+1;
  mo1=useOrDefault(RO.projM,RO.wfrom,[],{'Map:Sections'});
  r1=mo1.info; % Origin normal 
+ if ~isKey(RO.projM,'CbStickWheel')
+  % CbStickWeel is used after refinement 
+  RS=struct('sel',[ 'inElt{ProNameWheel & selface&innode{z<60}&facing >.9 0 0 -5000}'],'distFcn',[]);
+  RS.distFcn=[];%lsutil('gen',[],{struct('shape','sphere','rc',l*5,'xc',l*1.5,'yc',l*.5,'zc',(5+1)*l)});
+  RO.projM('CbStickWheel')={@lsutil,'SurfStick','$projM',RS};
+ end
+ % ProNameRail&selface
+ RO.Ctc=struct('slave','inNode{proid2}', ...
+   'master','proid3','ProId',3, ...
+   'InitUnl0','rail19@InitCqWheel', ...% 'd_contact@surfStick'
+   'StoreType',3,'MAP','tan1dx', ...
+   'Fu','Kc 1e+15 stepx 0', 'Integ',[2], 'subtype',[2],'distFcn',[]);
+ RO.Ctc.slave=['ProNameRail&selface&facing >.9 0 0 1e4&innode {distfcn"{box{' ...
+     sprintf('%g %g %g,%g %g %g',[mean(RO.top) 7.7312   84.505],[diff(RO.top)/2 25 5]) ...
+     ',1 0 0,0 1 0,0 0 1}}"}'];
+
  if length(RO.wref)>6; [u1,u2,RO.rLen]=comstr('coarse',[-25 2],RO.wref,lower(RO.wref));
  else; RO.rLen=[];
  end
@@ -328,9 +349,10 @@ elseif comstr(Cam,'wheel')
     else
       r5=unique([setdiff(0:10:360,90) 89:.5:92])/360;
     end
-     mo1.Node(:,7)=r1.Origin(3);
+    mo1.Node(:,7)=r1.Origin(3);
     mo2=feutil(sprintf('rev 0 o %.15g %.15g %.15g 360 %.15g %.15g %.15g',...
      r1.Origin,r1.normal),mo1,r5);
+
     elt=feutil('selelt selface',mo2);
     n1=feutil('getcg',mo2.Node,elt);
     i1=n1(:,1)>r1.Origin(1)-20& n1(:,1)<r1.Origin(1)+30&n1(:,2)>-10&n1(:,2)<10&n1(:,3)<100;
@@ -342,7 +364,23 @@ elseif comstr(Cam,'wheel')
     mo2.Stack={};
     mo2.pl(~ismember(mo2.pl(:,1),[1 3 8]),:)=[];
     mo2.il(~ismember(mo2.il(:,1),[1 3 8]),:)=[];
-    out=mo2;return;
+    RO.projM('CbCtcGen')={@ctc_utils,'generatecontactpair','$projM',RO.Ctc};
+
+   RD=struct('shape','Poly','Type','RevLine','isClosed',1, ...
+     'Node',[(1:size(r1.profile,1))'*[1 0 0 0],r1.profile(:,[2 3 1])+[r1.Origin(1) 0 r1.Origin(3)]],'orig',r1.Origin,'axis',r1.normal);
+   RD.orig(2)=0;
+   li=feval(lsutil('@dToPoly'),'init',RD);
+   if isfield(RO,'Debug')&&sdtm.Contains(RO.Debug,'ShowProfWheel')
+    cf=feplot(mo2);cf.sel='innode{x>-180}';
+    cf=feplot;lsutil('viewls',cf,li);fecom showCbTR; set(cf.ga,'clim',[-10 10])
+    fecom('shownodemark',RD.Node(:,5:7),'marker','o')
+   end
+   % avoid wheel rotation 
+   n1=sortrows(feutil('getnode z== & y==',mo2,mo2.info.Origin(3),mo2.info.Origin(2)),5);
+   mo2=fe_case(mo2,'mpc','FixRot',struct('c',[1 -1],'DOF',n1([1 end],1)+.03,'slave',2));
+   mo2.info.distFcn=li.distFcn;mo2.info=sdtm.rmfield(mo2.info,'line','profile','radius');
+    out=mo2;
+    return;
    elseif strncmpi(RO.wref,'fine',4) 
     %% #MeshWheelFine fairly large number of elements -3
     r5=[linspace(0,60,65*60/360) linspace(60,120,2.7*65*60/360) linspace(120,360,65*280/360)]/360;
@@ -608,7 +646,7 @@ if isfield(RO,'sel')
  elt(1,8)=-1; % contact surface is display only'
  mo1=model;mo1.Elt=elt; mo1.Elt=feutil('orient 1 n 0 0 10000;',mo1);
  model=feutil('addelt',model,mo1.Elt);
- model=d_rail('MeshRailDist',model);
+ model=d_rail('MeshRailDist',RO.projM,model);
  if ~isempty(i3)
   % make a dip to that contact is lost
   model.Node(i3,7)=model.Node(i3,7)-3; %
@@ -709,6 +747,8 @@ elseif comstr(Cam,'xaza')
   d1.def=d1.def/sum(d1.def(i1))*-117e6; %fe_mat('convertSIMM')
   model=fe_case(model,'DofLoad','Za',d1);
   
+elseif comstr(Cam,'xczc')
+ %% 2024 reimplement
 elseif comstr(Cam,'xuzu')
  %% Enforce x and z motion of bearing 
  i1=feutil('findnode y<-110 & z>638',model);
@@ -813,8 +853,8 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
       mo1=sdth.urn('nmap.mat.set',mo1,struct('value',int32([1 4 5 7 8 9 10 11 ])', ...
           'ID',{{'Shaft','Eclisse','Bolt','Rail','Wheel','Pad','Sleeper','Screw'}}));
       mo1.nmap{'Map:ProName'}(5)='Bolt'; %xxx should not be needed 
-      mo1=sdth.urn('nmap.pro.set',mo1,struct('value',int32([1 4 5 7 8 9 10 11 13])', ...
-          'ID',{{'Shaft','Eclisse','Bolt','Rail','Wheel','Pad','Sleeper','Screw','RailEdge'}}));
+      mo1=sdth.urn('nmap.pro.set',mo1,struct('value',int32([1 2 3 4 5 7 8 9 10 11 13])', ...
+          'ID',{{'Shaft','CtcRail','CtcWheel','Eclisse','Bolt','Rail','Wheel','Pad','Sleeper','Screw','RailEdge'}}));
 
   else; mo1=feutil('addtest Merge -noori;',mo1,mo2);
   end
@@ -836,19 +876,21 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
    end
    RO.Wheel={'W0'};
  else
+   d_rail('MeshRailDist{back}',projM); % Define rail profile no display
    if isnumeric(RO.top)
      RO.topsel=sprintf('selface & withnode {z>82 & x>%.15g & x<%.15g}',RO.top);
      mo1.info.top=RO.top;
    end
    if isfield(RO,'topsel')
-    r2=struct('sel',RO.topsel);r2=sdth.sfield('addselected',r2,RO,{'topCoarse'});
+    r2=struct('sel',RO.topsel);r2=sdth.sfield('addselected',r2,RO,{'topCoarse','projM'});
     mo1=d_rail('MeshRailTop',mo1,r2);
    end
  end
 
  %% #MeshList.Wheel -3
  if isfield(RO,'Wheel')
-  RW=struct('wfrom','WheelCut','wref','coarse1','Lc',RO.Lc,'integ',-1);
+  RW=struct('wfrom','WheelCut','wref','coarse1','Lc',RO.Lc,'integ',-1, ...
+      'top',RO.top);
   RW.projM=RO.projM; 
 
   if length(RO.Wheel)>1
@@ -868,8 +910,8 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
 
   elseif strcmpi(RO.Wheel{1},'w2');
     %% W2 Change density to add brake disc
+    if RW.integ==-1; RW.integ=-3; end
     mo2=d_rail('MeshWheel',RW);
-    if RW.integ==-1; RW.integ=104; end
     %mo1=feutil(sprintf('setpro 3 Integ=%i Match -2',RW.integ),mo1);
     %mo1.pl(1,5)=mo1.pl(1,5)+1.995e-5;
     dbM(RO.Wheel{1})=mo2;
@@ -888,13 +930,18 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   mo1=stack_set(mo1,'info','wheel_geom',data);
   %-(min(mo2.Node(:,5))+max(mo2.Node(:,5)))/2;
   mo1=feutil('addtest -noori -keeptest;',mo1,mo2);
+  try; 
+   mo1.nmap(sprintf('Wheel:%s',RO.Wheel{1}))=mo2.info;
+  end 
   % renumber contact xxx check
-  n1=feutil('findnode matid 2;',mo1); 
-  if ~isempty(n1)
-   n1(:,2)=max(mo1.Node(:,1))+10e3+n1(:,1); 
-   mo1=feutil('renumber -noOri ;',mo1,n1);
-   mo1.Node=sortrows(mo1.Node);
-  end
+  %n1=feutil('findnode matid 2;',mo1); 
+  %if ~isempty(n1)
+  % n1(:,2)=max(mo1.Node(:,1))+10e3+n1(:,1); 
+  % mo1=feutil('renumber -noOri ;',mo1,n1);
+  % mo1.Node=sortrows(mo1.Node);
+  %end
+  mo1=feutil('addsetNodeId',mo1,'Wheel','matid 1 8');
+  mo1=feutil('addsetNodeId',mo1,'Rail','matid 7');
   mo1=d_rail(['MeshCase' RO.Wheel{2}{1}],mo1);%XaZu, ...
  end
  mo1.info=sdth.sfield('addselected',mo1.info, ...
@@ -960,8 +1007,9 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
  
 elseif comstr(Cam,'raildist');
  %% #MeshRailDist : distance to rail (force clean) 
- PA=sdtroot('paramvh'); 
- if ~isfield(PA,'RailDist')||isempty(PA.RailDist)
+ if isa(varargin{carg},'vhandle.nmap');projM=varargin{carg};carg=carg+1;end
+ if ~isKey(projM,'RailDist')||isempty(projM('RailDist'))
+  %d_rail('MeshRailDist',projM)   
   f2=rail19('wd','mat/Profil_RAIL.blk');mo2=nasread(f2);
   mo2.Node=feutil('getnodeGroupall',mo2);
   n1=mo2.Node(:,5:7); mo2.Elt(end+1,1:2)=[5094 5141];
@@ -971,14 +1019,14 @@ elseif comstr(Cam,'raildist');
   fecom('shownodemark',n1,'markersize',5)
   RD=struct('shape','Poly','Type','ExtLine','Node',[mo2.Node(:,1:4) n1],'axis',[1 0 0],'Elt',mo2.Elt);
   li=feval(lsutil('@dToPoly'),'init',RD); 
-  PA.RailDist=li;
+  projM('RailDist')=li;
  else;
-    li=PA.RailDist;
+    li=projM('RailDist');
  end
  if carg<=nargin
   mo1=varargin{carg};carg=carg+1;
   out=lsutil('surfstick',mo1,struct('sel','proid2','distFcn',li.distFcn));
- else
+ elseif ~sdtm.Contains(Cam,'back')% if isfield(RO,'Debug')&&sdtm.Contains(RO.Debug,'ShowProfWheel')
   cf=feplot; cf.sel='matid 7 104';
   lsutil('viewls',cf,li);set(cf.ga,'clim',[-30 30])
   fecom('shownodemark',li.Node(:,5:7),'markersize',5)
@@ -1641,6 +1689,10 @@ end
 
 else; error('View%s',CAM);
 end  
+elseif comstr(Cam,'traj')
+ %% #traj : build trajectory curve ----------------------------2
+[~,RT]=sdtm.urnPar(CAM,'{}{v%ug,Fn%ug,zu%ug}');
+dbstack; keyboard; 
 
 elseif comstr(Cam,'nmap');
 %% #nmap list of named experiments used for demos and non-regression tests ---
@@ -1696,10 +1748,12 @@ cinM.add={
         {'Wref'}
 'gr:s1','Slice definition', ...
     {'rail','pad','sleeper','sub','unit'}
- 'gr:Track','Track definition parameters', ...
+'gr:Track','Track definition parameters', ...
       {'top','topCoarse','sw','quad','Lc','CLc','CWide','CDeep','unit','TGrad'}
- 'gr:All','Experiment parameters', ...
-      {'gr:s1','gr:Track','gr:Wheel','gr:Ctc'}
+'gr:SimuTime','Time simulation parameters', ...
+      {'dt','Vel','profile','FirstDown'}
+'gr:All','Experiment parameters', ...
+      {'gr:s1','gr:Track','gr:Wheel','gr:Ctc','gr:SimuTime'}
       };
 
 % vhandle.uo('',C3.info,rail19('nmap.Map:Cin'))
@@ -1788,12 +1842,36 @@ nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
   'Map:Cin',nmap('Map:Cin');'Ctc',nmap('Ctc21');'CMsh',nmap('CMsh21');
   'RangeLoopOpt',struct('ifFail','Error','RangeLoopResKeys',{{}});
   'PadIo23',1;'DoSaveMacro',1},'ToolTip','DOE on pad properties');
+ %RT=nmap('Trk23PadSN');
 
- nmap('Trk23Noise')=vhandle.nmap.RT({ ...
-  'Ref21','U30{5,Gc,tc-700_300,PadFuSN{io4}}:no{}:W2{XaZa}';
+ %% #Trk24Noise model and range -3
+ nmap('Trk24Noise')=vhandle.nmap.RT({ ...
+  'Ref21','U30{2,Gc,tc-700_300,PadFuSN{io4}}:Ec0{}:W2{XcZc}';
   'Map:Cin',nmap('Map:Cin')
-  'CurExp',{'MeshCfg{rail19(Ref21):21ref}','RunCfg{rail19(SolvePadIO),rail19(SolveTimeB)}'};
-  'PadIo23',1;'DoSaveMacro',1});
+  'BcList',struct('ToolTip','Define contacts, edit BC', ...
+    'li',{{ ...
+   ...% 'Case{reset}'
+    'Case{DofLoad,Top,"rb{setname Wheel &y<-110,dir 1 3,curveDownForward,KeepDof}"}'
+    'Case{FixDof,FixYRailMinMax,"proid13 -DOF2"}'
+    'Case{FixDof,YSim,"inelt{proid1 10&selface & facing<-.9 0 -2e5 0} -DOF2"}'
+    'Case{Pcond,Scld,p_contact(''PcondScld'')}'
+    'InitQ0'; % use the InitQ0 in RangeEvt
+    'CbRefWheel';'CbRefRail';'CbStickWheel';'CbCtcGen'
+    }});
+  'CurExp',{'MeshCfg{rail19(Ref21):None{BcList}}';
+  'SimuCfg{"Imp{.1m,.1,chandle1,BetaR7e-6}"}'
+  'RunCfg{rail19(SolvePadIO),Time}'};
+  'PadIo23',1;'DoSaveMacro',1;
+  });
+ %'DownForward',struct('X',{{[0 .01 1.01]*2/20, ... % T=dist2/vel 20
+ %   {'x';'z'}}},'Y',linspace(0,1,length(t))'*[1 -.1], ...
+ %   'LabFcn','sprintf(''x%.4f z%.4f'',def.data(ch,2:3))','fun',[0 4]);
+ C2=struct('X',{{[0;.1],{'x';'z'}}},'Xlab',{{'Time','dir'}},'Y',[0 0;-1e3 -1e3]');
+ TimeOpt=struct('InitAcceleration','feval(rail19(''@status24''));');
+ Range=fe_range('buildGrid',struct('TimeOpt',{{'V1',TimeOpt}}, ...
+    'InitQ0',{{'D1','elem0(vect{x0,y0,z-.16,"selwithnode{setNameWheel}"})'}}, ...
+    'DownForward',{{'V2',C2}}));
+ RT=nmap('Trk24Noise');RT.nmap('RangeA')=Range;
 
 %% #PadA : pad compression test cases -2
 
@@ -1966,7 +2044,7 @@ try
     r2=sdtm.pcin(cinM,'gr:All','asTabUo');
     st1=fieldnames(RM);st1(ismember(st1,r2.table(:,1)))=[];
     st1(sdtm.regContains(st1,'(gr.|ToolTip|projM|name'))=[];
-    fprintf('%s not in sdtweb d_rail cinM',sdtm.toString(st1(:)'))
+    fprintf('%s not in sdtweb d_rail cinM, add ? \n',sdtm.toString(st1(:)'))
 end
 
 end % nameToMeshRO
@@ -1976,7 +2054,8 @@ function RT=WheelTraj(varargin)
 %% #WeelTraj computation of wheel trajectory
 RT=varargin{1}; if isfield(RT,'Node');model=RT;RT=varargin{2};else;model=[];end
 
-if 1==2
+if 1==2 
+ %% Obsolete 1
  RT.Tdown=.02;
  H=[RT.xstart linspace(RT.xstart+(RT.v(1)*1000*RT.Tdown),-50,length(RT.v))]; % The space steps
  T=[0 [diff(H(:,1:end))]./[RT.v*1000]]; % The time steps
@@ -2007,8 +2086,8 @@ if 1==2
  [[0 F [zeros(1,b2)]]]; % Acceleration on mm/ms^-2
  [-0  -ones(1,(length(H)-1))]*0.075]'); % Vertical traj
  RT.vz0=diff(RT.Cz2.Y(1:2,3))/diff(RT.Cz2.X{1}(1:2))
-end
-if 1==1
+elseif 1==3
+ %% Obsolete 2 
  t=(0:RT.dt:RT.V.X{1}(end))';
  v=interp1(RT.V.X{1},RT.V.Y,t,'linea','extrap');
  x=RT.xstart+cumsum(v*RT.dt);
@@ -2102,3 +2181,5 @@ if ~isempty(model)
 end % Fill model 
 
 end
+
+
