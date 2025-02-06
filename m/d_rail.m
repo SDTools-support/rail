@@ -194,7 +194,7 @@ if comstr(Cam,'db');
  if nargout>0; out=projM;
  else; % Display database contents 
    [~,RM]=sdtm.urnPar(CAM,'{}{}');
-   if isfield(RM,'Failed')&&any(sdtm.regContains(RM.Failed,'imgen','i'))
+   if isfield(RM,'Other')&&any(sdtm.regContains(RM.Other,'imgen','i'))
      %% generate images % d_rail meshdb{ImGen}
      li=[dbM.keys' dbM.values'];
      sdtroot('SetProject',struct('PlotWd',fullfile(sdtdef('tempdir'),'sdtdemos/rail'), ...
@@ -332,6 +332,7 @@ elseif comstr(Cam,'wheel')
  RO.Ctc.slave=['ProNameRail&selface&facing >.9 0 0 1e4&innode {distfcn"{box{' ...
      sprintf('%g %g %g,%g %g %g',[mean(RO.top) 7.7312   84.505],[diff(RO.top)/2 25 5]) ...
      ',1 0 0,0 1 0,0 0 1}}"}'];
+ % xxx mo2=feutil(sprintf('setpro 3 Integ=%i Match -2',RW.integ),mo2);
 
  if length(RO.wref)>6; [u1,u2,RO.rLen]=comstr('coarse',[-25 2],RO.wref,lower(RO.wref));
  else; RO.rLen=[];
@@ -905,7 +906,6 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   elseif strcmpi(RO.Wheel{1},'w1');
     %% W1 single point contact
     mo2=d_rail('MeshWheel',RW);
-    mo1=feutil(sprintf('setpro 3 Integ=%i Match -2',RW.integ),mo1);
     dbM(RO.Wheel{1})=mo2;
 
   elseif strcmpi(RO.Wheel{1},'w2');
@@ -2006,6 +2006,7 @@ RM=struct;
 if isfield(evt,'projM')
  if isKey(evt.projM,'CMsh');RM=evt.projM('CMsh'); end
  RM.projM=evt.projM;
+else; RM.projM=vhandle.nmap;
 end
 % Rail U30{3,Ga}
 switch lower(st{1})

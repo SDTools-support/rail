@@ -33,39 +33,39 @@ The mesh is obtained using by extruding and combining base elements separated by
 - `U30{5,Gc,tc-350_400}`  corresponds to the base rail nomenclature where 
   -  `U30` is the [rail](mapRailComp.md#Rails) type 
   -  `Ns=5` is the number of sleepers before and after the gap,  xxxdynavoie {n\_slice} 
-  - \ts{Gc} specificity the gradient type {\tt TGrag=c}. See the tag {\tt rail19('Mesh.TGrad')} for implementation. 
-  -  \ts{tc-350\_400} t is for top, tc indicates RM.topCoarse=1,  RM.top limits are [-350 500], see \ser{refinerail}
- - `Ec41{Air}` specifies a bracket (*éclisse*) configuration of type `Ec41` with an Air gap. Interpretation of associated configurations in done in {\tt rail19('MailRailDb')}. A list of configurations is given in the {\tt Ec} entries of {\tt rail19('nmap')}. See for example {\tt rail19('nmap.Ec41')} the 4 bolt configuration. See figure \ref{diffeclisse11} for supported list. 
-- `Wa{XaZu}` specifies the wheel type and trajectory nature in horizontal x and vertical z directions. {\tt xa} stands for acceleration trajectory obtained by specifying a distributed load, {\tt xu} stands for an enforced displacement strategy. Possibly use {\tt W0} for a point load, see \ser{WheelTraj}
+  - {s}`Gc` specificity the gradient type {m}`TGrag=c`. See the tag {m}`rail19('Mesh.TGrad')` for implementation. 
+  -  {s}`tc-350\_400` t is for top, tc indicates RM.topCoarse=1,  RM.top limits are [-350 500], see \ser{refinerail}
+ - `Ec41{Air}` specifies a bracket (*éclisse*) configuration of type `Ec41` with an Air gap. Interpretation of associated configurations in done in {m}`rail19('MailRailDb')`. A list of configurations is given in the {m}`Ec` entries of {m}`rail19('nmap')`. See for example {m}`rail19('nmap.Ec41')` the 4 bolt configuration. See figure \ref{diffeclisse11} for supported list. 
+- `Wa{XaZu}` specifies the wheel type and trajectory nature in horizontal x and vertical z directions. {m}`xa` stands for acceleration trajectory obtained by specifying a distributed load, {m}`xu` stands for an enforced displacement strategy. Possibly use {m}`W0` for a point load, see \ser{WheelTraj}
 
 
 ## URN interpretation
 
-Interpretation of the uniform name is performed in `rail19('nameToMeshRO')`.
+Interpretation of the uniform name is performed in `d_rail('nameToMeshRO')`.
 
-When generating the mesh a number of sections are considered (building of sections is done in {\tt rail19('Build\_sections')}) and show in figure~\ref{sections}.
+When generating the mesh a number of sections are considered (building of sections is done in {m}`rail19('Build\_sections')`) and show in figure~\ref{sections}.
 %
 \begin{itemize}
-\item \ts{ra+s} contains a rail + sleeper cut (thus including the pad mesh)
-\item \ts{ra} rail only 
-\item \ts{ra+e} rail + bracket ({\em éclisse}), {\tt se} sleeper and bracket, {\tt sbe} sleeper, bolt, bracket, {\tt rail+e:Air} rail gap (using Air as material) + bracket.  
+\item {s}`ra+s` contains a rail + sleeper cut (thus including the pad mesh)
+\item {s}`ra` rail only 
+\item {s}`ra+e` rail + bracket ({\em éclisse}), {m}`se` sleeper and bracket, {m}`sbe` sleeper, bolt, bracket, {m}`rail+e:Air` rail gap (using Air as material) + bracket.  
 \end{itemize}
 
 \begin{figure}[H]
 		\centering
     	\includegraphics[width=.49\textwidth]{modelschema3}
        \includegraphics[width=.49\textwidth]{boulon}
-    \caption{Named sections {\tt ra} rail, {\tt e} bracket, {\tt ra+e} ,{\tt ra+se}, {\tt ra+sbe} bolt over a sleeper, {\tt ra+be} bolt not over a sleeper\label{sections}}
+    \caption{Named sections {m}`ra` rail, {m}`e` bracket, {m}`ra+e` ,{m}`ra+se`, {m}`ra+sbe` bolt over a sleeper, {m}`ra+be` bolt not over a sleeper\label{sections}}
 \end{figure}
 
 The simulation configuration nomenclature is currently not used. 
 
 
 
-The material nomenclature can be found using {\tt rail19('nmap.MatDb')}. The original values are listed below
+The material nomenclature can be found using {m}`d_rail('nmap.MatDb')`. The original values are listed below
 
 \begin{table}[H]
-	\caption{Material properties {\tt rail19('nmap.MatDb')}.}
+	\caption{Material properties {m}`d_rail('nmap.MatDb')`.}
 	\label{tab:schemes}
 	\centering
 	\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}ccccc}
@@ -90,7 +90,7 @@ xxx lower position of nodes within gap xxx
 
 Bondary conditions are 
 \begin{enumerate}
-\item {\tt sym} : half track symmetry \ts{y==717.5 -DOF 2} as y=0 corresponds to xxx middle of rail foot ? 
+\item {m}`sym} : half track symmetry {s}`y==717.5 -DOF 2` as y=0 corresponds to xxx middle of rail foot ? 
 \end{enumerate}
 
 \cssection{Sample meshing details}{sample}
@@ -154,7 +154,7 @@ Au fil du temps la voie ferrée a subit des transformations et des amélioration
 \begin{figure}[H]
     	\centering
        \includegraphics[width=0.5\textwidth]{diffeclisse1}
-        \caption{Predefined bracket configurations, {\tt Ec41} (previously B41, E120), {\tt Ec42}, {\tt Ec61}, {\tt Ec62}}
+        \caption{Predefined bracket configurations, {m}`Ec41} (previously B41, E120), {m}`Ec42}, {m}`Ec61}, {m}`Ec62}}
         \label{diffeclisse}
 \end{figure}
 Des études pourront être menées pour voir l'influencer de la présence des traverses sous l'éclisse et d'en déduire des conclusions pertinentes.
@@ -166,13 +166,13 @@ Des études pourront être menées pour voir l'influencer de la présence des tr
 
 \cssection{Pad models}{PadMesh}
 
-{\tt PadFuSN\{io4,f0-18\}} xxx 
+{m}`PadFuSN\{io4,f0-18\}} xxx 
 
 
 \cssection{Wheel models}{WheelMesh}
 
 
-Implemented wheel types are selected by an URN of the type {\tt W2\{xaza,in104\}}
+Implemented wheel types are selected by an URN of the type {m}`W2\{xaza,in104\}}
 
 \begin{itemize}
 \item {W0} no wheel, used for moving load or frequeny response computations 
@@ -183,9 +183,9 @@ Implemented wheel types are selected by an URN of the type {\tt W2\{xaza,in104\}
 
 \cssection{Contact models}{Ctc}
 
-Master gauss points of contact elements are positionned on the wheel side with {\tt ProId=3}, to avoid using very fine meshes in explicit dynamics, the surface is refined using a fine integration rule xxx. The surface for potential matching is defined as a set of display elements with  {\tt ProId=2}
+Master gauss points of contact elements are positionned on the wheel side with {m}`ProId=3}, to avoid using very fine meshes in explicit dynamics, the surface is refined using a fine integration rule xxx. The surface for potential matching is defined as a set of display elements with  {m}`ProId=2}
 
-For volume/volume configurations one considers {\tt ScLd} contact (surface contact large displacement) implemented in {\tt nl\_contact}.  
+For volume/volume configurations one considers {m}`ScLd} contact (surface contact large displacement) implemented in {m}`nl\_contact}.  
 %
 \begin{verbatim}
 struct('Kc',[-23e8],'delta',[20], 'CtcForm',[13], ...
@@ -195,6 +195,6 @@ il=[3 fe_mat('p_contact','MM',2) -2 104 1 1 0 0 0 0 0]
 \end{verbatim}
 
 
-In Dynavoie, the contact is implemented in {\tt nl\_dynavoie} with a default $kc=1e9 N/m$ and a {\tt .traj.CDofPos} field containing the precomputation of DOF positions. This should be moved to the ScLd format. Verify the latest Oscar case for line search. 
+In Dynavoie, the contact is implemented in {m}`nl\_dynavoie} with a default $kc=1e9 N/m$ and a {m}`.traj.CDofPos} field containing the precomputation of DOF positions. This should be moved to the ScLd format. Verify the latest Oscar case for line search. 
 
 For rail19, and a surface of $129 mm^2$ For Kc too small the surface increases see \ser{HertzDprs}, xxx 
