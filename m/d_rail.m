@@ -1940,7 +1940,14 @@ elseif comstr(Cam,'pwd')
 elseif comstr(Cam,'jup')
 %% #jup : jupyter notebook building 
 wd=fullfile(fileparts(which('d_rail')),'../jup');
-sdtm.jup('build',struct('BuildDir',wd))
+
+RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
+      'reset',1,'book',{{'rail'}}); 
+RO.helpDir=sdto.f.cffile(fileparts(which('feplot')),'helpj');
+RO.endCopy='jup{rail}';
+RO=sdtm.jup('build',RO);
+
+
 
 %% #Latex #Tex #Hevea -------------------------------------------------------2
 elseif comstr(Cam,'svg')
