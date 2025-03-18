@@ -14972,7 +14972,7 @@ function []=set(list)
       if (ierror~=0), return; end
    case 'getout'
 
-      % get total forces on upper body (1) (global coordinates)
+      %% #set.getout get total forces on upper body (1) (global coordinates)
 
       values = cntc.getglobalforces(iwhe);
       results{iwhe}.tot_forc.fx_tr(icase) = values(1);
@@ -15055,7 +15055,7 @@ function []=set(list)
     % Potential contact area definition and discretization
     cntc.setpotcontact(list{j1});
    case 'traj'
-    %% #set.traj set wheel position and velocity associated to a trajectory point
+    %% #set.traj set wheel position and velocity associated to a trajectory point -3
    
     % increment icase = j1 in fe_time
     [~,RO]=sdtm.urnPar('{s,y,z,roll,yaw,pitch,vx,vy,vz,vroll,vyaw,vpitch}','{}{}');
@@ -15083,7 +15083,7 @@ end
 function []=setflags(ire, icp, params, values)
 % [ ] = cntc.setflags(ire, icp, params, values)
 %
-% #setflags(pdfsection.2.3)  configure flags for a contact problem
+% #setflags(pdfsection.2.3)  configure flags for a contact problem -2
 %
 %  lenflg         - length of params/values arrays
 %  params(lenflg) - codes of the parameters to be communicated to CONTACT
@@ -15133,7 +15133,7 @@ end % cntc.setflags
 function []=setfrictionmethod(ire, icp, imeth, params)
 % [ ] = cntc.setfrictionmethod(ire, icp, imeth, params)
 %
-% #setfrictionmethod parameters for the friction law for a contact problem
+% #setfrictionmethod parameters for the friction law for a contact problem -2
 %  imeth          - type of friction law used: 10 * V-digit + 1 * L-digit
 %  params         - depending on method that is used
 %
@@ -15553,7 +15553,7 @@ end % cntc.setnormalforce
 %------------------------------------------------------------------------------------------------------------
 function []=setboundcond(ire, icp, val)
 
-% #setboundcond boundary conditions
+% #setboundcond boundary conditions -2
 if nargin==0||ischar(ire)
  % package SDT options 
  DoOpt=['Cond(0#vd{0,Force,1,Penetration}#"Boundary conditions options")' ...
@@ -15638,7 +15638,7 @@ function []=setverticalforce(ire, fz)
 
 % category 2: m=1, wtd    - no icp needed
 
-% #setverticalforce
+% #setverticalforce -2
 
    if (nargin<1 | isempty(ire))
       ire = 1;
@@ -15683,7 +15683,7 @@ function []=setpotcontact(ire, icp, ipotcn, params)
 
 % category 5: m=*, wtd    - default icp=-1
 
-% #setpotcontact
+% #setpotcontact -2
    
 % parameters
 if nargin==0||ischar(ire)
@@ -15752,7 +15752,7 @@ end % cntc.setpotcontact
 %------------------------------------------------------------------------------------------------------------
 function []=setprofileinputfname(ire, fname, iparam, rparam)
 
-% #setprofileinputfname(pdfsubsection.2.1.2) set a profile FileName
+% #setprofileinputfname(pdfsubsection.2.1.2) set a profile FileName -2
 % [ ] = cntc.setprofileinputfname(ire, fname, iparam, rparam)
 %
 % set a wheel or rail profile filename for a wheel-rail contact problem
@@ -15788,8 +15788,6 @@ function []=setprofileinputfname(ire, fname, iparam, rparam)
 % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
 % category 2: m=1, wtd    - no icp needed
-
-% #setprofileinputfname
    
 % parameters
 if nargin==0||ischar(ire)
