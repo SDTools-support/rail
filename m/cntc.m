@@ -14972,7 +14972,6 @@ function []=set(list)
       if (ierror~=0), return; end
   
    case 'getout'
-
    %% Get results
        
        % get total forces on upper body (1) (global coordinates)
@@ -15071,7 +15070,6 @@ function []=set(list)
     cntc.setwheelsetdimensions(list{j1});
     case 'traj'
     %% #set.traj set wheel position and velocity associated to a trajectory point -3
-   
     % increment icase = j1 in fe_time
     [~,RO]=sdtm.urnPar('{s,y,z,roll,yaw,pitch,vx,vy,vz,vroll,vyaw,vpitch}','{}{}');
     ws_pos=zeros(6);
