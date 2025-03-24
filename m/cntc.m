@@ -14975,7 +14975,8 @@ function []=set(list)
    %% Get results
        
        % get total forces on upper body (1) (global coordinates)
-
+      % eval(iigui({'iwhe','icase'},'GetInCaller'))
+      %iwhe=evalin('caller','iwhe');
       values = cntc.getglobalforces(iwhe);
       results{iwhe}.tot_forc.fx_tr(icase) = values(1);
       results{iwhe}.tot_forc.fy_tr(icase) = values(2);
@@ -15033,13 +15034,13 @@ function []=set(list)
          % get maximum von mises stress
 
          iblk = 1;
-         table = subs_getresults(iwhe, icp, iblk, [1,2,3,8]);
-         [vm_max, ii_max] = max(table(:,4));
-
-         results{iwhe}.cp_force.sigvm(icase,icp) = vm_max;
-         results{iwhe}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
-         results{iwhe}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
-         results{iwhe}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
+         % table = subs_getresults(iwhe, icp, iblk, [1,2,3,8]);
+         % [vm_max, ii_max] = max(table(:,4));
+         % 
+         % results{iwhe}.cp_force.sigvm(icase,icp) = vm_max;
+         % results{iwhe}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
+         % results{iwhe}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
+         % results{iwhe}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
 
       end
          
