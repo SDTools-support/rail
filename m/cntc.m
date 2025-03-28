@@ -81,21 +81,21 @@ function out=help(CAM)
  %% #help : configure help
  if ispref('SDT','CONTACT_Path');wd=getpref('SDT','CONTACT_Path');
  else
-  wd=sdto.f.firstdir({'D:\APP\win64\contact_v24.1\bin', ...
+  wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin', ...
      'C:\Program Files\Vtech CMCC\contact_v24.1\bin' });
   setpref('SDT','CONTACT_Path',wd);
  end
 
- f1=sdto.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
+ f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
  if exist(f1,'file')
-  RO=sdto.f.ppath(struct,{'sdto.idx.tagI'});
-  ev1=sdto.f.WhichName(f1); 
+  RO=sdtu.f.ppath(struct,{'sdtu.idx.tagI'});
+  ev1=sdtu.f.WhichName(f1); 
   if ~isKey(RO.tagI.fileM,ev1.FileName)
    evt=struct('FileName',f1,'list',{{...
       'setflags(section.2.3) setflags configuration of flags, control digits'
       'setsolverflags(section.4.6) - configuration of solver parameters'
       }});
-   sdto.idx.addFileMatch(evt);
+   sdtu.idx.addFileMatch(evt);
   end
   % xxx should test if needed 
  end
@@ -103,7 +103,7 @@ function out=help(CAM)
  elseif strcmpi(CAM,'pdf')
    out=f1;
  elseif strcmpi(CAM,'md')
-   out=sdto.f.cffile(sdto.f.safe('@cntc.m/../../rail/jup/cntc.md'));  
+   out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));  
  end
 
 end
@@ -10310,7 +10310,7 @@ end
 %% read_profile(fname, is_wheel, mirror_y, mirror_z, scale_yz, rgt_side, idebug, make_plot)
 LI=evalin('base','LI');
 if ~exist(fname,'file'); fname=fullfile(LI.ProjectWd,fname);end
-fname=sdto.f.safe(fname);
+fname=sdtu.f.safe(fname);
 
 [~,~,ext] = fileparts(fname);
 
@@ -15853,7 +15853,7 @@ end
 
    LI=evalin('base','LI');
    if ~exist(fname,'file'); fname=fullfile(LI.ProjectWd,fname);end
-   fname=sdto.f.safe(fname);
+   fname=sdtu.f.safe(fname);
 
    len_fname = length(fname);nints= length(iparam);nreals=length(rparam);
 
@@ -17065,9 +17065,9 @@ function out=autoGen(varargin)
 if 1==1
 %% attempts at extracting pop from data
 f1='D:\APP\win64\contact_v24.1\doc\user-guide.txt';
-IN=sdto.f.asChar8(f1);
+IN=sdtu.f.asChar8(f1);
 IN=regexprep(IN,'Vtech CMCC[^\n]*\n[^\n]*\n[^\d]*[^\n]*\n','');
-sdto.f.asChar8(strrep(f1,'user-guide','xxx'),IN);
+sdtu.f.asChar8(strrep(f1,'user-guide','xxx'),IN);
 
 [st,i1]=sdtm.findTok(IN,'([a-zA-Z]\d*\s+-[^:]{4,20}:[^\x{A}\x{D}]*)');
 ua=struct('ColumnName',{{'Tag','choice','value'}},'table',{{}}, ...
@@ -17098,14 +17098,14 @@ assignin('base','ua',ua)
 
 elseif 1==3
 %% Initial inclusion of functions
-%[~,r1]=sdto.grep('-s -R','^\s*function','D:\APP\win64\contact_v24.1\matlab');
-[~,r1]=sdto.grep('-s -R','\nfunction','D:\APP\win64\contact_v24.1\matlab_intfc');
+%[~,r1]=sdtu.grep('-s -R','^\s*function','D:\APP\win64\contact_v24.1\matlab');
+[~,r1]=sdtu.grep('-s -R','\nfunction','D:\APP\win64\contact_v24.1\matlab_intfc');
 r1.match
 fname='d:/balmes/xxx2.m';fid=fopen(fname,'wb');
 for j1=1:length(r1.files)
- IN=sdto.f.asChar8(r1.files{j1});
+ IN=sdtu.f.asChar8(r1.files{j1});
  fwrite(fid,uint8(IN),'uint8');continue;
- r2.block=sdto.f.findBlocks(IN,'mathelp');
+ r2.block=sdtu.f.findBlocks(IN,'mathelp');
  r2.fun=regexp(r2.block{1},'(function[^=\(]*)(\([^)]*\)|=[^\(]*)*','tokens');
  
  r2.fun=[regexprep(r2.fun{1}{end},'=\s*','%% #') newline];

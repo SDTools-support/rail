@@ -162,7 +162,7 @@ wd=fullfile(fileparts(which('d_rail')),'../jup');
 
 RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
       'reset',1,'book',{{'rail'}}); 
-RO.helpDir=sdto.f.cffile(fileparts(which('feplot')),'helpj');
+RO.helpDir=sdtu.f.cffile(fileparts(which('feplot')),'helpj');
 RO.endCopy='jup{rail}';
 RO=sdtm.jup('build',RO);
 
