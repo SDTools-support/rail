@@ -14974,10 +14974,9 @@ function []=set(list)
    case 'getout'
    %% Get results
        
-       % get total forces on upper body (1) (global coordinates)
-      % eval(iigui({'iwhe','icase'},'GetInCaller'))
-      %iwhe=evalin('caller','iwhe');
-      values = cntc.getglobalforces(iwhe);
+      % get total forces on upper body (1) (global coordinates)
+      iwhe=evt.iwhe;icase=evt.j1;
+      values = cntc.getglobalforces(evt.iwhe);
       results{iwhe}.tot_forc.fx_tr(icase) = values(1);
       results{iwhe}.tot_forc.fy_tr(icase) = values(2);
       results{iwhe}.tot_forc.fz_tr(icase) = values(3);
