@@ -18,7 +18,7 @@ List of contents  <a href="matlab:d_rail('meshdb;')">{m}`d_rail('meshdb')`</a>.
 Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
 
 
-:::{dropdown} <a href="matlab:d_rail('meshdb;')">![](./_icons/run16.png){m}`d_rail('meshdb')`</a>. Expand to display source code.
+:::{dropdown} <a href="matlab:d_rail('meshdb;')">![](../_images/run16.png){m}`d_rail('meshdb')`</a>. Expand to display source code.
 ```matlab
  d_rail('meshdb')
 ```
@@ -27,16 +27,16 @@ Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
 :::{list-table} Initial database in Map:Sections
 :header-rows: 0
 :widths: auto
-*   - ![](./_images/U30_e.png)
-    - ![](./_images/U30_ra.png)
-    - ![](./_images/U30_ra+be.png)
+*   - ![](../_images/U30_e.png)
+    - ![](../_images/U30_ra.png)
+    - ![](../_images/U30_ra+be.png)
 :::
-<img src="./_images/U30_ra+e.png" alt="U30_ra+e" width="200"/>
-<img src="./_images/U30_ra+s.png" alt="U30_ra+s" width="200"/>
-<img src="./_images/U30_ra+sbe.png" alt="U30_ra+sbe" width="200"/>
-<img src="./_images/U30_ra+se.png" alt="U30_ra+se" width="200"/>
-<img src="./_images/Wheel.png" alt="Wheel" width="200"/>
-<img src="./_images/WheelCut.png" alt="WheelCut" width="200"/>
+<img src="../_images/U30_ra+e.png" alt="U30_ra+e" width="200"/>
+<img src="../_images/U30_ra+s.png" alt="U30_ra+s" width="200"/>
+<img src="../_images/U30_ra+sbe.png" alt="U30_ra+sbe" width="200"/>
+<img src="../_images/U30_ra+se.png" alt="U30_ra+se" width="200"/>
+<img src="../_images/Wheel.png" alt="Wheel" width="200"/>
+<img src="../_images/WheelCut.png" alt="WheelCut" width="200"/>
 
 - Map:Sections contains 
   - U30.ra : 2D section of U30 rail 

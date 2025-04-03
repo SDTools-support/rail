@@ -3,18 +3,20 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: railjup
+root: railtoc
 options:
   numbered: 3
 parts:
 
 
-- caption: SDT-rail (open source meshing scripts for rail applications)
+- caption: SDT-rail 
   numbered: 3
   chapters:
-      - file: railjup
+      - file: railmesh
         sections:
           - file: mapRailComp
           - file: urnRailMesh
           - file: d_rail
           - file: railjup_Install
+  chapters:
+      - file: cntc
