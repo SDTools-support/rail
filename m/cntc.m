@@ -14949,8 +14949,8 @@ function []=set(list)
   LI=cntc.call;
   for j1=1:size(list,1)
     if ischar(list{j1})
-     st1=lower(regexprep(list{j1},'^([^{]*).*','$1'));
-    else; evt=list{j1};st1=lower(evt.type);
+     st1=lower(regexprep(list{j1},'^([^{]*).*','$1'));evt=[];
+    else; evt=list{j1}; st1=lower(evt.type);
     end
    switch st1
    case 'solver'
@@ -14958,9 +14958,8 @@ function []=set(list)
     cntc.setsolverflags(list{j1});
    case 'calculate'
     %% compute the contact problem
-    error('Implement')
+    %error('Implement')
       disp(sprintf('Starting case %2d for wheel %d...', icase, iwhe));
-
       ierror = cntc.calculate(iwhe);
       if (ierror~=0), return; end
 
@@ -14973,65 +14972,86 @@ function []=set(list)
   
    case 'getout'
    %% Get results
-       
+     if isempty(evt);iwhe=1;icase=1; else;iwhe=evt.iwhe;icase=evt.j1;  end
+    
+     values = cntc.getglobalforces(iwhe);    
+
+     % Initialize results
+      LI.results{iwhe} = struct('ws_pos', [], 'tot_forc', [], 'npatch', [], ...
+                         'cp_pos', [], 'cp_creep', [], 'cp_force', []);
+   
       % get total forces on upper body (1) (global coordinates)
-      iwhe=evt.iwhe;icase=evt.j1;
-      values = cntc.getglobalforces(evt.iwhe);
-      results{iwhe}.tot_forc.fx_tr(icase) = values(1);
-      results{iwhe}.tot_forc.fy_tr(icase) = values(2);
-      results{iwhe}.tot_forc.fz_tr(icase) = values(3);
-      results{iwhe}.tot_forc.fx_ws(icase) = values(7);
-      results{iwhe}.tot_forc.fy_ws(icase) = values(8);
-      results{iwhe}.tot_forc.fz_ws(icase) = values(9);
+
+      LI.results{iwhe}.tot_forc.fx_tr(icase) = values(1);
+      LI.results{iwhe}.tot_forc.fy_tr(icase) = values(2);
+      LI.results{iwhe}.tot_forc.fz_tr(icase) = values(3);
+      LI.results{iwhe}.tot_forc.fx_ws(icase) = values(7);
+      LI.results{iwhe}.tot_forc.fy_ws(icase) = values(8);
+      LI.results{iwhe}.tot_forc.fz_ws(icase) = values(9);
 
       % get number of contact patches
 
-      results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
-      % get detailed results per contact patch
-
-
-      for icp = 1 : results{iwhe}.npatch(icase)
+      LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
+      
+      % get detailed results per contact patch, if there is more than one
+      % contact between the wheel and the rail
+      for icp = 1 : LI.results{iwhe}.npatch(icase) 
 
          % get contact reference location
 
          values = cntc.getcontactlocation(iwhe, icp);
 
-         results{iwhe}.cp_pos.xtr(icase,icp)    = values(1);
-         results{iwhe}.cp_pos.ytr(icase,icp)    = values(2);
-         results{iwhe}.cp_pos.ztr(icase,icp)    = values(3);
-         results{iwhe}.cp_pos.delttr(icase,icp) = values(4);
-         results{iwhe}.cp_pos.yr(icase,icp)     = values(6);
-         results{iwhe}.cp_pos.zr(icase,icp)     = values(7);
-         results{iwhe}.cp_pos.xw(icase,icp)     = values(10);
-         results{iwhe}.cp_pos.yw(icase,icp)     = values(11);
-         results{iwhe}.cp_pos.zw(icase,icp)     = values(12);
+         LI.results{iwhe}.cp_pos.xtr(icase,icp)    = values(1);
+         LI.results{iwhe}.cp_pos.ytr(icase,icp)    = values(2);
+         LI.results{iwhe}.cp_pos.ztr(icase,icp)    = values(3);
+         LI.results{iwhe}.cp_pos.delttr(icase,icp) = values(4);
+         LI.results{iwhe}.cp_pos.yr(icase,icp)     = values(6);
+         LI.results{iwhe}.cp_pos.zr(icase,icp)     = values(7);
+         LI.results{iwhe}.cp_pos.xw(icase,icp)     = values(10);
+         LI.results{iwhe}.cp_pos.yw(icase,icp)     = values(11);
+         LI.results{iwhe}.cp_pos.zw(icase,icp)     = values(12);
 
          % get reference velocity
 
          [veloc] = cntc.getreferencevelocity(iwhe, icp);
-         results{iwhe}.cp_creep.veloc(icase,icp) = veloc;
+         LI.results{iwhe}.cp_creep.veloc(icase,icp) = veloc;
 
          % get penetration and creepages 
 
          [pen] = cntc.getpenetration(iwhe, icp);
          [cksi, ceta, cphi] = cntc.getcreepages(iwhe, icp);
 
-         results{iwhe}.cp_creep.pen(icase,icp)  = pen;
-         results{iwhe}.cp_creep.cksi(icase,icp) = cksi;
-         results{iwhe}.cp_creep.ceta(icase,icp) = ceta;
-         results{iwhe}.cp_creep.cphi(icase,icp) = cphi;
+         LI.results{iwhe}.cp_creep.pen(icase,icp)  = pen;
+         LI.results{iwhe}.cp_creep.cksi(icase,icp) = cksi;
+         LI.results{iwhe}.cp_creep.ceta(icase,icp) = ceta;
+         LI.results{iwhe}.cp_creep.cphi(icase,icp) = cphi;
 
          % get forces and moment in local coordinates
 
          [fn, tx, ty, mz] = cntc.getcontactforces(iwhe, icp);
 
-         results{iwhe}.cp_force.fn(icase,icp)  = fn;
-         results{iwhe}.cp_force.fx(icase,icp)  = tx;
-         results{iwhe}.cp_force.fs(icase,icp)  = ty;
-         results{iwhe}.cp_force.mz(icase,icp)  = mz;
+         LI.results{iwhe}.cp_force.fn(icase,icp)  = fn;
+         LI.results{iwhe}.cp_force.fx(icase,icp)  = tx;
+         LI.results{iwhe}.cp_force.fs(icase,icp)  = ty;
+         LI.results{iwhe}.cp_force.mz(icase,icp)  = mz;
+
+         disp(icp);
+
+         %get contact patch results
+         LI.results{iwhe}.CP(icase,icp)=cntc.getcpresults(iwhe, icp);
+         
+         %get number of element in contact in the PCA
+         LI.results{iwhe}.NumElem(icase,icp)=cntc.getnumelements(iwhe,icp);
+         
+         %get contact traction 
+         [pn, px, py] = cntc.gettractions(iwhe, icp);
+
+         LI.results{iwhe}.pn=pn;%XXX Comment faire pour avoir plusieurs mtrices a coté 
+         LI.results{iwhe}.px=px;
+         LI.results{iwhe}.py=py;
 
          % get maximum von mises stress
-
+         
          iblk = 1;
          % table = subs_getresults(iwhe, icp, iblk, [1,2,3,8]);
          % [vm_max, ii_max] = max(table(:,4));
@@ -16824,7 +16844,48 @@ function [ ] = subs_addblock(ire, icp, iblk, isubs, xparam, yparam, zparam)
 % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
 % category 7: m=*, wtd or cp - default icp=-1
+% #subs_addblock()
+if nargin==0||ischar(ire)
+ % package SDT options 
+ DoOpt=['BlockSpecif(0#vd{0,Maintain,1,NewVel}#"Wheelset velocity options")' ...
+   'iblk(#%g#"Wheelset forward velocity")' ...
+   'isubs(#%g#"Wheelset lateral velocity")' ...
+   'vz(#%g#"Wheelset vertical velocity")' ...
+   'vroll(#%g#"Wheelset rate of roll")' ...
+   'vyaw(#%g#"Wheelset yaw rate")' ...
+   'vpitch(#%g#"Wheelset angular velocity")'...
+   'shft_sws(#%g#"Wheelset forward position increment")' ...
+   'shft_yws(#%g#"Wheelset lateral position increment")' ...
+   'shft_zws(#%g#"Wheelset vertical position increment")' ...
+   'shft_rol(#%g#"Wheelset roll angle increment")' ...
+   'shft_yaw(#%g#"Wheelset yaw angle increment")' ...
+   'shft_pit(#%g#"Wheelset pitch angle icrement")'...
+   'rpitch(#%g#"Roller pitch angle increment")'];
 
+ if nargin==0; CAM='';else; CAM=ire ;end
+ LI=cntc.call;
+ LI.wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+
+ Vel=LI.wheelsetVel.Vel;
+ switch Vel
+ case 0
+   % 0 Maintain 
+   params=[];
+ case 1
+   % 1 NewVel xxxgae roller rigs ???
+   params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vx', 'vy', 'vz', ...
+       'vrol', 'vyaw', 'vpit'});
+ otherwise
+         error('Wrong parameter')
+         %% xxxGAE 
+ end
+ Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+ params=struct2cell(params);params=horzcat(params{:});
+ cntc.setwheelsetvelocity(Global.ire, Vel, params);
+ return
+ % end SDT packaging 
+
+end 
    
 
    if (nargin<1 | isempty(ire))
