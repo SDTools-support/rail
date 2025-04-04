@@ -157,7 +157,7 @@ elseif comstr(Cam,'pwd')
  if nargout>1; out1=exist(out,'file');end 
 
 elseif comstr(Cam,'jup')
-%% #jup : jupyter notebook building 
+%% #jup : jupyter notebook building -2
 wd=fullfile(fileparts(which('d_rail')),'../jup');
 
 RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
