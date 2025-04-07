@@ -104,6 +104,7 @@ function out=help(CAM)
    out=f1;
  elseif strcmpi(CAM,'md')
    out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));  
+   if nargout==0; sdtu.idx.jup(out);clear out;end
  end
 
 end
