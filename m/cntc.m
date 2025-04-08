@@ -166,7 +166,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #circ_arrow( pos_c, r, th0, th1, col, scale, width, rot )
+   % #circ_arrow
+
    if (nargin<5 | isempty(col))
     col = 1;
    end
@@ -261,7 +262,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #diffcase(sol1, sol2)
+   % #diffcase
    dif = [];
 
    % Check equality of the structures w.r.t. grids used
@@ -356,7 +357,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #diffstrs(sol1, sol2)
+   % #diffstrs
    dif = [];
 
    % Check equality of the grids w.r.t. subsurface points used
@@ -417,8 +418,8 @@ cntc : interface between SDT and CONTACT
     dif.sigzz = sol1.sigzz - sol2.sigzz;
    end
   end
-  %% #spline
-
+  
+  %% #eval_2dspline
   function [ v_out, x_out, y_out, z_out ] = eval_2dspline( spl2d, u_in, v_in, y_in, idebug )
 
    % [ v_out, x_out, y_out, z_out ] = eval_2dspline( spl2d, u_in, v_in, y_in, idebug )
@@ -433,7 +434,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #eval_2dspline( spl2d, u_in, v_in, y_in, idebug ) -2
+   % #eval_2dspline -2
    if (isstruct(spl2d) & isfield(spl2d, 'slc_file'))
     slcs = spl2d;
     spl2d = slcs.spl2d;
@@ -511,7 +512,7 @@ cntc : interface between SDT and CONTACT
    %
    % if u_in and v_in have the same size, evaluate 2d spline at pairs (u_in(i), v_in(i))
    %                                else, evaluate 2d spline at tensor grid u_in x v_in.
-
+   % #eval_2dspline_forward
    has_xij = isfield(spl2d, 'cij_x');
 
    if (all(size(u_in)==size(v_in)))
@@ -610,7 +611,7 @@ cntc : interface between SDT and CONTACT
    %
    % if u_in and y_in have the same size, invert 2d spline at pairs (u_in(i), y_in(i))
    %                                else, invert 2d spline at tensor grid u_in x y_in.
-
+   % #eval_2dspline_inverse
    tiny   = 1e-10 * max(abs(spl2d.ui));
    k      = 4;
    nknotu = length(spl2d.tui);
@@ -785,7 +786,7 @@ cntc : interface between SDT and CONTACT
 
    % - apply wrap-around th_ev --> [-pi,pi)
    % - restrict th_ev \in spline range [th0,th1] to obtain constant extrapolation
-
+   % #apply_wrap_around
    th_ev = mod(th_ev+pi, 2*pi) - pi;
 
    th0   = spl2d.tui(4);
@@ -795,7 +796,7 @@ cntc : interface between SDT and CONTACT
   end %apply_wrap_around
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+  %% #get_ppcoef
   function [ coef ] = get_ppcoef_1seg_full(spl2d, cj_y, jseg)
 
    %[ coef ] = get_ppcoef_1seg_full(spl2d, cj_y, jseg)
@@ -803,7 +804,7 @@ cntc : interface between SDT and CONTACT
    % determine PP-spline coefficients for segment jseg
 
    % average step sizes over 1/2/3 adjacent intervals
-
+   % #get_ppcoef_1seg_full
    nknot  = length(spl2d.tvj);
    dtj_k1 = (spl2d.tvj(2:end) - spl2d.tvj(1:nknot-1))';
    dtj_k2 = (spl2d.tvj(3:end) - spl2d.tvj(1:nknot-2))' / 2;
@@ -858,6 +859,7 @@ cntc : interface between SDT and CONTACT
    % determine PP-spline coefficients for segment jseg
 
    % average step sizes over 1/2/3 adjacent intervals
+   % #get_ppcoef_1seg_sparse
 
    nknotv = length(spl2d.tvj);
    tvj    = spl2d.tvj(jseg-3:jseg+4);            % dtj_k3 uses (jseg+1)+3 - (jseg+1)
@@ -913,7 +915,7 @@ cntc : interface between SDT and CONTACT
 
   end % get_ppcoef_1seg_sparse
 
-
+  %% #evalSpline
   function [ dx_out, dy_out, dz_out ] = eval_2dspline_deriv( spl2d, u_in, v_in, idir, idebug )
 
    % [ dx_out, dy_out, dz_out ] = eval_2dspline_deriv( spl2d, u_in, v_in, idir, idebug )
@@ -927,7 +929,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #eval_2dspline_deriv( spl2d, u_in, v_in, idir, idebug ) -2
+   % #eval_2dspline_deriv -2
    if (nargin<4 | isempty(idir))
     idir = 1;
    end
@@ -1088,7 +1090,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #eval_bspline_basisfnc( tj, si, k, idebug ) -2
+   % #eval_bspline_basisfnc -2
    if (min(size(si))>1)
     disp('ERROR(eval_bspline_basisfnc): si must be 1d array');
     return;
@@ -1191,7 +1193,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #eval_spline( spl, s_in, y_in, idebug ) -2
+   % #eval_spline -2
    if (nargin<2)
     s_in = [];
    end
@@ -1227,7 +1229,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ s_out ] = spline_get_s_at_y(spl, yev, idebug)
-
+  % #spline_get_s_at_y
    if (nargin<3 | isempty(idebug))
     idebug = 0;
    end
@@ -1335,7 +1337,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ iseg ] = locate_segment( np, vp, vi )
-
+  % #locate_segment
    ascending = (vp(end) >= vp(1));
 
    if (ascending)
@@ -1363,7 +1365,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ y ] = eval_1d_spline(xsp, a0, a1, a2, a3, xev, idebug)
-
+  % #eval_1d_spline 
    % evaluate plain (non-parametric) spline y=y(x)
 
    iev_debug = 1;
@@ -1421,7 +1423,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #eval_spline_deriv( spl, s_out, idebug ) -2
+   % #eval_spline_deriv -2
    if (nargin<2 | isempty(s_out))
     s_out = spl.s;
    end
@@ -1447,7 +1449,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ dy, ddy ] = eval_1d_spline_deriv(xsp, a0, a1, a2, a3, xev)
-
+  % #eval_1d_spline_deriv
    % evaluate plain (non-parametric) spline y=y(x)
 
    dy  = zeros(size(xev));
@@ -1500,7 +1502,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #loadcase( expnam, icase, ipatch )
+   % #loadcase
    max_patch = 10;
    s1 = []; s2 = []; s3 = []; s4 = []; s5 = [];
    s6 = []; s7 = []; s8 = []; s9 = []; s10 = [];
@@ -1639,7 +1641,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ sol ] = fill_struct(tmp, fname)
-
+  % #fill_struct
    % check the file format
 
    fmtmat = tmp(1,end);
@@ -2029,7 +2031,7 @@ cntc : interface between SDT and CONTACT
 
    % initialize optional arguments
 
-   %% #loadstrs( expnam, icase, ipatch )
+   % #loadstrs
    if (nargin<2 | isempty(icase))
     icase = 1;
    end
@@ -2197,7 +2199,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #make_2dspline( ui, vj, xij, yij, zij, mask_j, use_approx, use_insert)
+   % #make_2dspline
    k      = 4;
    nmeasu = length(ui);
    nmeasv = length(vj);
@@ -2587,10 +2589,10 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ tj ] = make_knot_vector_atmeas( si, namcoor, use_insert, use_repl, idebug )
-
    % [ tj ] = make_knot_vector_atmeas( si, namcoor, use_insert, use_repl, idebug )
    % use_insert = 1 == knots at all measurements, 0 == skip 2nd and n-1th for not-a-knot b.c.
    % use_repl   = 1 == repeat 1st/last points, 0 == repeat 1st/last intervals
+   % #make_knot_vector_atmeas
 
    nmeas  = length(si);
    nspl   = nmeas;      % number of B-splines equal to number of measured values
@@ -2643,51 +2645,6 @@ cntc : interface between SDT and CONTACT
 
   end % make_knot_vector_atmeas
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, idebug )
-
-   % [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, [idebug] )
-   %
-   % insert one new knot tnew into knot vector tj and compute B-spline coefficients a_out
-
-   if (nargin<5 | isempty(idebug))
-    idebug = 0;
-   end
-
-   if (size(tj,1)>1), tj = tj'; end % using row vector tj
-
-   nknot = length(tj);
-   nspl  = size(a_in, 1);
-   ncol  = size(a_in, 2);
-   if (nknot ~= nspl+k)
-    disp(sprintf('ERROR: size of tj (%d) does not match with a_in (%d, %d)', nknot, nspl, k));
-    return;
-   end
-
-   % determine position jnew for tnew, form extended knot vector
-
-   jnew = find( tj > tnew, 1, 'first');
-
-   tjx  = [tj(1:jnew-1) , tnew, tj(jnew:end) ];
-
-   a_out            = zeros(nspl+1,ncol);
-   for j = 1 : jnew - k
-    a_out(j,:) = a_in(j,:);
-   end
-   for j = jnew-k+1 : jnew-1
-    fj         = (tjx(jnew) - tj(j)) / (tj(j+3) - tj(j));
-    a_out(j,:) = (1 - fj) * a_in(j-1,:) + fj * a_in(j,:);
-   end
-   for j = jnew : nspl+1
-    a_out(j,:) = a_in(j-1,:);
-   end
-
-  end % insert_knot
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
   function [ s ] = make_arclength( y, z )
 
    % [ s ] = make_arclength( y, z )
@@ -2699,7 +2656,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #make_arclength( y, z )
+   % #make_arclength
    dy = diff(y);
    dz = diff(z);
    ds = sqrt(dy.^2 + dz.^2);
@@ -2742,7 +2699,7 @@ cntc : interface between SDT and CONTACT
 
    % compute D1, D2, D3 if not provided
 
-   %% #make_ppform( spl, D1, D2, D3 )
+   % #make_ppform
    if (nargin<4 | isempty(D1) | isempty(D2) | isempty(D3))
 
     % average step sizes over 1/2/3 adjacent intervals
@@ -2794,7 +2751,7 @@ cntc : interface between SDT and CONTACT
    %
    % vec_a, vec_v can be [x,y,z] or [az,el], with az,el in degrees
 
-   %% #make_reflec( spl2d, vec_a, vec_v, ui, vj )
+   % #make_reflec
    rad = pi / 180;
 
    if (length(vec_a)==2)
@@ -2928,7 +2885,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #make_spline( s, y, z, lambda, wgt, ikinks, iaccel, use_bspline, ds_bspl, use_deriv, use_repl, idebug )
+   % #make_spline
    if (nargin>=3 & isempty(y) & ~isempty(z))
     y      = ones(size(z));
    end
@@ -3008,6 +2965,49 @@ cntc : interface between SDT and CONTACT
 
   end % make_spline
 
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, idebug )
+   % [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, [idebug] )
+   %
+   % insert one new knot tnew into knot vector tj and compute B-spline coefficients a_out
+
+   % #insert_knot   
+
+   if (nargin<5 | isempty(idebug))
+    idebug = 0;
+   end
+
+   if (size(tj,1)>1), tj = tj'; end % using row vector tj
+
+   nknot = length(tj);
+   nspl  = size(a_in, 1);
+   ncol  = size(a_in, 2);
+   if (nknot ~= nspl+k)
+    disp(sprintf('ERROR: size of tj (%d) does not match with a_in (%d, %d)', nknot, nspl, k));
+    return;
+   end
+
+   % determine position jnew for tnew, form extended knot vector
+
+   jnew = find( tj > tnew, 1, 'first');
+
+   tjx  = [tj(1:jnew-1) , tnew, tj(jnew:end) ];
+
+   a_out            = zeros(nspl+1,ncol);
+   for j = 1 : jnew - k
+    a_out(j,:) = a_in(j,:);
+   end
+   for j = jnew-k+1 : jnew-1
+    fj         = (tjx(jnew) - tj(j)) / (tj(j+3) - tj(j));
+    a_out(j,:) = (1 - fj) * a_in(j-1,:) + fj * a_in(j,:);
+   end
+   for j = jnew : nspl+1
+    a_out(j,:) = a_in(j-1,:);
+   end
+
+  end % insert_knot
+
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ spl ] = make_bspline( s_in, y_in, z_in, lambda, wgt, ikinks, iaccel, ds_bspl, use_deriv, use_repl, idebug )
@@ -3017,6 +3017,7 @@ cntc : interface between SDT and CONTACT
    %
    % compute parametric cubic smoothing spline (y(s),z(s)) using least squares B-spline method with
    % penalty on 2nd or 3rd derivative
+   % # make_bspline
 
    if (nargin<11 | isempty(idebug))
     idebug = 1;
@@ -3200,6 +3201,7 @@ cntc : interface between SDT and CONTACT
    % [ is_ok ] = check_kink_accel( si, ikinks, iaccel )
    %
    % check requirements of B-spline method on kinks and accelerations
+   % #check_kink_accel 
 
    is_ok  = 0;
 
@@ -3281,6 +3283,7 @@ cntc : interface between SDT and CONTACT
    %  - use_repl      = knots at boundaries: replicated [1,1,1,1]*tj(1) or extended tj(1)+[-3,-2,-1,0]*dt1
    %  - keep_reduc    = flag indicating that tj is/isnt kept in reduced knots t^*
 
+   % #make_knot_vector
    if (nargin<6 | isempty(idebug))
     idebug = 1;
    end
@@ -3373,6 +3376,7 @@ cntc : interface between SDT and CONTACT
    %
    % simple version that just applies ds_bspl as much as possible -- needs lambda>0 to avoid singular systems
 
+   % #make_knot_vector_simple
    nmeas  = length(si);
    nkink  = length(ikinks);
    naccel = length(iaccel);
@@ -3440,6 +3444,7 @@ cntc : interface between SDT and CONTACT
    %          with measurements skipped for not-a-knot conditions at boundaries, kinks and accelerations
 
    % define sections between kinks and acceleration points
+   % #make_knot_vector_advanced
 
    nmeas   = length(si);
    iranges = sort([ 1 , ikinks, iaccel, nmeas ]);
@@ -3567,6 +3572,7 @@ cntc : interface between SDT and CONTACT
    % Combine columns for segments using a reduced order, e.g. linear segments between double kinks
    %   tj         == knot vector (1:nknot)
    %   keep_reduc == flags for knots to be kept in reduced knot vector tr = t^* (1:nreduc)
+   % #reduce_matrix
 
    if (nargin<4 | isempty(idebug))
     idebug = 0;
@@ -3620,6 +3626,7 @@ cntc : interface between SDT and CONTACT
    %    ra = coefficients for reduced basisfunctions a^*
    %    tj = full knot vector t_j (1:nknot)
    %    keep_reduc = flags for knots kept in reduced knot vector tr = t^* (1:nreduc)
+   % #expand_vector
 
    if (nargin<4 | isempty(idebug))
     idebug = 0;
@@ -3746,6 +3753,7 @@ cntc : interface between SDT and CONTACT
 
    % compute smoothing spline {a0--a3} for data {s,y} with
    % mis-fit weight lambda and data weights wgt
+   % #make_pp_spline_section
 
    if (nargin<6 | isempty(idebug))
     idebug = 0;
@@ -3956,6 +3964,7 @@ cntc : interface between SDT and CONTACT
    % [ s, y, z, wgt ] = combine_close_meas( s, y, z, lambda, wgt, ikinks, idebug )
    %
    % combine measurements that lie too close together
+   % #combine_close_meas
 
    iter = 0;
    comb = ones(size(s));
@@ -4003,8 +4012,8 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #modify_profile(p_in, is_wheel, mirror_y, mirror_z, reverse_order, point_dist_min, ...
-   %                                    delete_foldback, scale_yz, make_plot, idebug)
+   % #modify_profile
+
    if (nargin<2 | isempty(is_wheel))
     is_wheel = 0;
    end
@@ -4279,8 +4288,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #parse_out1
 
-   %% #parse_out1(fname, ire_out, idebug)
    if (nargin<2 | isempty(ire_out))
     ire_out = -1; % result element number as used in CONTACT library for which output is wanted, -1 == all
    end
@@ -4870,6 +4879,7 @@ cntc : interface between SDT and CONTACT
   function [ myfile ] = read_file(fname, idebug)
    % read_file: Helper function for reading entire file into memory
    % [ file_contents ] = read_line(fname, idebug)
+   % #read_file
 
    myfile.fname = fname;
    myfile.nline = 0;
@@ -4888,6 +4898,7 @@ cntc : interface between SDT and CONTACT
   function [ f ] = find_all_headers(f, headers, idebug)
    % find_all_headers: Helper function for locating headers in file
    % [ f ] = find_all_headers(f, headers, idebug)
+   % #find_all_headers
 
    f.headers = zeros(f.nline,1);
 
@@ -4909,6 +4920,7 @@ cntc : interface between SDT and CONTACT
 
    % read_line: Helper function for getting next line of input
    % [ s, iline ] = read_line(f, iline, idebug)
+   % #read_line
 
    iline = iline + 1;
    s = f.contents{iline};
@@ -4933,6 +4945,7 @@ cntc : interface between SDT and CONTACT
 
    % next_header: Helper function for locating the next section
    % [ s, iline, ihdr ] = next_header(f, iline, idebug)
+   % #next_header
 
    iprev = iline;
    inext = iline+1;
@@ -4992,8 +5005,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #parse_out3
 
-   %% #parse_out3(fname, use_struct, idebug)
    if (nargin<2 | isempty(use_struct))
     use_struct=1; % return structs with values
    end
@@ -5249,6 +5262,7 @@ cntc : interface between SDT and CONTACT
    % find_header: Helper function for locating the next section
    % [ s, iline, ihdr ] = find_header(f, iline, headers, case_sens, idebug)
    % case_sens = 1: case-sensitive matching; 0: case-insensitive
+   % #find_header
 
    num_hdr = size(headers,1);
    if (~case_sens)
@@ -5338,8 +5352,8 @@ cntc : interface between SDT and CONTACT
 
    % construct a local struct "myopt" in which default values are filled in for
    % all available options.
+   % #plot2d
 
-   %% #plot2d(sol, opt2)
    myopt = struct( ...
     'orie',    2, ...
     'pxory', 'x', ...
@@ -5730,8 +5744,8 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % determine version information on the Matlab graphics system
+   % #plot3d
 
-   %% #plot3d(sol, opt3, prr, prw, subs)
    old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
    new_graphics = ~old_graphics;
 
@@ -6414,6 +6428,7 @@ cntc : interface between SDT and CONTACT
    %
 
    % set the x range for plotting
+   % #show_profiles
 
    if (isempty(opt.xrange))
     if (any(strcmp(opt.rw_surfc,{'prr','both'})))
@@ -6639,6 +6654,7 @@ cntc : interface between SDT and CONTACT
    %  - the profile will be sampled at sj-values in the profile close to uniform sj = [smin: ds: smax]
    %  - all profile points will be used if both ds_true and ds_appx are left empty
    %  - for variable profiles, x-positions and arc-lengths s are replaced by the (u,v)-parametrization
+   % #make_3d_surface
 
    if (nargin< 5), dx_true = []; end
    if (nargin< 6), dx_appx = []; end
@@ -6858,6 +6874,7 @@ cntc : interface between SDT and CONTACT
    %
 
    % delegate work to separate functions depending on type of plot
+   % #show_scalar_field
 
    if (strcmp(opt.typplot, 'rw_rear'))
     show_rw_rear_view(sol, field, opt);
@@ -6879,6 +6896,7 @@ cntc : interface between SDT and CONTACT
    % [ ] = show_subs_field(sol, field, opt)
    %
    % add plot of subsurface stresses to rw_rear plot
+   % #show_subs_field
 
    if (0==1)
     % use slice closest to xc=0
@@ -6909,6 +6927,7 @@ cntc : interface between SDT and CONTACT
   function [ ] = show_3d_field(sol, field, opt)
 
    % determine version information on the Matlab graphics system
+   % #show_3d_field
 
    old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
    new_graphics = ~old_graphics;
@@ -7160,6 +7179,7 @@ cntc : interface between SDT and CONTACT
    %   vx, vy  - the vector data to be plotted
    %   opt     - structure with options as defined by plot3d.
    %
+   % #show_vec_field
 
    if (any(strcmp(opt.typplot,{'rw_rear','rw_side'})))
     return
@@ -7275,6 +7295,7 @@ cntc : interface between SDT and CONTACT
    %   sol     - structure with CONTACT results as returned by loadcase
    %   opt     - structure with options as defined by plot3d.
    %
+   % #show_eldiv_contour
 
    if (opt.addeldiv<=0)
     return;
@@ -7446,6 +7467,7 @@ cntc : interface between SDT and CONTACT
    % show_rw_rear_view: plot w/r profiles, contact plane & contact results
 
    % plot the potential contact area
+   % #show_rw_rear_view
 
    yc = sol.y; zc = zeros(1,sol.my);
    if (strcmp(opt.rw_surfc,'prr'))
@@ -7529,6 +7551,7 @@ cntc : interface between SDT and CONTACT
    % show_rw_side_view: plot w/r profiles, contact plane & contact results
 
    % plot the potential contact area
+   % #show_rw_side_view
 
    xc = sol.x; zc = zeros(1,sol.mx);
    if (strcmp(opt.rw_surfc,'prr'))
@@ -7616,6 +7639,7 @@ cntc : interface between SDT and CONTACT
 
    % return 1 if the current plot uses 2D view and 0 in case of a 3D view
    % 2D view: myopt.view = [ *, +/-90 ];  axis returns vector of 4 elements.
+   % #is_2d_view
 
    is2d = (abs(90 - abs(view(2))) <= 1e-3);
 
@@ -7624,6 +7648,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ ] = set_yzlabels(sol, opt)
+   % #set_yzlabels
 
    if (strcmp(opt.rw_surfc,'prr'))
     xlabel ('y_r [mm]');
@@ -7641,6 +7666,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ ] = set_xyzlabels(sol, opt)
+   % #set_xyzlabels
 
    if (strcmp(opt.typplot,'rw_rear'))
 
@@ -7699,6 +7725,7 @@ cntc : interface between SDT and CONTACT
   function [ix_plot, iy_plot] = plot_ranges(sol, opt);
 
    % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
+   % #plot_ranges
 
    if (isempty(opt.ixrange) | ...
      (ischar(opt.ixrange) & strcmp(opt.ixrange,'all')) )
@@ -7744,6 +7771,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ f1, f2, f3, f4, f5, f6 ] =derived_data(sol, opt, n1, n2, n3, n4, n5, n6)
+   % #derived_data
 
    px = sol.px; py = sol.py; eldiv = sol.eldiv;
 
@@ -7780,6 +7808,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ scale ] = get_vecscale( sol, opt, val )
+   % #get_vecscale
 
    if (~isempty(opt.vecscale))
     scale = opt.vecscale;
@@ -7792,6 +7821,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ is_left ] = is_left_side(sol)
+   % #is_left_side
 
    if (length(sol)>1)
     is_left = (sol(1).config==0 | sol(1).config==4);
@@ -7804,6 +7834,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
+   % #get_profile_slice
 
    if (nargin<3)
     make_plot = 0;
@@ -7855,6 +7886,7 @@ cntc : interface between SDT and CONTACT
   function [ xtr, ytr, ztr, delta_tr ] = to_track_coords(sol, xc, yc, zc);
 
    % transform contact [xc,yc/s]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #to_track_coords
 
    if (nargin<3), yc = []; end
    if (nargin<4), zc = []; end
@@ -7954,6 +7986,7 @@ cntc : interface between SDT and CONTACT
   function [ xr, yr, zr, deltar]=to_rail_coords(sol, xc, yc, zc);
 
    % transform contact [xc,yc/s]-coordinates to rail [xr,yr,zr] coordinates
+   % #to_rail_coords
 
    if (nargin<3), yc = []; end
    if (nargin<4), zc = []; end
@@ -8047,6 +8080,7 @@ cntc : interface between SDT and CONTACT
   function [ xw, yw, zw, deltaw]=to_wheel_coords(sol, xc, yc, zc);
 
    % transform contact [xc,yc/s]-coordinates to wheel [xw,yw,zw] coordinates
+   % #to_wheel_coords
 
    if (nargin<3), yc = []; end
    if (nargin<4), zc = []; end
@@ -8145,6 +8179,7 @@ cntc : interface between SDT and CONTACT
   function [ xtr, ytr, ztr ] = rail_to_track_coords(sol, xr, yr, zr);
 
    % transform rail [xr,yr,zr]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #rail_to_track_coords
 
    % reshape inputs to row vectors
 
@@ -8184,6 +8219,7 @@ cntc : interface between SDT and CONTACT
   function [ xw, yw, zw ] = wcyl_to_wprof_coords(sol, thw, yw, drw);
 
    % transform cylindrical wheel [thw,yw,drw]-coordinates to wheel profile [xw,yw,zw] coordinates
+   % #wcyl_to_wprof_coords
 
    % reshape inputs to row vectors
 
@@ -8214,6 +8250,7 @@ cntc : interface between SDT and CONTACT
   function [ xtr, ytr, ztr ] = wheel_to_track_coords(sol, xw, yw, zw);
 
    % transform wheel [xw,yw,zw]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #wheel_to_track_coords
 
    % reshape inputs to row vectors
 
@@ -8245,6 +8282,7 @@ cntc : interface between SDT and CONTACT
   function [ xr, yr, zr ] = wheel_to_rail_coords(sol, xw, yw, zw);
 
    % transform wheel [xw,yw,zw]-coordinates to rail [xr,yr,zr] coordinates
+   % #wheel_to_rail_coords
 
    % reshape inputs to row vectors
 
@@ -8277,6 +8315,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ rot ] = rotx(roll_deg)
+   % #rotx
 
    sn = sin(roll_deg*pi/180);
    cs = cos(roll_deg*pi/180);
@@ -8289,6 +8328,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ rot ] = roty(pitch_deg)
+   % #roty
 
    sn = sin(pitch_deg*pi/180);
    cs = cos(pitch_deg*pi/180);
@@ -8301,6 +8341,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ rot ] = rotz(yaw_deg)
+   % #rotz
 
    sn = sin(yaw_deg*pi/180);
    cs = cos(yaw_deg*pi/180);
@@ -8341,7 +8382,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   %% #plot_2dspline( slcs, opt )
+   % #plot_2dspline
    if (nargin<1 | isempty(slcs))
     slcs = struct();
    end
@@ -8590,6 +8631,7 @@ cntc : interface between SDT and CONTACT
   function [ v_rfn ] = refine_intv( v_in, k_rfn )
 
    % refine intervals v_in(1) : v_in(2), v_in(2) : v_in(3), ... into k_rfn>=2 pieces each
+   % #refine_intv
 
    n_in  = length( v_in );
    n_rfn = k_rfn * (n_in-1) + 1;
@@ -8620,8 +8662,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #plot_arrow
 
-   %% #plot_arrow( pos0, vec, col, scale, width, pln )
    if (nargin<3 | isempty(col))
     col = 'b';
    end
@@ -8738,10 +8780,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #plot_axes
 
-   %% #plot_axes(O, scl, theta, zpos, axnams, col, mrksiz, ...
-   %                           siz_o, fontsiz, txtcol, th_txt, fac_txt, ...
-   %                           no_orie, no_head, left_hnd)
    if (nargin<1 | isempty(O))
     O = [0; 0];
    end
@@ -8944,10 +8984,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #plot_axes3
 
-   %% #plot_axes3(O, scl, rot, axnams, col, mrksiz, ...
-   %                           fontsiz, txtcol, th_txt, fac_txt, ...
-   %                           no_head, left_hnd)
    if (nargin<1 | isempty(O))
     O = [0; 0];
    end
@@ -9109,8 +9147,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #plot_cm
 
-   %% #plot_cm(O, r, veclen, theta, col, no_vec, no_head)
    if (nargin<1 | isempty(O))
     O = [0; 0];
    end
@@ -9200,9 +9238,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #plot_update
 
-   %% #plot_update(prf1, prf2, fac, plot_n, use_angl2, norm_dist, show_angl, ...
-   %                                                        add_plot, force_spline)
    if (nargin<3 | isempty(fac))
     fac       = -1;
    end
@@ -9482,8 +9519,8 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % determine version information on the Matlab graphics system
+   % #plotstrs
 
-   %% #plotstrs(sol, opt)
    old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
    new_graphics = ~old_graphics;
 
@@ -9668,8 +9705,8 @@ cntc : interface between SDT and CONTACT
     % Copyright 2008-2023 by Vtech CMCC.
     %
     % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+    % #matlab_color( num ) -3
 
-    %% #matlab_color( num ) -3
     matlab_colors = [
      0    0.4470    0.7410
      0.8500    0.3250    0.0980
@@ -9706,6 +9743,7 @@ cntc : interface between SDT and CONTACT
     %   field   - the actual array to be plotted, or a field name within sol
     %   opt     - structure with options as defined by plotstrs.
     %
+    % #show_2d_slice
 
     % get field to be plotted
 
@@ -9880,6 +9918,7 @@ cntc : interface between SDT and CONTACT
     % [ ] = log_colorbar(hc, opt)
     %
     % change colorbar to logarithmic scale when necessary
+    % #log_colorbar
 
     if (strcmp(opt.scale,'log'))
      if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
@@ -9911,8 +9950,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #read_miniprof -1
 
-   %% #read_miniprof(fname, idebug, make_plot)
    if (nargin<2 | isempty(idebug))
     idebug = 1;
    end
@@ -10253,6 +10292,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ my_field ] = check_field( known_fields, field_in )
+   % #check_field
 
    fn = fieldnames(known_fields);
    chk = strcmpi(field_in, fn);
@@ -10269,7 +10309,7 @@ cntc : interface between SDT and CONTACT
 
   function [ p ] = read_profile(fname, is_wheel, mirror_y, mirror_z, scale_yz, rgt_side, idebug, make_plot)
 
-   % [ p ] = #read_profile(fname, [is_wheel], [mirror_y], [mirror_z], [scale_yz], [rgt_side], ...
+   % [ p ] = read_profile(fname, [is_wheel], [mirror_y], [mirror_z], [scale_yz], [rgt_side], ...
    %                                                                          [idebug], [make_plot])
    %
    % Main routine for reading wheel/rail profiles.
@@ -10286,6 +10326,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #read_profile -1
 
    % parameters
    if nargin<3&&ischar(fname)
@@ -10485,8 +10526,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #read_simpack -1
 
-   %% #read_simpack(fname, idebug, make_plot)
    if (nargin<2 | isempty(idebug))
     idebug = 1;
    end
@@ -10770,8 +10811,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #read_slices -1
 
-   %% #read_slices(fname, mirror_y, mirror_z, scale_yz, idebug)
    if (nargin<2 | isempty(mirror_y))
     mirror_y = 0;
    end
@@ -10865,6 +10906,7 @@ cntc : interface between SDT and CONTACT
    % [ slcs, iline ] = read_slices_header(slcs, nam_udir, f, iline, [idebug])
    %
    % Lower-level routine for reading contents of slcs-file
+   % #read_slices_header
 
    ierror    = 0;
    in_header = 1;
@@ -10952,6 +10994,7 @@ cntc : interface between SDT and CONTACT
    % [ slcs, iline, nerror ] = read_slices_fnames(slcs, nam_udir, f, iline, [idebug])
    %
    % Lower-level routine for reading filenames from slcs-file
+   % #read_slices_fnames 
 
    nslc   = 0; % #slices_read_from file -3
    nerror = 0;
@@ -11034,6 +11077,7 @@ cntc : interface between SDT and CONTACT
    % Lower-level routine for reading feature information from a slcs-file
 
    % TODO: add 2 lines: P_KINK, P_ACCEL
+   % #read_feature_info
 
    nerror = 0;
 
@@ -11130,6 +11174,7 @@ cntc : interface between SDT and CONTACT
    % [ slcs, ierror ] = read_slice_profiles( fname, slcs, mirror_y, mirror_z, scale_yz, idebug )
    %
    % read each of the per-slice profiles
+   % #read_slice_profiles
 
    ierror = 0;
 
@@ -11203,8 +11248,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #read_vampire(fname, right_side, idebug, make_plot) -1
 
-   %% #read_vampire(fname, right_side, idebug, make_plot)
    if (nargin<2 | isempty(right_side))
     right_side = 1;
    end
@@ -11388,6 +11433,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ s, iline ] = get_next_line(f, iline, idebug)
+  % #get_next_line -1
 
    s = deblank(fgets(f));
    iline = iline + 1;
@@ -11427,8 +11473,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #resample_slices -1
 
-   %% #resample_slices( slcs, ds_max2d, idebug, show_fig, fig_ofs )
    if (nargin<3 | isempty(idebug))
     idebug   = 0;
    end
@@ -11681,9 +11727,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   %% #smooth_profile( p_in, l_filt, lambda, ds_sampl, ikinks, iaccel, ...
-   %                                                                use_wgt, use_bspline, ds_bspl, idebug )
+   % #smooth_profile -1
+   
    if (nargin<2);l_filt = [];end
    if (nargin<3);lambda = [];end
    if (nargin<4);ds_sampl = [];end
@@ -11871,8 +11916,8 @@ cntc : interface between SDT and CONTACT
    %
    % solve 3rd degree equation f(u) = y, returning one root in interval [useg(1),useg(2)]
    % ppcoef = [a0, a1, a2, a3],  d = a0-yev, c = a1, b = a2, a = a3
+   % #solve_cubic_eq
 
-   %% #solve_cubic_eq(ppcoef, useg, yev, idebug, iout, jout, jseg)
    if (nargin<4 | isempty(idebug))
     idebug = 0;
    end
@@ -11912,6 +11957,7 @@ cntc : interface between SDT and CONTACT
 
    % solve f(u) = a3 ul^3 + a2 ul^2 + a1 ul + a0 - yev = 0, with ul the local coordinate in the segment
    % using Newton-Raphson, cannot jump over extremal values, needs appropriate u^0
+   % #solve_cubic_newton
 
    a0 = ppcoef(1);
    a1 = ppcoef(2);
@@ -12134,6 +12180,7 @@ cntc : interface between SDT and CONTACT
 
    % solve f(u) = a ul^3 + b ul^2 + c ul + d = 0,  d = a3-yev,
    % with ul the local coordinate in the segment, using Cardano's method.
+   % #solve_cubic_cardano
 
    d = ppcoef(1) - yev;
    c = ppcoef(2);
@@ -12335,8 +12382,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #write_miniprof
 
-   %% #write_miniprof(p, fname, is_rail, use_yz, idebug)
    if (nargin<3 | isempty(is_rail))
     is_rail = -1;
    end
@@ -12576,13 +12623,14 @@ cntc : interface between SDT and CONTACT
 
   function write_simpack(fname, comment, y, z)
 
-   % #write_simpack(fname, comment, y, z)
+   % #write_simpack
    %
    % Write wheel or rail profile in Simpack prw/prr format
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #write_simpack
 
    if (isempty(strfind(fname, 'prw')))
     is_wheel = 0; % rail
@@ -12646,7 +12694,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 5: m=*, wtd    - default icp=-1
-
+   % #calculate
 
    cntc_err_allow  = -12;
    cntc_err_profil = -32;
@@ -12691,6 +12739,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 0: m=*, glob   - no icp needed
+   % #closelibrary
 
    LI=evalin('base','LI');
    cntc.call('cntc.finalizelast');
@@ -12711,6 +12760,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 0: m=*, glob   - no icp needed
+   % #finalize
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -12739,8 +12789,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #mygetfield -2
 
-   %% #mygetfield(struct,field) -2
    result = eval(['struct.',field]);
   end
 
@@ -12748,7 +12798,7 @@ cntc : interface between SDT and CONTACT
    %
    % [contains] = myisfield(STRUC,fieldname)
    %
-   % #myisfield extension of isfield, for which the fieldname may contain '.' -2
+   % myisfield extension of isfield, for which the fieldname may contain '.' 
    % Example:
    %    STRUC.substruc.field = [0 1];
    %    myisfield(STRUC,'substruc.field')   returns 1
@@ -12761,7 +12811,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
+   % #myisfield -2
+   
    % Initialize: assume that the field is in te struct.
 
    contains   = 1;
@@ -12793,7 +12844,7 @@ cntc : interface between SDT and CONTACT
 
   function s = mysetfield(s,varargin)
    %
-   % [s] = #mysetfield(s, varargin)
+   % [s] = mysetfield(s, varargin)
    %
    % Set structure field contents.
    %
@@ -12815,6 +12866,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #mysetfield
 
    if (isempty(varargin) | length(varargin) < 2)
     error('MYSETFIELD:InsufficientInputs', 'Not enough input arguments.');
@@ -12852,7 +12904,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function [ tcpu, twall]=getcalculationtime(ire, icp)
-   % [ tcpu, twall ] = #cntc.getcalculationtime(ire, icp)
+   % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
    % return accumulated cpu-time and wall-clock-time used since last timer reset for a contact problem
    %  tcpu, twall   - cpu- and wall-clock times used [time]
@@ -12890,7 +12942,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function [fn,tx,ty,mz]=getcontactforces(ire, icp,out)
-   % [fn,tx,ty,mz] = #cntc.getcontactforces(ire, icp)
+   % [fn,tx,ty,mz] = cntc.getcontactforces(ire, icp)
    %
    % return the total forces and torsional moment for a contact problem in contact local coordinates
    %
@@ -12904,6 +12956,8 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % # getcontactforces
+
    l1={1,'fn','total normal force'
     2,'tx','total tangential forces'
     3,'ty','total tangential forces'
@@ -12959,6 +13013,8 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #getcontactlocation
+
    l1={
     1,'XCP_TR','x-position of the contact reference point in track coordinates'
     2,'YCP_TR','y-position of the contact reference point in track coordinates'
@@ -13037,6 +13093,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getcontactpatchareas
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13077,6 +13134,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getcpresults
 
 
    if (nargin<1 | isempty(ire))
@@ -13234,6 +13292,8 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getcreepages
+
    l1={1,'vx','Creepage in x-direction'
     2,'vy','Creepage in y-direction'
     3,'phi','Spin creepage'};
@@ -13284,6 +13344,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getdisplacements
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13336,6 +13397,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getelementdivision
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13401,6 +13463,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getfielddata
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13450,6 +13513,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 5: m=*, wtd    - default icp=-1
+   % #getflags
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13485,6 +13549,13 @@ cntc : interface between SDT and CONTACT
    % rvalues(lenarr)   - contact forces [force] and moments [force.length]
    %
    % For returned values use cntc.getglobalforces
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 4: m=1, wtd/cp - default icp=-1
+   % #getglobalforces
+
    l1={
     1,'FX_TR','total force on the output body, component in track longitudinal x-direction'
     2,'FY_TR','total force on the output body, component in track lateral y-direction'
@@ -13515,11 +13586,6 @@ cntc : interface between SDT and CONTACT
     24,'MZ_W_W','total moment on output body about wheel profile marker, component in wheel z-direction'
     };
 
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 4: m=1, wtd/cp - default icp=-1
    LI=cntc.call;
 
    if nargout==0&&nargin==0
@@ -13567,6 +13633,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+   % #getgriddiscretization
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13616,6 +13683,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 1: m=3, cp     - require icp>0, default 1
+   % #gethertzcontact
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13654,6 +13722,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 0: m=*, glob   - no icp needed
+   % #getmagicnumbers
 
 
    % return a struct with 'magic numbers' for setting flags later on
@@ -14686,7 +14755,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function [ CNTC, ifcver, ierror ] = initlibrary(c_wrkdir, c_outdir, c_expnam, idebug);
-   % [ CNTC, ifcver, ierror ] = #cntc.initlibrary(wrkdir, outdir, expnam, idebug);
+   % [ CNTC, ifcver, ierror ] = cntc.initlibrary(wrkdir, outdir, expnam, idebug);
    %
    % load the library into Matlab, initialize its internal data and output channels
    %
@@ -14704,6 +14773,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 0: m=*, glob   - no icp needed
+   %% #initlibrary
 
    % retrieve current directory, form library name
    [pathstr, name, ext] = fileparts(which('cntc.initlibrary'));
@@ -15254,7 +15324,7 @@ cntc : interface between SDT and CONTACT
     end
    end
   end
-
+%% #Functions Set 
   %------------------------------------------------------------------------------------------------------------
   function []=setflags(ire, icp, params, values)
    % [ ] = cntc.setflags(ire, icp, params, values)
@@ -16065,7 +16135,7 @@ cntc : interface between SDT and CONTACT
 
    % category 2: m=1, wtd    - no icp needed
 
-   % #setprofileinputvalues
+   % #setprofileinputvalues -2
 
    % parameters
    if nargin==0||ischar(ire)
@@ -16204,7 +16274,7 @@ cntc : interface between SDT and CONTACT
 
    % category 5: m=*, wtd    - default icp=-1
 
-   % #setrollingstepsize(pdf.4.5)
+   % #setrollingstepsize(pdf.4.5) -2
 
    if nargin==0||ischar(ire)
     % package SDT options
@@ -16281,7 +16351,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 5: m=*, wtd    - default icp=-1
-   % #setsolverflags(pdfsection.4.6) Solver definition
+   % #setsolverflags(pdfsection.4.6) Solver definition -2
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['GauSei(0#vd{0,default,1,maintain,2,ConvexGS,3,SteadyGS,4,SlipVel,5,GDSteady, 6,SensCalc}#"Gauss Seidel options")' ...
@@ -16504,7 +16574,7 @@ cntc : interface between SDT and CONTACT
 
    % category 2: m=1, wtd    - no icp needed
 
-   % #settrackdimensions(pdf.3.3)
+   % #settrackdimensions(pdf.3.3) -2
 
    if nargin==0||ischar(ire)
     % package SDT options
@@ -16678,7 +16748,7 @@ cntc : interface between SDT and CONTACT
 
    % category 2: m=1, wtd    - no icp needed
 
-   % #setwheelsetdimensions(pdf.3.4)
+   % #setwheelsetdimensions(pdf.3.4) -2
 
    if nargin==0||ischar(ire)
     % package SDT options
@@ -16744,7 +16814,7 @@ cntc : interface between SDT and CONTACT
 
    % category 2: m=1, wtd    - no icp needed
 
-   % #setwheelsetflexibility
+   % #setwheelsetflexibility  -2
 
    if nargin==0||ischar(ire)
     % package SDT options
@@ -16821,7 +16891,7 @@ cntc : interface between SDT and CONTACT
 
    % category 2: m=1, wtd    - no icp needed
 
-   % #setwheelsetposition(pdf.3.4)
+   % #setwheelsetposition(pdf.3.4) -2
 
    if nargin==0||ischar(ire)
     % package SDT options
@@ -16899,7 +16969,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 2: m=1, wtd    - no icp needed
-   % #setwheelsetvelocity(pdf.3.4)
+   % #setwheelsetvelocity(pdf.3.4) -2
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['Vel(0#vd{0,Maintain,1,NewVel}#"Wheelset velocity options")' ...
