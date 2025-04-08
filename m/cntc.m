@@ -12933,8 +12933,9 @@ cntc : interface between SDT and CONTACT
    mz = p_mz.value;
 
    if nargin ==3
-    values=[fn,tx,ty,mz]';
-    fn=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    values=[fn,tx,ty,mz];
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
   end % cntc.getcontactforces
 
@@ -13007,7 +13008,7 @@ cntc : interface between SDT and CONTACT
    p_values = libpointer('doublePtr',zeros(lenarr,1));
 
    cntc.call('cntc.getcontactlocation', ire, icp, lenarr, p_values);
-
+   
    rvalues = p_values.value;
    if nargin==3
     i2=LI.Cmacro.rowM(l1(:,2));
@@ -13259,8 +13260,9 @@ cntc : interface between SDT and CONTACT
    phi = p_phi.value;
 
    if nargin ==3
-    values=[vx,vy,phi]';
-    vx=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    values=[vx,vy,phi];
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));;
    end
 
   end % cntc.getcreepages
@@ -13535,7 +13537,8 @@ cntc : interface between SDT and CONTACT
    values = p_values.value;
 
    if nargin==3
-    values=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
    if nargout==0
@@ -14044,8 +14047,9 @@ cntc : interface between SDT and CONTACT
    my = double(p_my.value);
 
    if nargin==3
-    values=[mx,my]';
-    mx=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    values=[mx,my];
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
   end % cntc.getnumelements
@@ -14100,9 +14104,11 @@ cntc : interface between SDT and CONTACT
    values.tau_c0 = tmp(6);
    if nargin==3
     values=[values.veloc, values.chi, values.dq, values.spinxo, ... 
-    values.spinyo, values.tau_c0]';
-    values=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    values.spinyo, values.tau_c0];
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
+
   end % cntc.getparameters
 
   %------------------------------------------------------------------------------------------------------------
@@ -14139,7 +14145,8 @@ cntc : interface between SDT and CONTACT
    pen=p_pen.value;
 
    if nargin==3
-    pen=sdtm.toStruct([l1(:,2) num2cell(pen(vertcat(l1{:,1})))]);
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=pen;
    end
 
   end % cntc.getpenetration
@@ -14192,7 +14199,8 @@ cntc : interface between SDT and CONTACT
 
    values = p_values.value;
    if nargin==3
-    values=sdtm.toStruct([l1(:,2) num2cell(values(vertcat(l1{:,1})))]);
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
   end % cntc.getpotcontact
@@ -14317,7 +14325,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ veloc]=getreferencevelocity(ire, icp, out)
+  function [ veloc]=getreferencevelocity(ire, icp, LI)
    % [ veloc ] = cntc.getreferencevelocity(ire, icp)
    %
    % get the rolling velocity for a contact problem
@@ -14349,8 +14357,9 @@ cntc : interface between SDT and CONTACT
    cntc.call('cntc.getreferencevelocity', ire, icp, p_veloc);
    veloc=p_veloc.value;
    
-   if nargin==3 % 'struct'
-    veloc=sdtm.toStruct([l1(:,2) num2cell(veloc(vertcat(l1{:,1})))]);
+   if nargin==3 % 'LI'
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=veloc;
    end
 
   end % cntc.getreferencevelocity
@@ -15076,8 +15085,9 @@ cntc : interface between SDT and CONTACT
        'parameters', [], ...
        'potcontact', [], ...
        'numelements', []);
+      
      case 'getout'
-      %% Get results
+      %% #set.GetOut Get results
       if isempty(evt);iwhe=1;icase=1; else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       values = cntc.getglobalforces(iwhe,-1,'struct');
@@ -15093,7 +15103,7 @@ cntc : interface between SDT and CONTACT
       % contact between the wheel and the rail
       if ~isfield(LI,'Cmacro')||~isfield(LI.Cmacro,'rowM')
        LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
-       LI.Cmacro.Xlab={'comp',{'ire';'iwe','icp'},'Time'};
+       LI.Cmacro.Xlab={'comp',{'ire','iwe','icp'},'Time'};
        LI.Cmacro.X={[],[],[]};
        LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
       %voir si ca change au cours du calcul
@@ -15104,62 +15114,59 @@ cntc : interface between SDT and CONTACT
           i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
           LI.Cmacro.X{2}=[LI.Cmacro.X{2};i2];
       end
-     ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwe,:); 
+     ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwhe,:); 
       
       for jre=1:size(ind,1);%icp = 1 : LI.results{iwhe}.npatch(icase)
        Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
        % get contact reference location
-       cntc.getcontactlocation(ire,icp,LI);
-
-       r2 = cntc.getreferencevelocity(iwhe, icp,'struct');
-       Cmacro.referencevelocity=r2;
-       r3 = cntc.getpenetration(iwhe, icp,'struct');
-       Cmacro.penetration=r3;
-       r4 = cntc.getcreepages(iwhe, icp,'struct');
+       cntc.getcontactlocation(ire,icp, LI);
+       cntc.getreferencevelocity(ire,icp, LI);
+       cntc.getpenetration(ire, icp, LI);
+       cntc.getcreepages(ire, icp, LI);
        Cmacro.creepages=r4;
-       r5 = cntc.getcontactforces(iwhe, icp,'struct');
+       r5 = cntc.getcontactforces(ire, icp,LI);
        Cmacro.contactforces=r5;
-       r6 = cntc.getwheelsetposition(iwhe,'struct');
+       r6 = cntc.getwheelsetposition(ire,LI);
        Cmacro.wheelsetposition=r6;
        % retrieve control digits needed for plotting Est ce utile
        param=[LI.flags.ic_config, LI.flags.ic_tang,LI.Friction.FrcLaw,LI.flags.ic_discns,LI.Mat.Mater1,0];
        iparam=[LI.CNTC.ic_config,LI.CNTC.ic_tang,LI.CNTC.ic_frclaw,LI.CNTC.ic_discns,LI.CNTC.ic_mater,LI.CNTC.ic_heat];
-       r7 = cntc.getflags(iwhe, icp, iparam);%get digit number 
+       r7 = cntc.getflags(ire, icp, iparam);%get digit number 
        Cmacro.flags=r7;
-       r8 = cntc.getparameters(iwhe, icp, 'struct');% get material / kinematic parameters needed
+       r8 = cntc.getparameters(ire, icp, LI);% get material / kinematic parameters needed
        Cmacro.parameters=r8;
        %use_plast = (sol.mater.m_digit==4 & (sol.mater.tau_c0>1e-10 & sol.mater.tau_c0<1e10));
-       r9  = cntc.getpotcontact(iwhe, icp,'struct');
+       r9  = cntc.getpotcontact(ire, icp,LI);
        Cmacro.potcontact=r9;
-       r10=cntc.getnumelements(iwhe,icp,'struct');
+       r10=cntc.getnumelements(ire,icp,LI);
        Cmacro.numelements=r10;
        LI.Cmacro=Cmacro;
 
        % retrieve wheel and rail profile data
        itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
-       RailProfil = cntc.getprofilevalues(iwhe, itask, iparam, rparam);
+       RailProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
        itask   = 4;
-       RProfileS = cntc.getprofilevalues(iwhe, itask, iparam, rparam);
+       RProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);
 
        itask   = 1;iswheel = 1; iparam  = [iswheel, isampl];
-       WheelProfil = cntc.getprofilevalues(iwhe, itask, iparam, rparam);
+       WheelProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
        itask   = 4;
-       WProfileS = cntc.getprofilevalues(iwhe, itask, iparam, rparam);% a regarder 
+       WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder 
 
        % get grid-data
        C1=LI.Cfield;
-       r1=cntc.getelementdivision(iwhe, icp); C1.Y(:,1,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_h); C1.Y(:,2,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_mu); C1.Y(:,3,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_pn); C1.Y(:,4,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_px); C1.Y(:,5,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_py); C1.Y(:,6,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_un); C1.Y(:,7,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_ux); C1.Y(:,8,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_uy); C1.Y(:,9,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_sx); C1.Y(:,10,iwhe,icase)=r1(:);
-       r1=cntc.getfielddata(iwhe, icp, LI.CNTC.fld_sy); C1.Y(:,11,iwhe,icase)=r1(:);
+       r1=cntc.getelementdivision(ire, icp); C1.Y(:,1,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); C1.Y(:,2,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu); C1.Y(:,3,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn); C1.Y(:,4,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px); C1.Y(:,5,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py); C1.Y(:,6,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); C1.Y(:,7,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); C1.Y(:,8,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy); C1.Y(:,9,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); C1.Y(:,10,ire,icase)=r1(:);
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); C1.Y(:,11,ire,icase)=r1(:);
        LI.Cfield=C1;
 
        if 1==0
@@ -15170,29 +15177,29 @@ cntc : interface between SDT and CONTACT
          sol.shft   = sol.srel;
         end
         if (use_plast)
-         sol.taucrt     = cntc.getfielddata(iwhe, icp, LI.CNTC.fld_taucrt);
-         sol.uplsx      = cntc.getfielddata(iwhe, icp, LI.CNTC.fld_uplsx);
-         sol.uplsy      = cntc.getfielddata(iwhe, icp, LI.CNTC.fld_uplsy);
+         sol.taucrt     = cntc.getfielddata(ire, icp, LI.CNTC.fld_taucrt);
+         sol.uplsx      = cntc.getfielddata(ire, icp, LI.CNTC.fld_uplsx);
+         sol.uplsy      = cntc.getfielddata(ire, icp, LI.CNTC.fld_uplsy);
          sol.trcbnd     = min(sol.mu .* sol.pn, sol.taucrt);
         else
          sol.trcbnd     = sol.mu .* sol.pn;
         end
         if (sol.h_digit>0)
-         sol.temp1      = cntc.getfielddata(iwhe, icp, LI.CNTC.fld_temp1);
-         sol.temp2      = cntc.getfielddata(iwhe, icp, LI.CNTC.fld_temp2);
+         sol.temp1      = cntc.getfielddata(ire, icp, LI.CNTC.fld_temp1);
+         sol.temp2      = cntc.getfielddata(ire, icp, LI.CNTC.fld_temp2);
         end
        
        % get maximum von mises stress
 
        iblk = 1;
        save('LI.mat','LI');
-       table = subs_getresults(iwhe, icp, iblk, [1,2,3,8]);
+       table = subs_getresults(ire, icp, iblk, [1,2,3,8]);
        [vm_max, ii_max] = max(table(:,4));
 
-       results{iwhe}.cp_force.sigvm(icase,icp) = vm_max;
-       results{iwhe}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
-       results{iwhe}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
-       results{iwhe}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
+       results{ire}.cp_force.sigvm(icase,icp) = vm_max;
+       results{ire}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
+       results{ire}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
+       results{ire}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
        end
 
       end
