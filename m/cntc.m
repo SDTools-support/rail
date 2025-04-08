@@ -38,7 +38,7 @@ cntc : interface between SDT and CONTACT
  methods (Static)
 
   function out=call(varargin)
-   %% call catch library calls to set variables  -----------------------------
+   %% #call catch library calls to set variables  -----------------------------
 
    persistent LI
    if isempty(LI)
@@ -14670,10 +14670,14 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
 
+  function close
+    %% #close  : unloads library 
+      cntc.initlibrary('close')
+  end
 
   %------------------------------------------------------------------------------------------------------------
   function [ CNTC, ifcver, ierror ] = initlibrary(c_wrkdir, c_outdir, c_expnam, idebug);
-   % [ CNTC, ifcver, ierror ] = cntc.initlibrary(wrkdir, outdir, expnam, idebug);
+   % [ CNTC, ifcver, ierror ] = #cntc.initlibrary(wrkdir, outdir, expnam, idebug);
    %
    % load the library into Matlab, initialize its internal data and output channels
    %
@@ -14708,6 +14712,7 @@ cntc : interface between SDT and CONTACT
     cntc.call('finalizelast');
     unloadlibrary(libname);
    end
+   if isequal(c_wrkdir,'close');return;end %
 
    % load the library into Matlab
    if (~libisloaded(libname))
