@@ -14008,7 +14008,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ mx, my]=getnumelements(ire, icp)
+  function [ mx, my]=getnumelements(ire, icp, out)
    % [ mx, my ] = cntc.getnumelements(ire, icp)
    %
    % return the number of elements in the potential contact area used for a contact problem,
@@ -15056,8 +15056,8 @@ cntc : interface between SDT and CONTACT
       % Fields stored
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage 
-      Cfield=struct('X',{{(1:93*43)',l1,(1:2)', LI.Traj.X{1}}},'Y',[], ...
-       'Xlab',{{'Ng','Comp','NumWheel','TrajStep'}}); 
+      Cfield=struct('X',{{(1:93*43)',l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
+       'Xlab',{{'Ng','Comp',{'ire';'iwhe';'icp'},'j1'}}); 
       Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
       LI.Cfield=Cfield;
 
@@ -15127,7 +15127,7 @@ cntc : interface between SDT and CONTACT
        %use_plast = (sol.mater.m_digit==4 & (sol.mater.tau_c0>1e-10 & sol.mater.tau_c0<1e10));
        r9  = cntc.getpotcontact(iwhe, icp,'struct');
        Cmacro.potcontact=r9;
-       r10=cntc.getnumelements(iwhe,icp);
+       r10=cntc.getnumelements(iwhe,icp,'struct');
        Cmacro.numelements=r10;
        LI.Cmacro=Cmacro;
 
