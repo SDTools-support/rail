@@ -22,6 +22,10 @@ classdef cntc
  end
 
  %% #idx.refresh{cntc.help(pdf),cntc.help(md)}
+%{
+```DocString  {module=rail,src=cntc.md} 
+cntc : interface between SDT and CONTACT
+%}
 
  methods
   function ob = cntc(varargin)
@@ -12938,7 +12942,7 @@ classdef cntc
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ rvalues]=getcontactlocation(ire, icp, out)
+  function [ rvalues]=getcontactlocation(ire, icp,LI)
    % [ rvalues ] = cntc.getcontactlocation(ire, icp)
    %
    % return the contact reference location for a contact problem (module 1 only)
@@ -12992,12 +12996,8 @@ classdef cntc
 
    % category 3: m=1, cp     - require icp>0, default 1
 
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-   if (nargin<2 | isempty(icp))
-    icp = 1;
-   end
+   if (nargin<1 | isempty(ire));ire = 1;end
+   if (nargin<2 | isempty(icp)); icp = 1;end
    if (icp<=0)
     disp(sprintf('ERROR in cntc.getcontactlocation: not available for icp=%d',icp));
     return
@@ -13010,7 +13010,9 @@ classdef cntc
 
    rvalues = p_values.value;
    if nargin==3
-    rvalues=sdtm.toStruct([l1(:,2) num2cell(rvalues(vertcat(l1{:,1})))]);
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=rvalues(vertcat(l1{:,1}));
+    %rvalues=sdtm.toStruct([l1(:,2) num2cell()]);
    end
 
   end % cntc.getcontactlocation
@@ -15033,24 +15035,24 @@ classdef cntc
     end
     switch st1
      case 'solver'
-      %% Solver configuration
+      %% #set.solver configuration
       cntc.setsolverflags(list{j1});
      case 'calculate'
-      %% compute the contact problem
-      %error('Implement')
+      %% #set.calculate the contact problem for current wheel
+
       disp(sprintf('Starting case %2d for wheel %d...', icase, iwhe));
       ierror = cntc.calculate(iwhe);
       if (ierror~=0), return; end
 
      case 'stresscalc'
-      %% compute subsurface stresses
+      %% #set.stresscalc compute subsurface stresses
       error('Implement')
 
       ierror = cntc.subs_calculate(iwhe);
       if (ierror~=0), return; end
 
      case 'initout'
-      %% Initialize the output
+      %% #set.initOut Initialize the output
       % Fields stored
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage 
@@ -15081,17 +15083,30 @@ classdef cntc
 
       % get number of contact patches
 
-      LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
-      %voir si ca change au cours du calcul
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
+      if ~isfield(LI,'Cmacro')||~isfield(LI.Cmacro,'rowM')
+       LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
+       LI.Cmacro.Xlab={'comp',{'ire';'iwe','icp'},'Time'};
+       LI.Cmacro.X={[],[],[]};
+       LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
+      %voir si ca change au cours du calcul
+      end
+      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwe)
+      else      % Need to extend contact dimension
+          i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
+          i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
+          LI.Cmacro.X{2}=[LI.Cmacro.X{2};i2];
+      end
+     ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwe,:); 
+      
+      for jre=1:size(ind,1);%icp = 1 : LI.results{iwhe}.npatch(icase)
+       Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
-      for icp = 1 : LI.results{iwhe}.npatch(icase)
-      Cmacro=LI.Cmacro;
        % get contact reference location
-       r1 = cntc.getcontactlocation(iwhe, icp,'struct');
-       Cmacro.contactlocation=r1;
+       cntc.getcontactlocation(ire,icp,LI);
+
        r2 = cntc.getreferencevelocity(iwhe, icp,'struct');
        Cmacro.referencevelocity=r2;
        r3 = cntc.getpenetration(iwhe, icp,'struct');
@@ -15202,7 +15217,7 @@ classdef cntc
       %% Set wheelset dimension and deviation
       cntc.setwheelsetdimensions(list{j1});
      case 'traj'
-      %% #set.traj set wheel position and velocity associated to a trajectory point -3
+      %% #set.traj set wheel position and velocity associated to a trajectory point -2
       % increment icase = j1 in fe_time
       [~,RO]=sdtm.urnPar('{s,y,z,roll,yaw,pitch,vx,vy,vz,vroll,vyaw,vpitch}','{}{}');
       ws_pos=zeros(6);
@@ -15216,6 +15231,7 @@ classdef cntc
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
       vel=zeros(1,6);vel(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetvelocity(iwhe, ewheel,vel);
+      LI.cur=evt;
 
       if (0==1 & iwhe==2)
        ewheel = 4; % xxx flexibilty
