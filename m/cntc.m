@@ -12920,7 +12920,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [fn,tx,ty,mz]=getcontactforces(ire, icp,out)
+  function [fn,tx,ty,mz]=getcontactforces(ire, icp, LI)
    % [fn,tx,ty,mz] = cntc.getcontactforces(ire, icp)
    %
    % return the total forces and torsional moment for a contact problem in contact local coordinates
@@ -13258,7 +13258,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [vx, vy, phi]=getcreepages(ire, icp, out)
+  function [vx, vy, phi]=getcreepages(ire, icp, LI)
    % [vx, vy, phi] = cntc.getcreepages(ire, icp) 
    %
    % get the kinematic constants (creepages) for a contact problem
@@ -13302,7 +13302,7 @@ cntc : interface between SDT and CONTACT
    if nargin ==3
     values=[vx,vy,phi];
     i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));;
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
   end % cntc.getcreepages
@@ -13521,7 +13521,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [values]=getglobalforces(ire, icp, out)
+  function [values]=getglobalforces(ire, icp, LI)
    % [ values ] = cntc.getglobalforces(ire, icp)
    %
    % return the overall forces for a w/r contact problem (module 1 only)
@@ -13587,7 +13587,7 @@ cntc : interface between SDT and CONTACT
     LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
-   if nargout==0
+   if 1==0
     [i1,i2]=ismember(upper(LI.Out.X{3}(:,1)),l1(:,2));
     'xxxeb'
     % LI.Out.Y()
@@ -14065,7 +14065,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ mx, my]=getnumelements(ire, icp, out)
+  function [ mx, my]=getnumelements(ire, icp, LI)
    % [ mx, my ] = cntc.getnumelements(ire, icp)
    %
    % return the number of elements in the potential contact area used for a contact problem,
@@ -14114,7 +14114,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ values]=getparameters(ire, icp, out)
+  function [ values]=getparameters(ire, icp, LI)
    % [ values ] = cntc.getparameters(ire, icp)
    %
    % used for retrieving various parameters from a contact problem needed for cntc.getcpresults
@@ -14172,7 +14172,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ pen]=getpenetration(ire, icp, out)
+  function [ pen]=getpenetration(ire, icp, LI)
    % [ pen ] = cntc.getpenetration(ire, icp)
    %
    % return the penetration (approach) for a contact problem
@@ -14214,7 +14214,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [values]=getpotcontact(ire, icp, out)
+  function [values]=getpotcontact(ire, icp, LI)
    % [values] = cntc.getpotcontact(ire, icp)
    %
    % get the parameters of the potential contact area for a contact problem
@@ -14543,7 +14543,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ rvalues]=getwheelsetposition(ire,out)
+  function [ rvalues]=getwheelsetposition(ire,LI)
    % [ rvalues ] = cntc.getwheelsetposition(ire)
    %
    % return the wheelset position a w/r contact problem (module 1 only)
@@ -14587,7 +14587,8 @@ cntc : interface between SDT and CONTACT
 
    rvalues = p_values.value;
    if nargin==2
-    rvalues=sdtm.toStruct([l1(:,2) num2cell(rvalues(vertcat(l1{:,1})))]);
+    i2=LI.Cmacro.rowM(l1(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=rvalues(vertcat(l1{:,1}));
    end
 
   end % cntc.getwheelsetposition
@@ -14795,8 +14796,9 @@ cntc : interface between SDT and CONTACT
     cntc.call('finalizelast');
     unloadlibrary(libname);
    end
-   if isequal(c_wrkdir,'close');return;end %
-
+   if nargin>0
+    if isequal(c_wrkdir,'close');return;end %
+   end
    % load the library into Matlab
    if (~libisloaded(libname))
     pathstr = [deblank(pathstr) filesep '..' filesep 'bin'];
@@ -15068,7 +15070,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function []=set(list)
-   %% #Set : SDT distribution to CNTC set commands -1
+   %% #SetSDT : SDT distribution to CNTC set commands -1
    if ~iscell(list);list={list};end
    LI=cntc.call;
    for j1=1:size(list,1)
@@ -15104,31 +15106,7 @@ cntc : interface between SDT and CONTACT
       Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
       LI.Cfield=Cfield;
 
-      LI.Cmacro=struct('contactlocation', [], ...
-       'referencevelocity', [], ...
-       'penetration', [], ...
-       'creepages', [], ...
-       'contactforces', [], ...
-       'wheelsetposition', [], ...
-       'flags', [], ...
-       'parameters', [], ...
-       'potcontact', [], ...
-       'numelements', []);
-      
-     case 'getout'
-      %% #set.GetOut Get results -2
-      if isempty(evt);iwhe=1;icase=1; else;iwhe=evt.iwhe;icase=evt.j1;  end
-
-      values = cntc.getglobalforces(iwhe,-1,'struct');
-
-      % Initialize results
-      LI.results{iwhe} = struct('ws_pos', [], 'tot_forc', [], 'npatch', [], ...
-       'cp_pos', [], 'cp_creep', [], 'cp_force', []);
-
-      % get number of contact patches
-
-
-      % get detailed results per contact patch, if there is more than one
+       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
       if ~isfield(LI,'Cmacro')||~isfield(LI.Cmacro,'rowM')
        LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
@@ -15145,32 +15123,24 @@ cntc : interface between SDT and CONTACT
       end
      ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwhe,:); 
       
+     case 'getout'
+      %% #set.GetOut Get results -2
+      if isempty(evt);iwhe=1;icase=1; else;iwhe=evt.iwhe;icase=evt.j1;  end
+
       for jre=1:size(ind,1);%icp = 1 : LI.results{iwhe}.npatch(icase)
        Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
        % get contact reference location
+       cntc.getglobalforces(ire,icp,LI);
        cntc.getcontactlocation(ire,icp, LI);
        cntc.getreferencevelocity(ire,icp, LI);
        cntc.getpenetration(ire, icp, LI);
        cntc.getcreepages(ire, icp, LI);
-       Cmacro.creepages=r4;
-       r5 = cntc.getcontactforces(ire, icp,LI);
-       Cmacro.contactforces=r5;
-       r6 = cntc.getwheelsetposition(ire,LI);
-       Cmacro.wheelsetposition=r6;
-       % retrieve control digits needed for plotting Est ce utile
-       param=[LI.flags.ic_config, LI.flags.ic_tang,LI.Friction.FrcLaw,LI.flags.ic_discns,LI.Mat.Mater1,0];
-       iparam=[LI.CNTC.ic_config,LI.CNTC.ic_tang,LI.CNTC.ic_frclaw,LI.CNTC.ic_discns,LI.CNTC.ic_mater,LI.CNTC.ic_heat];
-       r7 = cntc.getflags(ire, icp, iparam);%get digit number 
-       Cmacro.flags=r7;
-       r8 = cntc.getparameters(ire, icp, LI);% get material / kinematic parameters needed
-       Cmacro.parameters=r8;
-       %use_plast = (sol.mater.m_digit==4 & (sol.mater.tau_c0>1e-10 & sol.mater.tau_c0<1e10));
-       r9  = cntc.getpotcontact(ire, icp,LI);
-       Cmacro.potcontact=r9;
-       r10=cntc.getnumelements(ire,icp,LI);
-       Cmacro.numelements=r10;
-       LI.Cmacro=Cmacro;
+       cntc.getcontactforces(ire, icp,LI);
+       cntc.getwheelsetposition(ire,LI);
+       cntc.getparameters(ire, icp, LI);% get material / kinematic parameters needed
+       cntc.getpotcontact(ire, icp,LI);
+       cntc.getnumelements(ire,icp,LI);
 
        % retrieve wheel and rail profile data
        itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
@@ -15199,6 +15169,7 @@ cntc : interface between SDT and CONTACT
        LI.Cfield=C1;
 
        if 1==0
+        use_plast = (sol.mater.m_digit==4 & (sol.mater.tau_c0>1e-10 & sol.mater.tau_c0<1e10));
         sol.srel   = sqrt(sx.^2 + sy.^2);
         if (sol.kincns.t_digit>=2)
          sol.shft   = sol.srel * sol.kincns.dq;
@@ -16144,7 +16115,7 @@ cntc : interface between SDT and CONTACT
    if (nargin<3 | isempty(iparam)); iparam = [ -1 ];end
    if (nargin<4 | isempty(rparam));rparam = [ 1., 0. ];end
 
-   LI=evalin('base','LI');
+   LI=cntc.call;
    if ~exist(fname,'file'); fname=fullfile(LI.ProjectWd,fname);end
    fname=sdtu.f.safe(fname);
 
