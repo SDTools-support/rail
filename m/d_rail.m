@@ -1965,11 +1965,6 @@ cd(wd);
 wd=pwd;
 st=fullfile(sdtcheck('SDTRootDir'),'tex');
 if exist(st,'dir')
-   eval(sprintf('!cp %s .',fullfile(st,'etienne.bib')));
-   eval(sprintf('!cp %s .',fullfile(st,'macros_tex.sty')));
-   eval(sprintf('!cp %s .',fullfile(st,'macros_hevea.hva')));
-   eval(sprintf('!cp %s .',fullfile(st,'macros.tex')));
-   eval(sprintf('!cp %s .',fullfile(st,'book.cls')));
    % keywords, - between, but not at beginning
    setenv('sdtfun',['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
       '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'  ]); 
