@@ -34,11 +34,11 @@ cntc : interface between SDT and CONTACT
 
  end % methods
 
- %% #Static / generic methods  ----------------------------------------------
+ %% #Static / generic methods  -------------------------------------------- -2
  methods (Static)
 
   function out=call(varargin)
-   %% #call catch library calls to set variables  -----------------------------
+   %% #call catch library calls to set variables  ------------------------- -2
 
    persistent LI
    if isempty(LI)
@@ -7042,7 +7042,7 @@ cntc : interface between SDT and CONTACT
    ycornr = ycornr' * ones(1,nx);
 
    % set z-coordinates for plotting
-
+   %% #XXXgae Position
    if (strcmp(opt.rw_surfc,'none'))
     zcornr = tmp;
    elseif (strcmp(opt.rw_surfc,'prr'))
@@ -10353,13 +10353,13 @@ cntc : interface between SDT and CONTACT
    % parameters
    if nargin<3&&ischar(fname)
     % package SDT options
-    DoOpt=['iswheel(#%g#"xxx")' ...
-     'fname(#%s#"xxx")' ...
-     'mirrory(0#%g#"xxx")' ...
-     'mirrorz(0#%g#"xxx")' ...
-     'sclfac(0#%g#"xxx")' ...
-     'rgt_side(0#%g#"xxx")' ...
-     'make_plot(0#%g#"xxx")'];
+    DoOpt=['iswheel(#%g#"0 for rail, 1 for wheel")' ...
+     'fname(#%s#"Name of the file")' ...
+     'mirrory(0#%g#"Do the symmetry w.r.t the y axis")' ...
+     'mirrorz(0#%g#"Do the symmetry w.r.t the z axis")' ...
+     'sclfac(0#%g#"scale-factor to convert to mm, e.g. 1000. for data in meters")' ...
+     'rgt_side(0#%g#"Vampire format: select right side (1, default) or left side (0)")' ...
+     'make_plot(0#%g#"<=0 for no, fig.number for yes")'];
 
     if nargin==0; CAM='';else; CAM=fname;end
     LI=cntc.call;
@@ -14642,6 +14642,13 @@ cntc : interface between SDT and CONTACT
   %% #Library initialization 
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  %------------------------------------------------------------------------------------------------------------
+  function []=testlibrary()
+   [CNTC, ifcver, ierror] = cntc_initlibrary;
+  end
+  %------------------------------------------------------------------------------------------------------------
+
   %------------------------------------------------------------------------------------------------------------
   function []=initializeflags()
    % #initializeflags-2
@@ -14753,11 +14760,6 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
 
-  function close
-    % #close  : unloads library -2
-      cntc.initlibrary('close')
-  end
-
   %------------------------------------------------------------------------------------------------------------
   function [ CNTC, ifcver, ierror ] = initlibrary(c_wrkdir, c_outdir, c_expnam, idebug);
    % [ CNTC, ifcver, ierror ] = cntc.initlibrary(wrkdir, outdir, expnam, idebug);
@@ -14797,7 +14799,13 @@ cntc : interface between SDT and CONTACT
     unloadlibrary(libname);
    end
    if nargin>0
-    if isequal(c_wrkdir,'close');return;end %
+    if isequal(c_wrkdir,'close');
+     for iwhe= 1:2
+      cntc.finalize(iwhe);
+     end
+     cntc.closelibrary;
+     return
+    end %
    end
    % load the library into Matlab
    if (~libisloaded(libname))
@@ -15037,9 +15045,10 @@ cntc : interface between SDT and CONTACT
    % category 0: m=*, glob   - no icp needed
    % #closelibrary -2
 
-   LI=evalin('base','LI');
+   LI=cntc.call;
    cntc.call('cntc.finalizelast');
    unloadlibrary(LI.libname);
+   clear("LI");
 
   end % cntc.closelibrary
   %------------------------------------------------------------------------------------------------------------
@@ -15101,21 +15110,20 @@ cntc : interface between SDT and CONTACT
       % Fields stored
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage 
-      Cfield=struct('X',{{(1:93*43)',l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
-       'Xlab',{{'Ng','Comp',{'ire';'iwhe';'icp'},'j1'}}); 
-      Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
+      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
+       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}}); 
       LI.Cfield=Cfield;
 
        % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
       if ~isfield(LI,'Cmacro')||~isfield(LI.Cmacro,'rowM')
        LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
-       LI.Cmacro.Xlab={'comp',{'ire','iwe','icp'},'Time'};
+       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
        LI.Cmacro.X={[],[],[]};
        LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
       %voir si ca change au cours du calcul
       end
-      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwe)
+      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
       else      % Need to extend contact dimension
           i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
           i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
@@ -15125,9 +15133,10 @@ cntc : interface between SDT and CONTACT
       
      case 'getout'
       %% #set.GetOut Get results -2
-      if isempty(evt);iwhe=1;icase=1; else;iwhe=evt.iwhe;icase=evt.j1;  end
+      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+      else;iwhe=evt.iwhe;icase=evt.j1;  end
 
-      for jre=1:size(ind,1);%icp = 1 : LI.results{iwhe}.npatch(icase)
+      for jre=1:size(ind,1); % icp = 1 : LI.results{iwhe}.npatch(icase)
        Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
        % get contact reference location
@@ -15153,19 +15162,34 @@ cntc : interface between SDT and CONTACT
        itask   = 4;
        WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder 
 
-       % get grid-data
        C1=LI.Cfield;
-       r1=cntc.getelementdivision(ire, icp); C1.Y(:,1,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); C1.Y(:,2,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu); C1.Y(:,3,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn); C1.Y(:,4,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px); C1.Y(:,5,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py); C1.Y(:,6,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); C1.Y(:,7,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); C1.Y(:,8,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy); C1.Y(:,9,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); C1.Y(:,10,ire,icase)=r1(:);
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); C1.Y(:,11,ire,icase)=r1(:);
+       C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,ire,1)];
+       C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,ire,1)];
+       % Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
+
+       % get grid-data
+       r1=cntc.getelementdivision(ire, icp); 
+       C1.Y(1:size(r1,1),1:size(r1,2),1,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
+       C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
+       C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
+       C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
+       C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
+       C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
+       C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
+       C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
+       C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
+       C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
+       C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
        LI.Cfield=C1;
 
        if 1==0
@@ -15482,7 +15506,6 @@ cntc : interface between SDT and CONTACT
      case 16; params={'nu1','nu2','g1','g2','g3','laythk','tau_c0','k_tau'};% 16 VarTempDep
      otherwise
       error('Wrong parameter')
-      %% xxxGAE
     end
     params=sdth.sfield('addselected',struct,LI.Friction,params);
     params=struct2cell(params);params=horzcat(params{:});
@@ -15674,13 +15697,11 @@ cntc : interface between SDT and CONTACT
      case 2; params={'nu1','nu2','g1','g2','flx','k0_mf','alfamf','betamf'};% 2 ModFast1Flex
      case 3; params={'nu1','nu2','g1','g2','k0_mf','alfamf','betamf'};% 3 ModFast3Flex
      case 4; params={'nu1','nu2','g1','g2','g3','laythk','tau_c0','k_tau'};% 4 InterLayer
-     otherwise; error('Wrong parameter')
-      %% xxxGAE
+     otherwise; error('Wrong parameter selected')
     end
     params=sdth.sfield('addselected',struct,LI.Mat,params);
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setmaterialparameters(LI.global.ire, [], LI.Mat.Mater1, params);
-    %xxxGae Pourquoi icp = [] fonctionne et pas icp =1
     return
     % end SDT packaging
 
@@ -15846,7 +15867,7 @@ cntc : interface between SDT and CONTACT
     switch LI.Bound.Cond;
      case 0;  params={'fz'}; % 0 Force
      case 1;  params={'pen'}; % 1 Penetration
-     otherwise; error('Wrong parameter') % xxxGAEerror
+     otherwise; error('Wrong parameter selected') 
     end
     params=sdth.sfield('addselected',struct,LI.Bound,params);
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
@@ -15999,7 +16020,7 @@ cntc : interface between SDT and CONTACT
      case 2; params={'mx', 'my', 'x1', 'y1', 'xh', 'yh'};               % 2 LL_UR
      case 3; params={'mx', 'my', 'xc1', 'yc1', 'dx', 'dy'};             % 3 CentGrid
      case 4; params={'mx', 'my', 'xc1', 'yc1', 'xcm', 'ycm'};           % 4 2Cent
-     otherwise; error('Wrong parameter'); % xxxGAEerror
+     otherwise; error('Wrong parameter selected'); 
     end
 
     params=sdth.sfield('addselected',struct,LI.PotCntc,params);
@@ -16168,42 +16189,6 @@ cntc : interface between SDT and CONTACT
    % category 2: m=1, wtd    - no icp needed
    % #setprofileinputvalues -2
 
-   % parameters
-   if nargin==0||ischar(ire)
-    % package SDT options
-    DoOpt=['iswheel(#%g#"xxx")' ...
-     'fname(#%s#"xxx")' ...
-     'mirrory(#%g#"xxx")' ...
-     'mirrorz(#%g#"xxx")' ...
-     'notuse(#%g#"xxx")' ...
-     'errhndl(#%g#"xxx")' ...
-     'ismooth(#%g#"xxx")' ...
-     'sclfac(#%g#"xxx")' ...
-     'smooth(#%g#"xxx")' ...
-     'maxomit(#%g#"xxx")' ...
-     'zigthrs(#%g#"xxx")' ...
-     'kinkhigh(#%g#"xxx")' ...
-     'kinklow(#%g#"xxx")' ...
-     'kinkwid(#%g#"xxx")'...
-     'values(#%g#"xxx")'];
-
-    if nargin==0; CAM='';else; CAM=ire;end
-    LI=cntc.call;
-    LI.ProfileInput=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-
-    values=sdth.sfield('addselected',struct,LI.ProfileInput,{'values'});
-    iparams=sdth.sfield('addselected',struct,LI.ProfileInput,{'iswheel','notuse','mirrory','mirrorz','errhndl','ismooth'});
-    rparams=sdth.sfield('addselected',struct,LI.ProfileInput,{'sclfac','smooth','maxomit','zigthrs','kinkhigh','kinklow','kinkwid'});
-
-    iparams=struct2cell(iparams);iparams=horzcat(iparams{:});
-    rparams=struct2cell(rparams);rparams=horzcat(rparams{:});
-    fname=struct2cell(fname);fname=fname{1};
-    cntc.setprofileinputfname(LI.global.ire, fname, iparams, rparams);
-    return
-
-   end
-   % end SDT packaging
-
    if (nargin<1 | isempty(ire))
     ire = 1;
    end
@@ -16328,8 +16313,7 @@ cntc : interface between SDT and CONTACT
       chi=sdth.sfield('addselected',struct,LI.Rolling,{'chi'});
       val=sdth.sfield('addselected',struct,LI.Rolling,{'dq'});
      otherwise
-      error('Wrong parameter')
-      %% xxxGAE
+      error('Wrong parameter selected')
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if isstruct(chi); chi=struct2cell(chi); end
@@ -16417,7 +16401,7 @@ cntc : interface between SDT and CONTACT
      case 5; iparam={'maxgs','maxin','maxnr','maxout'};         % 5 GDSteady
       rparam={'eps','pow_s','omg_s'};
      case 6; iparam={'mxsens'};rparam={'epsens'};               % Flags Sensitivities
-     otherwise; error('Wrong parameter')% xxxGAE error
+     otherwise; error('Wrong parameter selected')
     end
 
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
@@ -16596,7 +16580,7 @@ cntc : interface between SDT and CONTACT
    %    2: new track deviations          params = [dyrail, dzrail, drollr, vyrail, vzrail, vrollr]
    %    3: new dimensions & track deviations for current side of the track
    %                                     params = params(1:5) cf. Z=1 followed by params(6:11) cf. Z=2;
-   %                                              additionally, [kyrail, fyrail, kzrail, fzrail] when F=3 use of NORM/TANG algo ? xxxgae.
+   %                                              additionally, [kyrail, fyrail, kzrail, fzrail]
    %
    % dimensions: gaught, gaugwd, raily0, railz0, nomrad, dyrail, dzrail [length],    cant, drollr [angle]
    %                                                     vyrail, vzrail [veloc],           vrollr [ang.veloc]
@@ -16659,8 +16643,7 @@ cntc : interface between SDT and CONTACT
       end
       %XXXGAE If F=3 ?
      otherwise
-      error('Wrong parameter')
-      %% xxxGAE
+      error('Wrong parameter selected')
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
@@ -16799,7 +16782,7 @@ cntc : interface between SDT and CONTACT
      case 0; params=[];    % 0 Maintain
      case 1; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
        {'fbdist','fbpos','nomrad'}); % 1 NewDim
-     otherwise; error('Wrong parameter') %% xxxGAE
+     otherwise; error('Wrong parameter selected')
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
