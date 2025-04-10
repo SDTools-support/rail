@@ -119,6 +119,14 @@ nmap('BenchManchester_flags')=vhandle.uo([],{ ...
   });
 
 %% Trajectory 
+%Classic
+C1=struct('X',{{[],{'y';'yaw';'roll';'vpitch';'vx'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
+   [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
+C1.X{1}=(1:size(C1.Y,1))';
+C1.Y(:,5)=2000; % set vx
+nmap('Classic_traj')=C1;
+
+%  Benchmark
 C1=struct('X',{{[],{'y';'yaw';'roll';'vpitch';'vx'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
    [ 0 : 0.5 : 10 ];
    [ 0 : 0.0012 : 0.024 ];
