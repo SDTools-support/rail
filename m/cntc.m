@@ -14797,6 +14797,7 @@ cntc : interface between SDT and CONTACT
    if (1==1 & libisloaded(libname))
     cntc.call('finalizelast');
     unloadlibrary(libname);
+    LI=cntc.call; clear LI;%xxxgae voir si ca marche
    end
    if nargin>0
     if isequal(c_wrkdir,'close');
@@ -14857,9 +14858,9 @@ cntc : interface between SDT and CONTACT
    CNTC = cntc.getmagicnumbers();
 
    if (idebug>=1 & ierror==CNTC.err_allow)
-    disp(sprintf('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror));
+    error('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror);
    elseif (idebug>=1 & ierror<0)
-    disp(sprintf('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror));
+    error('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror);
    end
 
   end % cntc.initlibrary
@@ -15163,8 +15164,8 @@ cntc : interface between SDT and CONTACT
        WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder 
 
        C1=LI.Cfield;
-       C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,ire,1)];
-       C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,ire,1)];
+       C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,icase,1)];
+       C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,icase,1)];
        % Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
 
        % get grid-data
