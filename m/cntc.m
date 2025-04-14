@@ -41,10 +41,13 @@ cntc : interface between SDT and CONTACT
    %% #call catch library calls to set variables  ------------------------- -2
 
    persistent LI
+
    if isempty(LI)
     if evalin('base','exist(''LI'',''var'')')
+     %% use base workspace version if exists
      LI=evalin('base','LI');
     else
+     % Initialize if does not exist
      LI=vhandle.uo([]); assignin('base','LI',LI);
      LI.callLog=vhandle.nmap([],[],'calls and parameters');
     end
@@ -61,19 +64,22 @@ cntc : interface between SDT and CONTACT
    if isa(LI.callLog,'vhandle.nmap')
     r1.now=now;r1.dbstack=dbstack;
     LI.callLog(CAM)=r1; % Store calls to allow logging
+    disp(CAM);sdtm.toString(r1)% xxx 
+    diary off;f1='C:\Users\0021221S.COMMUN\xxx.log';
+    disp(f1);diary(f1)
    end
 
    if strncmpi(CAM,'contact_addon',13)
     LI.libname=CAM;varargin(1)=[];CAM=varargin{1};
    end
    CAM=strrep(CAM,'cntc.','cntc_');
-   if ~isprop(LI,'libname');LI.libname='contact_addon';end
-   if strcmp(CAM,'finalizelast')
-    % already loaded
+   if ~isprop(LI,'libname')||isempty(LI.libname);
+    error('Library not initialized');
+   end
+   if strcmp(CAM,'finalizelast') % already loaded
     try
      calllib(LI.libname,'cntc_finalizelast');
     end
-    %else;
    else
     calllib(LI.libname,CAM,varargin{2:end});
    end
@@ -141,9 +147,9 @@ cntc : interface between SDT and CONTACT
    %   return
    %end
    cntc.help;
-   [ CNTC, ifcver, ierror ]=cntc.initlibrary; LI.CNTC=CNTC;
+   [ CNTC, ifcver, ierror ]=cntc.initlibrary; 
    if nargout==0; assignin('caller','CNTC',CNTC);
-   else; LI=cntc.call;
+   else; LI=cntc.call; LI.CNTC=CNTC;
    end
 
 
@@ -14795,9 +14801,9 @@ cntc : interface between SDT and CONTACT
 
    % unload the library if it was loaded before
    if (1==1 & libisloaded(libname))
-    cntc.call('finalizelast');
-    unloadlibrary(libname);
-    LI=cntc.call; clear LI;%xxxgae voir si ca marche
+    cntc.closelibrary;
+    %% #xxxgae voir si ca marche
+    %evalin('base', 'clear LI');
    end
    if nargin>0
     if isequal(c_wrkdir,'close');
@@ -14858,9 +14864,9 @@ cntc : interface between SDT and CONTACT
    CNTC = cntc.getmagicnumbers();
 
    if (idebug>=1 & ierror==CNTC.err_allow)
-    error('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror);
+    % error('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror);
    elseif (idebug>=1 & ierror<0)
-    error('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror);
+    % error('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror);
    end
 
   end % cntc.initlibrary
@@ -15048,9 +15054,11 @@ cntc : interface between SDT and CONTACT
 
    LI=cntc.call;
    cntc.call('cntc.finalizelast');
+   dbstack;keyboard;
    unloadlibrary(LI.libname);
-   clear("LI");
+   LI.libname='';
 
+   %evalin('base','clear("LI")');
   end % cntc.closelibrary
   %------------------------------------------------------------------------------------------------------------
 
@@ -15095,7 +15103,7 @@ cntc : interface between SDT and CONTACT
      case 'calculate'
       %% #set.calculate the contact problem for current wheel -2
 
-      disp(sprintf('Starting case %2d for wheel %d...', icase, iwhe));
+      disp(sprintf('Starting case %2d for wheel %d', icase, iwhe));
       ierror = cntc.calculate(iwhe);
       if (ierror~=0), return; end
 
@@ -15109,21 +15117,21 @@ cntc : interface between SDT and CONTACT
      case 'initout'
       %% #set.initOut Initialize the output -2
       % Fields stored
-      l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
-      % Fields SDT Storage 
-      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
-       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}}); 
-      LI.Cfield=Cfield;
+      
+       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
+       % Fields SDT Storage
+       Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
+        'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}});
+       LI.Cfield=Cfield;
 
        % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-      if ~isfield(LI,'Cmacro')||~isfield(LI.Cmacro,'rowM')
        LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
        LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
        LI.Cmacro.X={[],[],[]};
        LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
       %voir si ca change au cours du calcul
-      end
+     
       if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
       else      % Need to extend contact dimension
           i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
@@ -15136,6 +15144,8 @@ cntc : interface between SDT and CONTACT
       %% #set.GetOut Get results -2
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
       else;iwhe=evt.iwhe;icase=evt.j1;  end
+      
+      if j1==1; cnt.set('initout'); end
 
       for jre=1:size(ind,1); % icp = 1 : LI.results{iwhe}.npatch(icase)
        Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
@@ -15171,26 +15181,26 @@ cntc : interface between SDT and CONTACT
        % get grid-data
        r1=cntc.getelementdivision(ire, icp); 
        C1.Y(1:size(r1,1),1:size(r1,2),1,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
-       C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
-       C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
-       C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
-       C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
-       C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
-       C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
-       C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
-       C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
-       C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
-       C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
+       % C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
+       % C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
+       % C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
+       % C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
+       % C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
+       % C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
+       % C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
+       % C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
+       % C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
+       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
+       % C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
        LI.Cfield=C1;
 
        if 1==0
