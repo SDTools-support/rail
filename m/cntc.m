@@ -6129,6 +6129,7 @@ cntc : interface between SDT and CONTACT
    show_slcs = (isfield(sol,'slcs') & any(strcmp(myopt.rw_surfc,{'prr','both'})));
    show_slcw = (isfield(sol,'slcw') & any(strcmp(myopt.rw_surfc,{'prw','both'})));
 
+   %% Show and plot the profile xxxgae P
    if (myopt.addplot<=0 & ~strcmp(myopt.rw_surfc,'none'))  % create new plot
     show_profiles(sol, myopt);
    elseif ( any(strcmp(myopt.typplot,{'rw_side','rw_rear'})) & (show_slcs | show_slcw) )
@@ -14802,7 +14803,7 @@ cntc : interface between SDT and CONTACT
    % unload the library if it was loaded before
    if (1==1 & libisloaded(libname))
     cntc.closelibrary;
-    %% #xxxgae voir si ca marche
+    % #xxxgae voir si ca marche-2
     %evalin('base', 'clear LI');
    end
    if nargin>0
@@ -15054,7 +15055,7 @@ cntc : interface between SDT and CONTACT
 
    LI=cntc.call;
    cntc.call('cntc.finalizelast');
-   dbstack;keyboard;
+   %dbstack;keyboard;
    unloadlibrary(LI.libname);
    LI.libname='';
 
@@ -15117,6 +15118,8 @@ cntc : interface between SDT and CONTACT
      case 'initout'
       %% #set.initOut Initialize the output -2
       % Fields stored
+      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+       else;iwhe=evt.iwhe;icase=evt.j1;  end
       
        l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
        % Fields SDT Storage
@@ -15124,31 +15127,29 @@ cntc : interface between SDT and CONTACT
         'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}});
        LI.Cfield=Cfield;
 
-       % get detailed results per contact patch, if there is more than one
+      % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
        LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
        LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
        LI.Cmacro.X={[],[],[]};
-       LI.results{iwhe}.npatch(icase) = cntc.getnumcontactpatches(iwhe);
-      %voir si ca change au cours du calcul
-     
-      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
-      else      % Need to extend contact dimension
-          i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
-          i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
-          LI.Cmacro.X{2}=[LI.Cmacro.X{2};i2];
-      end
-     ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwhe,:); 
       
      case 'getout'
       %% #set.GetOut Get results -2
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
       else;iwhe=evt.iwhe;icase=evt.j1;  end
       
-      if j1==1; cnt.set('initout'); end
+      if icase==1; cntc.set('initout{}'); end
+
+      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
+      else      % Need to extend contact dimension
+       i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
+       i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
+       LI.Cmacro.X{2}=[LI.Cmacro.X{2};i2];
+      end
+      ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwhe,:);
 
       for jre=1:size(ind,1); % icp = 1 : LI.results{iwhe}.npatch(icase)
-       Cmacro=LI.Cmacro; ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
+       ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
        % get contact reference location
        cntc.getglobalforces(ire,icp,LI);
@@ -15173,36 +15174,40 @@ cntc : interface between SDT and CONTACT
        itask   = 4;
        WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder 
 
+       if icase==1; LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name; end
+
+       %Mise en place 
        C1=LI.Cfield;
-       C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,icase,1)];
-       C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,icase,1)];
+       C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,1,icase)];
+       C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,1,icase)];
        % Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
 
        % get grid-data
        r1=cntc.getelementdivision(ire, icp); 
        C1.Y(1:size(r1,1),1:size(r1,2),1,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
-       % C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
-       % C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
-       % C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
-       % C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
-       % C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
-       % C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
-       % C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
-       % C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
-       % C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
-       % r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
-       % C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
+       C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
+       C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
+       C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
+       C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
+       C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
+       C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
+       C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
+       C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
+       C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
+       C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
        LI.Cfield=C1;
 
+       %Need to see the goal of what follow
        if 1==0
         use_plast = (sol.mater.m_digit==4 & (sol.mater.tau_c0>1e-10 & sol.mater.tau_c0<1e10));
         sol.srel   = sqrt(sx.^2 + sy.^2);
@@ -15223,18 +15228,17 @@ cntc : interface between SDT and CONTACT
          sol.temp1      = cntc.getfielddata(ire, icp, LI.CNTC.fld_temp1);
          sol.temp2      = cntc.getfielddata(ire, icp, LI.CNTC.fld_temp2);
         end
-       
-       % get maximum von mises stress
 
-       iblk = 1;
-       save('LI.mat','LI');
-       table = subs_getresults(ire, icp, iblk, [1,2,3,8]);
-       [vm_max, ii_max] = max(table(:,4));
+        % get maximum von mises stress
+        iblk = 1;
+        save('LI.mat','LI');
+        table = subs_getresults(ire, icp, iblk, [1,2,3,8]);
+        [vm_max, ii_max] = max(table(:,4));
 
-       results{ire}.cp_force.sigvm(icase,icp) = vm_max;
-       results{ire}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
-       results{ire}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
-       results{ire}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
+        results{ire}.cp_force.sigvm(icase,icp) = vm_max;
+        results{ire}.cp_force.vm_x(icase,icp)  = table(ii_max,1);
+        results{ire}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
+        results{ire}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
        end
 
       end
