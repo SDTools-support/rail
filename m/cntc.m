@@ -66,7 +66,7 @@ cntc : interface between SDT and CONTACT
     LI.callLog(CAM)=r1; % Store calls to allow logging
     disp(CAM);sdtm.toString(r1)% xxx 
     diary off;f1='C:\Users\0021221S.COMMUN\xxx.log';
-    disp(f1);diary(f1)
+    disp(f1);if exist(f1,'file');diary(f1);end
    end
 
    if strncmpi(CAM,'contact_addon',13)
@@ -81,7 +81,7 @@ cntc : interface between SDT and CONTACT
      calllib(LI.libname,'cntc_finalizelast');
     end
    else
-    calllib(LI.libname,CAM,varargin{2:end});
+    dbquicalllib(LI.libname,CAM,varargin{2:end});
    end
    if nargout>0; out=LI;end
 
@@ -6872,11 +6872,11 @@ cntc : interface between SDT and CONTACT
 
    if (want_rail & strcmp(opt.rw_surfc,'both'))
 
-    [xsurf, ysurf, zsurf] = rail_to_track_coords(sol, xsurf, ysurf, zsurf);
+    [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
 
    elseif (strcmp(opt.rw_surfc,'both'))
 
-    [xsurf, ysurf, zsurf] = wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
+    [xsurf, ysurf, zsurf] = cntc.wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
 
    end
 
@@ -7927,7 +7927,7 @@ cntc : interface between SDT and CONTACT
 
    % form transformation matrices and vectors
 
-   Rref = rotx(sol.meta.deltcp_r*180/pi);
+   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
    if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
     Rref = Rref * roty(sol.meta.roty*180/pi);
    end
@@ -8200,7 +8200,7 @@ cntc : interface between SDT and CONTACT
 
   function [ xtr, ytr, ztr ] = rail_to_track_coords(sol, xr, yr, zr);
 
-   % transform rail [xr,yr,zr]-coordinates to track [xtr,ytr,ztr] coordinates
+   % transform rail [xr,yr,zr]-coordinates to track (tr) [xtr,ytr,ztr] coordinates
    % #rail_to_track_coords -2
 
    % reshape inputs to row vectors
@@ -8213,7 +8213,7 @@ cntc : interface between SDT and CONTACT
 
    % form transformation matrices and vectors
 
-   R_r  = rotx(sol.meta.roll_r*180/pi);
+   R_r  = rotx(sol.meta.roll_r*180/pi); % roll_r (actually called) -> rollr_tr
 
    % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
 
@@ -13031,12 +13031,15 @@ cntc : interface between SDT and CONTACT
 
     26,'YR_TR','y-position of rail profile marker in track coordinates'
     27,'ZR_TR','z-position of rail profile marker in track coordinates'
-    28,'ROLLR_TR','roll angle of rail profile marker in track coordinates'
+    28,'ROLLR_TR','roll angle of rail profile marker in track coordinates' % #roll_tr
 
     31,'DY_DEFL','lateral rail shift according to massless rail deflection'
     32,'DZ_DEFL','vertical rail shift according to massless rail deflection'
     };
-   if nargin==0&&nargout==0;disp(l1);return;end
+   if nargin==0
+       if nargout==0;disp(l1);else; rvalues=l1; end
+       return
+   end
 
    % category 3: m=1, cp     - require icp>0, default 1
 
