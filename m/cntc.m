@@ -34,8 +34,444 @@ cntc : interface between SDT and CONTACT
 
  end % methods
 
- %% #Static / generic methods  -------------------------------------------- -2
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  %% #SDT/CONTACT initialization 
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ % #Static / generic methods  -------------------------------------------- -2
  methods (Static)
+
+  %------------------------------------------------------------------------------------------------------------
+  function []=testlibrary()
+   [CNTC, ifcver, ierror] = cntc_initlibrary;
+  end
+  %------------------------------------------------------------------------------------------------------------
+
+  %------------------------------------------------------------------------------------------------------------
+  function []=initializeflags()
+   % #initializeflags-2
+   if nargin==0
+    LI=cntc.call;
+    CNTC=evalin('caller','CNTC');%LI.CNTC=CNTC;
+    li=LI.global;
+    cntc.setglobalflags(CNTC.if_idebug, li.ire);
+    [ifcver, ierror] = cntc.initialize(li.ire,li.imodul);
+   else
+    disp('ERROR cntc.initializeflags : no parameter is needed');
+   end
+  end
+  %------------------------------------------------------------------------------------------------------------
+
+
+  %------------------------------------------------------------------------------------------------------------
+  function []=setglobalflags(params, values)
+   % [ ] = cntc.setglobalflags(params, values)
+   %
+   % used for configuring flags that are the same for all contact problems
+   %
+   %  params - codes of the parameters to be communicated to CONTACT
+   %  values - values of the parameters to be communicated to CONTACT
+   %------------------------------------------------------------------------------------------------------------
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #setglobalflags -2
+
+
+
+   if (nargin<2 | isempty(params) | isempty(values))
+    disp('ERROR in cntc.setglobalflags: params and values are mandatory.');
+    return
+   end
+   if (length(params) ~= length(values))
+    disp('ERROR in cntc.setglobalflags: params and values must provide same number of items.');
+    return
+   end
+
+   cntc.call('cntc.setglobalflags', length(params), params, values);
+
+  end % cntc.setglobalflags
+
+  %------------------------------------------------------------------------------------------------------------
+
+
+  %------------------------------------------------------------------------------------------------------------
+  function [ ifcver, ierror]=initialize(ire, imodul, c_outdir, idebug)
+   % [ ifcver, ierror ] = cntc.initialize(ire, imodul, [outdir], [idebug])
+   %
+   % upon first call: initialize the addon internal data and initialize output channels,
+   %                  print version information;
+   % for each ire:   initialize and return the addon version number.
+   %
+   %  in:  integer    ire          - result element ID
+   %       integer    imodul       - module number 1=w/r contact, 3=basic contact
+   %       character  outdir(*)    - output folder
+   %       integer    idebug       - show (1) or hide (0) error messages
+   %  out: integer    ifcver       - version of the CONTACT add-on
+   %       integer    ierror       - error flag
+   %------------------------------------------------------------------------------------------------------------
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #initialize -2
+
+
+   cntc_err_allow = -12;
+
+   if (nargin<1 | isempty(ire))
+    ire = 1;
+   end
+   if (nargin<2 | isempty(imodul))
+    disp(sprintf('cntc.initialize: please select module 1 or 3'));
+    return;
+   end
+   if (nargin<3 | isempty(c_outdir))
+    c_outdir = ' ';
+   end
+   if (nargin<4 | isempty(idebug))
+    idebug = 1;
+   end
+
+   p_ierr = libpointer('int32Ptr',-1);
+   p_ver  = libpointer('int32Ptr',-1);
+
+   p_ierr.value = 0;
+   cntc.call('cntc.initialize', ire, imodul, p_ver, p_ierr, c_outdir, length(c_outdir));
+   % disp(sprintf('test_caddon: obtained ver=%d, ierr=%d', p_ver.value, p_ierr.value));
+
+   ifcver = double(p_ver.value);
+   ierror = double(p_ierr.value);
+
+   if (idebug>=1 & ierror==cntc_err_allow)
+    disp(sprintf('cntc.initialize: no license found or license invalid, check output-file (%d).',ierror));
+   elseif (idebug>=1 & ierror<0)
+    disp(sprintf('cntc.initialize: an error occurred in the CONTACT library (%d).',ierror));
+   end
+
+  end % cntc.initialize
+
+  %------------------------------------------------------------------------------------------------------------
+
+  %------------------------------------------------------------------------------------------------------------
+  function [ CNTC, ifcver, ierror ] = initlibrary(c_wrkdir, c_outdir, c_expnam, idebug);
+   % [ CNTC, ifcver, ierror ] = cntc.initlibrary(wrkdir, outdir, expnam, idebug);
+   %
+   % load the library into Matlab, initialize its internal data and output channels
+   %
+   %  in:  character  wrkdir(*)    - [optional] effective working folder
+   %       character  outdir(*)    - [optional] output folder
+   %       character  expnam(*)    - [optional] experiment name, default 'contact_addon'
+   %       integer    idebug       - [optional] show (1) or hide (0) error messages
+   %  out: integer    CNTC         - struct with 'magic numbers' for configuring CONTACT
+   %       integer    ifcver       - version of the CONTACT add-on
+   %       integer    ierror       - error flag
+
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #initlibrary -2
+
+   % retrieve current directory, form library name
+   [pathstr, name, ext] = fileparts(which('cntc.initlibrary'));
+
+   if (isunix())
+    libname='contact_addon_linux64';
+    lib_ext='.so';
+   else
+    libname=['contact_addon_', computer('arch')];
+    lib_ext='.dll';
+   end
+
+   % unload the library if it was loaded before
+   if (1==1 & libisloaded(libname))
+    cntc.closelibrary;
+    % #xxxgae voir si ca marche-2
+    %evalin('base', 'clear LI');
+   end
+   if nargin>0
+    if isequal(c_wrkdir,'close');
+     for iwhe= 1:2
+      cntc.finalize(iwhe);
+     end
+     cntc.closelibrary;
+     return
+    end %
+   end
+   % load the library into Matlab
+   if (~libisloaded(libname))
+    pathstr = [deblank(pathstr) filesep '..' filesep 'bin'];
+    if ispref('SDT','CONTACT_Path')
+     pathstr=getpref('SDT','CONTACT_Path');
+    end
+    fullname = fullfile(pathstr, [libname lib_ext]);
+
+    if ~exist(fullname,'file')
+     disp(['ERROR: cant find library: ', fullname]);
+     return
+    else
+     loadlibrary(fullname, 'contact_addon.h');
+    end
+   end
+
+   % initialize the internal data of the library, open its output streams
+   if (nargin<1 | isempty(c_wrkdir))
+    c_wrkdir = ' ';
+   end
+   if (nargin<2 | isempty(c_outdir))
+    c_outdir = ' ';
+   end
+   if (nargin<3 | isempty(c_expnam))
+    c_expnam = ' ';
+   end
+   if (nargin<4 | isempty(idebug))
+    idebug = 1;
+   end
+   len_wrkdir = length(c_wrkdir);
+   len_outdir = length(c_outdir);
+   len_expnam = length(c_expnam);
+   ioutput = 0;
+
+   p_ierr = libpointer('int32Ptr',-1);
+   p_ver  = libpointer('int32Ptr',-1);
+
+   p_ierr.value = 0;
+   cntc.call(libname,'cntc.initializefirst_new', p_ver, p_ierr, ioutput, c_wrkdir, c_outdir, c_expnam, ...
+    len_wrkdir, len_outdir, len_expnam);
+   % disp(sprintf('test_caddon: obtained ver=%d, ierr=%d', p_ver.value, p_ierr.value));
+
+   ifcver = double(p_ver.value);
+   ierror = double(p_ierr.value);
+
+   % return a struct with 'magic numbers' for setting flags later on
+
+   CNTC = cntc.getmagicnumbers();
+
+   if (idebug>=1 & ierror==CNTC.err_allow)
+    % error('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror);
+   elseif (idebug>=1 & ierror<0)
+    % error('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror);
+   end
+
+  end % cntc.initlibrary
+
+  %------------------------------------------------------------------------------------------------------------
+
+  function [ ierror]=managelicense(lic_command, ints, string1, string2, string3)
+   % [ ierror ] = cntc.managelicense(lic_command, ints, string1, string2, string3)
+   %
+   % perform license management actions:
+   %  - 'activate' <license_id> <password>
+   %  - 'refresh'
+   %  - 'print'
+   %  - 'deactivate'
+   %
+   %  in:  character  lic_command(*) - desired action
+   %       integer    ints(*)        - 'activate': ints(1) == <license_id>
+   %       character  string1(*)     - 'activate': string1 == <password>
+   %       character  string2(*)     - reserved for future use
+   %       character  string3(*)     - reserved for future use
+   %  out: integer    ierror         - error flag
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #managelicense -2
+
+
+   if (isempty(libname) | ~libisloaded(libname))
+    % load library when needed, using default outpath and experiment name
+    [ CNTC, ifcver, ierror ] = cntc.initlibrary();
+   end
+
+   if (nargin<1 | isempty(lic_command))
+    lic_command = 'print';
+   end
+   disp('cntc.managelicense: output is printed to contact_addon.out.');
+
+   ierror = 0;
+   p_ierr = libpointer('int32Ptr',-1);
+
+   % command == 'activate':
+
+   if (strcmp(lic_command, 'activate'))
+    if (nargin<2 | isempty(ints))
+     disp('cntc.managelicense: activation needs the license id.');
+     ierror = -1;
+    else
+     license_id = ints(1);
+    end
+    if (nargin<3 | isempty(string1))
+     disp('cntc.managelicense: activation needs the license password.');
+     ierror = -2;
+    else
+     password = string1;
+    end
+
+    if (ierror==0)
+     p_ierr.value = 0;
+     cntc.call('cntc.managelicense', lic_command, 1, license_id, password, ' ', ' ', ...
+      length(lic_command), length(password), 1, 1, p_ierr);
+     ierror = double(p_ierr.value);
+    end
+
+    % command == 'refresh', 'print' or 'deactivate':
+
+   elseif (strcmp(lic_command, 'refresh') || strcmp(lic_command, 'print') || ...
+     strcmp(lic_command, 'deactivate'))
+
+    cntc.call('cntc.managelicense', lic_command, 0, 0, ' ', ' ', ' ', ...
+     length(lic_command), 1, 1, 1, p_ierr);
+    ierror = double(p_ierr.value);
+
+   end
+
+  end % cntc.managelicense
+
+  %------------------------------------------------------------------------------------------------------------
+
+  function [ ierror]=readinpfile(ire, inp_type, c_fname)
+   % [ ierror ] = cntc.readinpfile(ire, inp_type, fname)
+   %
+   % read settings from inp-file
+   %
+   %  in:  integer    ire          - result element ID
+   %       integer    inp_type     - type of inp-file: cntc.inp_spck, ...
+   %       character  fname(*)     - filename
+   %  out: integer    ierror       - error flag
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 2: m=1, wtd    - no icp needed
+   % #readinpfile -2
+
+
+   CNTC = cntc.getmagicnumbers();
+
+   if (nargin<1 | isempty(ire))
+    ire = 1;
+   end
+   if (nargin<2)
+    inp_type = [];
+   end
+   if (~any(inp_type==[CNTC.inp_spck]))
+    disp('ERROR(readinpfile): inp_type must be CNTC.inp_spck');
+    return;
+   end
+   if (nargin<3 | isempty(c_fname))
+    disp('ERROR(readinpfile): fname is mandatory')
+    return;
+   end
+
+   p_ierr = libpointer('int32Ptr',-1);
+
+   p_ierr.value = 0;
+   cntc.call('cntc.readinpfile', ire, inp_type, c_fname, length(c_fname), p_ierr);
+
+   ierror = double(p_ierr.value);
+
+   if (ierror~=0)
+    disp(sprintf('cntc.readinpfile: an error occurred in the CONTACT library (%d).',ierror));
+   end
+
+  end % cntc.readinpfile
+
+  %------------------------------------------------------------------------------------------------------------
+
+  function []=resetcalculationtime(ire, icp)
+   % [ ] = cntc.resetcalculationtime(ire, icp)
+   %
+   % reset the accumulated cpu-time and wall-clock-time used for a contact problem
+
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 6: m=*, cp     - require icp>0, default 1
+   % #resetcalculationtime -2
+
+
+
+   if (nargin<1 | isempty(ire))
+    ire = 1;
+   end
+   if (nargin<2 | isempty(icp))
+    icp = 1;
+   end
+   if (icp<=0)
+    disp(sprintf('ERROR in cntc.resetcalculationtime: not available for icp=%d',icp));
+    return
+   end
+
+   cntc.call('cntc.resetcalculationtime', ire, icp);
+
+  end % cntc.resetcalculationtime
+
+  %------------------------------------------------------------------------------------------------------------
+
+  function []=closelibrary();
+
+   % [ ] = cntc.closelibrary();
+   %
+   % clean-up, close files and unload the library from Matlab
+
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #closelibrary -2
+
+   LI=cntc.call;
+   cntc.call('cntc.finalizelast');
+   %dbstack;keyboard;
+   unloadlibrary(LI.libname);
+   LI.libname='';
+
+   %evalin('base','clear("LI")');
+  end % cntc.closelibrary
+
+  %------------------------------------------------------------------------------------------------------------
+
+  function []=finalize(ire)
+   %%------------------------------------------------------------------------------------------------------------
+   % [ ] = cntc.finalize(ire)
+   %
+   % Finalize calculations and clean-up for a result element
+
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % category 0: m=*, glob   - no icp needed
+   % #finalize -2
+
+   if (nargin<1 | isempty(ire))
+    ire = 1;
+   end
+
+   cntc.call('cntc.finalize', ire);
+
+  end % cntc.finalize
+
+  %------------------------------------------------------------------------------------------------------------
 
   function out=call(varargin)
    %% #call catch library calls to set variables  ------------------------- -2
@@ -87,8 +523,10 @@ cntc : interface between SDT and CONTACT
 
   end
 
+  %------------------------------------------------------------------------------------------------------------
+
   function out=help(CAM)
-   %% #help : configure help
+   %% #help : configure help -2
    if ispref('SDT','CONTACT_Path');wd=getpref('SDT','CONTACT_Path');
    else
     wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin', ...
@@ -132,7 +570,7 @@ cntc : interface between SDT and CONTACT
 
 
   function [LI,CNTC]=init
-   %% #init
+   %% #init -2
 
    % if (~exist('cntc_initlibrary.m','file'))
    %    % set location of CONTACT installation folder
@@ -152,106 +590,8 @@ cntc : interface between SDT and CONTACT
    else; LI=cntc.call; LI.CNTC=CNTC;
    end
 
-
   end
-  function [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, rot )
-   % [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, [rot] )
-   %
-   % pos_c = position of arrow center of rotation, 2-vector or 3-vector
-   % r     = circle radius;  negative r: reversed rotation direction.
-   %         vectorial: [rx,ry], separate radius for x and y-direction
-   % th0   = angle of tail of arrow [deg]
-   % th1   = angle of head of arrow
-   % col   = color-spec for arrow; default='b';
-   % scale = scale factor for arrow head; default=1: 25% of arrow size
-   % width = width factor for arrow head; default=1: about 30 deg.
-   % rot   = for 3d plots: rotation matrix from [x,y,0] to desired orientation
-   %         [0,0,1; 1,0,0; 0,1,0] for arc in yz-plane
-   %
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % #circ_arrow
-
-   if (nargin<5 | isempty(col))
-    col = 1;
-   end
-   if (nargin<6 | isempty(scale))
-    scale = 1;
-   end
-   if (nargin<7 | isempty(width))
-    width = 1;
-   end
-   if (nargin<8 | isempty(rot))
-    rot   = eye(3);
-   end
-
-   % if r is a scalar, copy to make a 2-vector [rx,ry]
-   if (max(size(r))==1)
-    r = [r,r];
-   end
-   rx=r(1); ry=r(2);
-
-   % if col is just a single value, it is interpreted as a color index
-   if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
-   end
-
-   if (size(pos_c,2)>1), pos_c=pos_c'; end % make column vectors
-
-   th0 = th0 * pi/180;             % convert to radians
-   th1 = th1 * pi/180;             % convert to radians
-
-   % use plot3 instead of plot when pos is a 3-vector
-
-   is_3d = (length(pos_c)==3);
-   if (is_3d)
-    pos_c = rot' * pos_c;
-   else
-    pos_c = [pos_c; 0];
-   end
-
-   hold on;
-
-   % compute circular arc with center pos_c, radius [rx,ry,0] and angles theta (th)
-   th   = th0 + [0:30]/30 * (th1-th0);
-   lin  = pos_c*ones(size(th)) + [rx*cos(th); ry*sin(th); 0*th];
-
-   pos1 = lin(:,end);
-   % plot(pos_c(1), pos_c(2), 'b*');
-
-   % compute nice theta-value for getting the arrow head direction
-   th_h = th1 - min(1,0.25*scale) * (th1-th0);
-
-   % compute point on the curve for the back of the arrow head
-   pos_h = pos_c + [rx*cos(th_h); ry*sin(th_h); 0*th_h];
-
-   % compute tangent vector at th_h == orientation of head;
-   % make size of arrowhead proportional to length of curve (th1-th0)
-   tng  = [-ry*sin(th_h); rx*cos(th_h); 0] * (th1-th0);
-
-   % compute the normal direction
-   nrm  = [-tng(2); tng(1); 0];
-
-   % reverse direction when needed
-   if (th0>th1), nrm=-nrm; end
-
-   % compute arrow head points, on the inside closer to the curve
-   head = [ pos_h+0.10*width*scale*nrm,  ...
-    pos1, ...
-    pos_h-0.13*width*scale*nrm];
-
-   if (is_3d)
-    lin  = rot * lin;
-    head = rot * head;
-    h(1) = plot3(lin(1,:), lin(2,:), lin(3,:), 'color',col);
-    h(2) = plot3(head(1,:), head(2,:), head(3,:), 'color',col);
-   else
-    h(1) = plot(lin(1,:), lin(2,:), 'color',col);
-    h(2) = plot(head(1,:), head(2,:), 'color',col);
-   end
-  end
+ 
 
   function [ dif ] = diffcase(sol1, sol2)
 
@@ -475,7 +815,7 @@ cntc : interface between SDT and CONTACT
    end
 
    if (spl2d.use_cylindr)
-    u_in = apply_wrap_around( spl2d, u_in );
+    u_in = cntc.apply_wrap_around( spl2d, u_in );
    end
 
    if (~isempty(v_in))
@@ -484,14 +824,14 @@ cntc : interface between SDT and CONTACT
 
     % disp('u_in specified, forward (u,v) --> (x,y,z)')
     v_out = v_in;
-    [ x_out, y_out, z_out ] = eval_2dspline_forward(spl2d, u_in, v_in, idebug);
+    [ x_out, y_out, z_out ] = cntc.eval_2dspline_forward(spl2d, u_in, v_in, idebug);
 
    else
 
     % inverse calculation u_in, y_in --> v_out
 
     % disp('y_in specified, inverse (u,y) --> (v)')
-    v_out = eval_2dspline_inverse( spl2d, u_in, y_in, idebug );
+    v_out = cntc.eval_2dspline_inverse( spl2d, u_in, y_in, idebug );
 
     % for tensor grid nu x nv, reshape 2d v_out to 1d list
     nu = length(u_in); ny = length(y_in);
@@ -504,7 +844,7 @@ cntc : interface between SDT and CONTACT
 
     % disp('y_in specified, forward (u,v) --> (x,z)')
     y_out = y_in;
-    [ x_out, ~, z_out ] = eval_2dspline_forward(spl2d, u_in, v_out, idebug);
+    [ x_out, ~, z_out ] = cntc.eval_2dspline_forward(spl2d, u_in, v_out, idebug);
     if (nu~=ny)
      x_out = reshape(x_out, nu, ny);
      y_out = repmat(y_in, nu, 1);
@@ -553,7 +893,7 @@ cntc : interface between SDT and CONTACT
     disp(sprintf('array v_in has %d NaN-values', nnz(isnan(v_in))));
    end
 
-   [~, ~, ~, Bmat] = eval_bspline_basisfnc( spl2d.tvj, v_in, k );
+   [~, ~, ~, Bmat] = cntc.eval_bspline_basisfnc( spl2d.tvj, v_in, k );
    % nknotu = length(spl2d.tui); nsplu  = nknotu - k;
    % nknotv = length(spl2d.tvj); nsplv  = nknotv - k;
 
@@ -577,7 +917,7 @@ cntc : interface between SDT and CONTACT
      n0, n1, spl2d.tui(4), spl2d.tui(end-3)));
    end
 
-   [~, ~, ~, Bmat] = eval_bspline_basisfnc( spl2d.tui, u_in, k );
+   [~, ~, ~, Bmat] = cntc.eval_bspline_basisfnc( spl2d.tui, u_in, k );
 
    % matrix-multply to get output values
 
@@ -657,7 +997,7 @@ cntc : interface between SDT and CONTACT
 
    % determine collocation matrix for computing coefficients cj_y
 
-   [~, ~, ~, Bmatx] = eval_bspline_basisfnc( spl2d.tui, u_in );
+   [~, ~, ~, Bmatx] = cntc.eval_bspline_basisfnc( spl2d.tui, u_in );
 
    % loop over output positions u_in
 
@@ -707,7 +1047,7 @@ cntc : interface between SDT and CONTACT
         '%d, %d, %d, %d, %d, %d'], iout, jout, u_in(iout), y_in(jout), nseg, jseg(1:min(6,nseg))));
        if (idebug>=-4)
 
-        [~, ~, ~, Bmatv] = eval_bspline_basisfnc( spl2d.tvj, spl2d.vj );
+        [~, ~, ~, Bmatv] = cntc.eval_bspline_basisfnc( spl2d.tvj, spl2d.vj );
         % ytmp: [ nv, 1 ], Bmatv: [ nv, nv ], cj_y: [ nv, 1 ]
         ytmp = Bmatv * cj_y;
         tvj  = spl2d.tvj;
@@ -747,10 +1087,10 @@ cntc : interface between SDT and CONTACT
 
        % PP-spline coefficients for segment:
 
-       coef  = get_ppcoef_1seg_sparse(spl2d, cj_y, jseg(jj));
+       coef  = cntc.get_ppcoef_1seg_sparse(spl2d, cj_y, jseg(jj));
        if (0==1)
-        coef0 = get_ppcoef_1seg_full(spl2d, cj_y, jseg(jj));
-        coef1 = get_ppcoef_1seg_sparse(spl2d, cj_y, jseg(jj));
+        coef0 = cntc.get_ppcoef_1seg_full(spl2d, cj_y, jseg(jj));
+        coef1 = cntc.get_ppcoef_1seg_sparse(spl2d, cj_y, jseg(jj));
         if (max(abs(coef0-coef1)>1e-10))
          disp('coef:')
          disp([coef0; coef1])
@@ -759,7 +1099,7 @@ cntc : interface between SDT and CONTACT
 
        % Solve cubic equation for segment:
 
-       [v, found] = solve_cubic_eq(coef, vseg, y, idebug, iout, jout, jseg(jj));
+       [v, found] = cntc.solve_cubic_eq(coef, vseg, y, idebug, iout, jout, jseg(jj));
        if (found & idebug>=2)
         disp(sprintf('jj = %d: found v =%7.2f', jj, v));
        elseif (~found & idebug>=3)
@@ -836,7 +1176,7 @@ cntc : interface between SDT and CONTACT
 
    % evaluate function and derivative values at position vj(jseg)
 
-   [B1, B2, B3, B4] = eval_bspline_basisfnc( spl2d.tvj, spl2d.tvj(jseg)+1e-9 );
+   [B1, B2, B3, B4] = cntc.eval_bspline_basisfnc( spl2d.tvj, spl2d.tvj(jseg)+1e-9 );
 
    ay0 = B4 * cj_y;
    ay1 = B3 * D3 * cj_y;
@@ -983,7 +1323,7 @@ cntc : interface between SDT and CONTACT
 
     %  1. form noutv u-splines at output-locations v_in
 
-    [~, ~, ~, B4] = eval_bspline_basisfnc( spl2d.tvj, v_in, k, idebug );
+    [~, ~, ~, B4] = cntc.eval_bspline_basisfnc( spl2d.tvj, v_in, k, idebug );
 
     % ci_y: [ nsplu, noutv ], B4: [ noutv, nsplv ], cij_y: [ nsplu, nsplv ], v_in: [ noutv ]
     if (has_xij)
@@ -995,7 +1335,7 @@ cntc : interface between SDT and CONTACT
 
     %  2.a collocation matrix for 1st derivative of u-splines at u_in
 
-    [~, ~, B3, B4] = eval_bspline_basisfnc( spl2d.tui, u_in, k, idebug );
+    [~, ~, B3, B4] = cntc.eval_bspline_basisfnc( spl2d.tui, u_in, k, idebug );
 
     %  2.b backward difference matrix using average step lengths
 
@@ -1023,7 +1363,7 @@ cntc : interface between SDT and CONTACT
 
     %  1. form noutu v-splines at output-locations u_in
 
-    [~, ~, ~, B4] = eval_bspline_basisfnc( spl2d.tui, u_in, k, idebug );
+    [~, ~, ~, B4] = cntc.eval_bspline_basisfnc( spl2d.tui, u_in, k, idebug );
 
     % cj_y: [ noutu, nsplv ], B4: [ noutu, nsplu ], cij_y: [ nsplu, nsplv ], u_in: [ noutu ]
 
@@ -1036,7 +1376,7 @@ cntc : interface between SDT and CONTACT
 
     %  2.a collocation matrix for 1st derivative of v-splines at v_in
 
-    [~, ~, B3, B4] = eval_bspline_basisfnc( spl2d.tvj, v_in, k, idebug );
+    [~, ~, B3, B4] = cntc.eval_bspline_basisfnc( spl2d.tvj, v_in, k, idebug );
 
     %  2.b backward difference matrix using average step lengths
 
@@ -1222,17 +1562,17 @@ cntc : interface between SDT and CONTACT
    if (~isempty(s_in))
     s_out = s_in;
    else
-    s_out = spline_get_s_at_y( spl, y_in, idebug );
+    s_out = cntc.spline_get_s_at_y( spl, y_in, idebug );
    end
 
    if (~isempty(y_in))
     y_out = y_in;
    else
-    y_out = eval_1d_spline(spl.s, spl.ay0, spl.ay1, spl.ay2, spl.ay3, s_out, idebug);
+    y_out = cntc.eval_1d_spline(spl.s, spl.ay0, spl.ay1, spl.ay2, spl.ay3, s_out, idebug);
    end
 
    if (nargout>=3)
-    z_out = eval_1d_spline(spl.s, spl.az0, spl.az1, spl.az2, spl.az3, s_out, idebug);
+    z_out = cntc.eval_1d_spline(spl.s, spl.az0, spl.az1, spl.az2, spl.az3, s_out, idebug);
    end
 
   end % eval_spline
@@ -1275,10 +1615,10 @@ cntc : interface between SDT and CONTACT
     % find segment iseg [ a0(i), a0(i+1) ] containing yev
 
     if (0==1 | ~isfield(spl, 'top_ybrk'))
-     iseg = locate_segment( np, a0, yev(iout) );
+     iseg = cntc.locate_segment( np, a0, yev(iout) );
     else
      npart = length(spl.top_ybrk) - 1;
-     itop  = locate_segment( npart+1, spl.top_ybrk, yev(iout) );
+     itop  = cntc.locate_segment( npart+1, spl.top_ybrk, yev(iout) );
      if (itop<=0)
       iseg = 0;
       %disp(sprintf('yev(%2d)=%8.3f lies in top part %d, y=   (-inf,%7.3f]', iout, yev(iout), itop, ...
@@ -1295,7 +1635,7 @@ cntc : interface between SDT and CONTACT
       ip1 = spl.isec_uni_y(isec+1);
       % disp(sprintf('yev(%2d)=%7.3f lies in section %d, y=[%7.3f,%7.3f]', iout, yev(iout), isec, ...
       %           a0(ip0), a0(ip1)));
-      iseg   = ip0-1 + locate_segment( ip1-ip0+1, a0(ip0:ip1), yev(iout) );
+      iseg   = ip0-1 + cntc.locate_segment( ip1-ip0+1, a0(ip0:ip1), yev(iout) );
      end
     end
 
@@ -1326,7 +1666,7 @@ cntc : interface between SDT and CONTACT
 
      ppcoef = [a0(i), a1(iseg), a2(iseg), a3(iseg)];
      sseg   = s(iseg+[0,1]);
-     [sout1, found] = solve_cubic_eq(ppcoef, sseg, yev(iout), idebug, iout, 1, iseg);
+     [sout1, found] = cntc.solve_cubic_eq(ppcoef, sseg, yev(iout), idebug, iout, 1, iseg);
 
      if (found & idebug>=2)
       disp(sprintf('iout = %d: found sl =%7.2f', iout, sout1));
@@ -1442,10 +1782,10 @@ cntc : interface between SDT and CONTACT
     idebug = 0;
    end
 
-   [dy_out, ddy_out] = eval_1d_spline_deriv(spl.s, spl.ay0, spl.ay1, ...
+   [dy_out, ddy_out] = cntc.eval_1d_spline_deriv(spl.s, spl.ay0, spl.ay1, ...
     spl.ay2, spl.ay3, s_out);
 
-   [dz_out, ddz_out] = eval_1d_spline_deriv(spl.s, spl.az0, spl.az1, ...
+   [dz_out, ddz_out] = cntc.eval_1d_spline_deriv(spl.s, spl.az0, spl.az1, ...
     spl.az2, spl.az3, s_out);
 
    kappa = (dy_out.*ddz_out - dz_out.*ddy_out) ./ (dy_out.^2 + dz_out.^2).^(3/2);
@@ -1625,7 +1965,7 @@ cntc : interface between SDT and CONTACT
     if (isempty(tmp))
      strc = [];
     else
-     strc = fill_struct(tmp, fname);
+     strc = cntc.fill_struct(tmp, fname);
     end
 
     % Each patch tells the actual npatch for the run in which it was created
@@ -2287,12 +2627,12 @@ cntc : interface between SDT and CONTACT
    % determine master knot-vector tui_full with knots at all measurement points + extension at start/end
 
    use_repl = 0;
-   tui_full = make_knot_vector_atmeas( ui, 'u', 1, use_repl, idebug );
+   tui_full = cntc.make_knot_vector_atmeas( ui, 'u', 1, use_repl, idebug );
 
    % determine master knot-vector tvj_full with knots at all measurement points + extension at start/end
 
    use_repl = 0;
-   tvj_full = make_knot_vector_atmeas( vj, 'v', 1, use_repl, idebug );
+   tvj_full = cntc.make_knot_vector_atmeas( vj, 'v', 1, use_repl, idebug );
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    % Phase 1: build B-splines per slice in lateral direction v -> (y,z)
@@ -2339,7 +2679,7 @@ cntc : interface between SDT and CONTACT
 
     % determine collocation matrix for v-direction: evaluate each B-spline at each measurement location
 
-    [~, ~, ~, Bmat] = eval_bspline_basisfnc( tvj, vj(j0:j1) );
+    [~, ~, ~, Bmat] = cntc.eval_bspline_basisfnc( tvj, vj(j0:j1) );
 
     % determine 1d spline coefficients ci_x, ci_y, ci_z, solving B [ci_x, ci_y, ci_z] = [xij, yij, zij]
 
@@ -2363,16 +2703,16 @@ cntc : interface between SDT and CONTACT
      % insert knots at not-a-knot positions
 
      if (has_xij)
-      [ t1, c_x ] = insert_knot( tvj, tvj_full(jk1), c_x, k, idebug );
-      [ t2, c_x ] = insert_knot( t1, tvj_full(jk2), c_x, k, idebug );
+      [ t1, c_x ] = cntc.insert_knot( tvj, tvj_full(jk1), c_x, k, idebug );
+      [ t2, c_x ] = cntc.insert_knot( t1, tvj_full(jk2), c_x, k, idebug );
      end
      if (has_yij)
-      [ t1, c_y ] = insert_knot( tvj, tvj_full(jk1), c_y, k, idebug );
-      [ t2, c_y ] = insert_knot( t1, tvj_full(jk2), c_y, k, idebug );
+      [ t1, c_y ] = cntc.insert_knot( tvj, tvj_full(jk1), c_y, k, idebug );
+      [ t2, c_y ] = cntc.insert_knot( t1, tvj_full(jk2), c_y, k, idebug );
      end
      if (has_zij)
-      [ t1, c_z ] = insert_knot( tvj, tvj_full(jk1), c_z, k, idebug );
-      [ t2, c_z ] = insert_knot( t1, tvj_full(jk2), c_z, k, idebug );
+      [ t1, c_z ] = cntc.insert_knot( tvj, tvj_full(jk1), c_z, k, idebug );
+      [ t2, c_z ] = cntc.insert_knot( t1, tvj_full(jk2), c_z, k, idebug );
      end
 
     end
@@ -2521,7 +2861,7 @@ cntc : interface between SDT and CONTACT
 
      % determine collocation matrix for u-direction: evaluate each B-spline at each measurement location
 
-     [~, ~, ~, Bmat] = eval_bspline_basisfnc( tui, ui(i0:i1) );
+     [~, ~, ~, Bmat] = cntc.eval_bspline_basisfnc( tui, ui(i0:i1) );
 
      % determine 2d spline coefficients cij_[xyz], solving B [cij_x, cij_y, cij_z] = [ci_x, ci_y, ci_z]
 
@@ -2541,16 +2881,16 @@ cntc : interface between SDT and CONTACT
       % insert knots at not-a-knot positions
 
       if (has_xij)
-       [ t1, c_x ] = insert_knot( tui, tui_full(ik1), c_x, k, idebug );
-       [ t2, c_x ] = insert_knot( t1, tui_full(ik2), c_x, k, idebug );
+       [ t1, c_x ] = cntc.insert_knot( tui, tui_full(ik1), c_x, k, idebug );
+       [ t2, c_x ] = cntc.insert_knot( t1, tui_full(ik2), c_x, k, idebug );
       end
       if (has_yij)
-       [ t1, c_y ] = insert_knot( tui, tui_full(ik1), c_y, k, idebug );
-       [ t2, c_y ] = insert_knot( t1, tui_full(ik2), c_y, k, idebug );
+       [ t1, c_y ] = cntc.insert_knot( tui, tui_full(ik1), c_y, k, idebug );
+       [ t2, c_y ] = cntc.insert_knot( t1, tui_full(ik2), c_y, k, idebug );
       end
       if (has_zij)
-       [ t1, c_z ] = insert_knot( tui, tui_full(ik1), c_z, k, idebug );
-       [ t2, c_z ] = insert_knot( t1, tui_full(ik2), c_z, k, idebug );
+       [ t1, c_z ] = cntc.insert_knot( tui, tui_full(ik1), c_z, k, idebug );
+       [ t2, c_z ] = cntc.insert_knot( t1, tui_full(ik2), c_z, k, idebug );
       end
      end
 
@@ -2589,7 +2929,7 @@ cntc : interface between SDT and CONTACT
 
     % check correctness of interpolating spline at meas. positions
 
-    [ ~, x_out, y_out, z_out ] = eval_2dspline( spl2d, ui, vj, [], idebug );
+    [ ~, x_out, y_out, z_out ] = cntc.eval_2dspline( spl2d, ui, vj, [], idebug );
 
     disp(sprintf('Max diff(spline y - yij) = %3.1e, max(spline z - zij) = %3.1e', ...
      max(max(abs(y_out-yij))), max(max(abs(z_out-zij))) ))
@@ -2737,7 +3077,7 @@ cntc : interface between SDT and CONTACT
 
    s = max(spl.s, spl.tj(4));      % avoid warning for extended knots
    s = min(    s, spl.tj(end-3));  %  --> constant extrapolation outside basic interval
-   [B1, B2, B3, B4] = eval_bspline_basisfnc( spl.tj, s );
+   [B1, B2, B3, B4] = cntc.eval_bspline_basisfnc( spl.tj, s );
 
    % determine PP-form: value of spline & derivatives at start of each segment
 
@@ -2787,17 +3127,17 @@ cntc : interface between SDT and CONTACT
    % evaluate spline surface at positions ui x vj
 
    idebug = 0;
-   [~, x0, y0, z0] = eval_2dspline(spl2d, ui, vj, [], idebug);
+   [~, x0, y0, z0] = cntc.eval_2dspline(spl2d, ui, vj, [], idebug);
 
    % construct first normalized tangent vector at each ui x vj
 
-   [dx1, dy1, dz1] = eval_2dspline_deriv(spl2d, ui, vj, 1);
+   [dx1, dy1, dz1] = cntc.eval_2dspline_deriv(spl2d, ui, vj, 1);
    nrm = sqrt(dx1.^2 + dy1.^2 + dz1.^2);
    t1(:,:,1) = dx1./nrm; t1(:,:,2) = dy1./nrm; t1(:,:,3) = dz1./nrm;
 
    % construct second normalized tangent vector at each ui x vj
 
-   [dx2, dy2, dz2] = eval_2dspline_deriv(spl2d, ui, vj, 2);
+   [dx2, dy2, dz2] = cntc.eval_2dspline_deriv(spl2d, ui, vj, 2);
    nrm = sqrt(dx2.^2 + dy2.^2 + dz2.^2);
    t2(:,:,1) = dx2./nrm; t2(:,:,2) = dy2./nrm; t2(:,:,3) = dz2./nrm;
 
@@ -2960,7 +3300,7 @@ cntc : interface between SDT and CONTACT
    end
 
    if (isempty(s))
-    s = make_arclength( y, z );
+    s = cntc.make_arclength( y, z );
    end
    if (any(size(s)~=size(y)) | any(size(z)~=size(y)) | any(size(wgt)~=size(y)))
     disp('Arrays s, y, z, wgt have incompatible sizes');
@@ -2969,9 +3309,9 @@ cntc : interface between SDT and CONTACT
    end
 
    if (use_bspline)
-    spl = make_bspline( s, y, z, lambda, wgt, ikinks, iaccel, ds_bspl, use_deriv, use_repl, idebug );
+    spl = cntc.make_bspline( s, y, z, lambda, wgt, ikinks, iaccel, ds_bspl, use_deriv, use_repl, idebug );
    else
-    spl = make_pp_spline( s, y, z, lambda, wgt, ikinks, idebug );
+    spl = cntc.make_pp_spline( s, y, z, lambda, wgt, ikinks, idebug );
    end
 
   end % make_spline
@@ -3028,7 +3368,7 @@ cntc : interface between SDT and CONTACT
    %
    % compute parametric cubic smoothing spline (y(s),z(s)) using least squares B-spline method with
    % penalty on 2nd or 3rd derivative
-   % # make_bspline
+   % #make_bspline 
 
    if (nargin<11 | isempty(idebug))
     idebug = 1;
@@ -3053,13 +3393,13 @@ cntc : interface between SDT and CONTACT
    lmb_min     = 1e-6;
    if (lambda<lmb_min), use_simple = 0; end
 
-   [tj, keep_reduc] = make_knot_vector( s_in, ikinks, iaccel, ds_bspl, use_simple, use_repl, idebug );
+   [tj, keep_reduc] = cntc.make_knot_vector( s_in, ikinks, iaccel, ds_bspl, use_simple, use_repl, idebug );
    nknot = length(tj);
 
    % determine collocation matrix: evaluate each B-spline at each measurement location
 
    nmeas = length(s_in);
-   [~, ~, ~, Bmat] = eval_bspline_basisfnc( tj, s_in );
+   [~, ~, ~, Bmat] = cntc.eval_bspline_basisfnc( tj, s_in );
    if (idebug>=5 & nmeas<20), disp(full(Bmat)); end
 
    % weight matrix W for input data
@@ -3119,8 +3459,8 @@ cntc : interface between SDT and CONTACT
       nnz(keep_reduc)))
     end
 
-    Bmat = reduce_matrix(Bmat, tj, keep_reduc, idebug);
-    Dmat = reduce_matrix(Dmat, tj, keep_reduc);
+    Bmat = cntc.reduce_matrix(Bmat, tj, keep_reduc, idebug);
+    Dmat = cntc.reduce_matrix(Dmat, tj, keep_reduc);
    end
 
    % determine spline coefficients, solving the least squares optimization equation
@@ -3191,8 +3531,8 @@ cntc : interface between SDT and CONTACT
     end
    end
 
-   coef_y = expand_vector( coef_y, tj, keep_reduc );
-   coef_z = expand_vector( coef_z, tj, keep_reduc );
+   coef_y = cntc.expand_vector( coef_y, tj, keep_reduc );
+   coef_z = cntc.expand_vector( coef_z, tj, keep_reduc );
 
    if (idebug>=3 & ~all(keep_reduc))
     disp('Expanded coefficients:')
@@ -3201,7 +3541,7 @@ cntc : interface between SDT and CONTACT
 
    ksi = unique(tj);
    spl = struct('s',ksi, 'tj',tj, 'cy',coef_y, 'cz',coef_z);
-   spl = make_ppform( spl, D1, D2, D3 );
+   spl = cntc.make_ppform( spl, D1, D2, D3 );
 
   end % make_bspline
 
@@ -3310,16 +3650,16 @@ cntc : interface between SDT and CONTACT
    if (size(ikinks,1)>size(ikinks,2)), ikinks = ikinks'; end
    if (size(iaccel,1)>size(iaccel,2)), iaccel = iaccel'; end
 
-   is_ok = check_kink_accel( si, ikinks, iaccel );
+   is_ok = cntc.check_kink_accel( si, ikinks, iaccel );
    if (is_ok<=0)
     disp('ERROR with kinks and/or accelerations')
     return;
    end
 
    if (use_simple)
-    [ tj ] = make_knot_vector_simple(si, ikinks, iaccel, ds_bspl, use_repl, idebug);
+    [ tj ] = cntc.make_knot_vector_simple(si, ikinks, iaccel, ds_bspl, use_repl, idebug);
    else
-    [ tj ] = make_knot_vector_advanced(si, ikinks, iaccel, ds_bspl, use_repl, idebug);
+    [ tj ] = cntc.make_knot_vector_advanced(si, ikinks, iaccel, ds_bspl, use_repl, idebug);
    end
    nknot = length(tj);
 
@@ -3583,7 +3923,7 @@ cntc : interface between SDT and CONTACT
    % Combine columns for segments using a reduced order, e.g. linear segments between double kinks
    %   tj         == knot vector (1:nknot)
    %   keep_reduc == flags for knots to be kept in reduced knot vector tr = t^* (1:nreduc)
-   % #reduce_matrix
+   % #reduce_matrix -2
 
    if (nargin<4 | isempty(idebug))
     idebug = 0;
@@ -3637,7 +3977,7 @@ cntc : interface between SDT and CONTACT
    %    ra = coefficients for reduced basisfunctions a^*
    %    tj = full knot vector t_j (1:nknot)
    %    keep_reduc = flags for knots kept in reduced knot vector tr = t^* (1:nreduc)
-   % #expand_vector
+   % #expand_vector -2
 
    if (nargin<4 | isempty(idebug))
     idebug = 0;
@@ -3692,6 +4032,8 @@ cntc : interface between SDT and CONTACT
    %
    % compute parametric cubic smoothing spline (y(s),z(s)) using PP-form method
 
+   % #make_pp_spline -2
+
    if (nargin<7 | isempty(idebug))
     idebug = 0;
    end
@@ -3702,7 +4044,7 @@ cntc : interface between SDT and CONTACT
    % combine measurements that lie too close together
 
    ds_min = 1e-3 * max(diff(s));
-   [s, y, z, wgt] = combine_close_meas(s, y, z, wgt, ds_min);
+   [s, y, z, wgt] = cntc.combine_close_meas(s, y, z, wgt, ds_min);
    % disp(sprintf('Ratio hmax / hmin = %3.1e', max(diff(s)) / min(diff(s)) ));
 
    npnt = length(s);
@@ -3720,7 +4062,7 @@ cntc : interface between SDT and CONTACT
      disp(sprintf('PPspline: make section %2d, rg=[%4d:%4d], s0=%10.6f', isec, rg(1), rg(end), s(rg(1)) ));
     end
 
-    [a0, a1, a2, a3] = make_pp_spline_section( s(rg), y(rg), lambda, wgt(rg), use_knot, idebug );
+    [a0, a1, a2, a3] = cntc.make_pp_spline_section( s(rg), y(rg), lambda, wgt(rg), use_knot, idebug );
     if (isec<nsec)       % a0,a2 have npnt values, a1, a3 have nseg values
      ay0 = [ay0; a0(1:end-1)]; ay1 = [ay1; a1];
      ay2 = [ay2; a2(1:end-1)]; ay3 = [ay3; a3];
@@ -3729,7 +4071,7 @@ cntc : interface between SDT and CONTACT
      ay2 = [ay2; a2]; ay3 = [ay3; a3];
     end
 
-    [a0, a1, a2, a3] = make_pp_spline_section( s(rg), z(rg), lambda, wgt(rg), use_knot, idebug );
+    [a0, a1, a2, a3] = cntc.make_pp_spline_section( s(rg), z(rg), lambda, wgt(rg), use_knot, idebug );
     if (isec<nsec)
      az0 = [az0; a0(1:end-1)]; az1 = [az1; a1];
      az2 = [az2; a2(1:end-1)]; az3 = [az3; a3];
@@ -3975,7 +4317,7 @@ cntc : interface between SDT and CONTACT
    % [ s, y, z, wgt ] = combine_close_meas( s, y, z, lambda, wgt, ikinks, idebug )
    %
    % combine measurements that lie too close together
-   % #combine_close_meas
+   % #combine_close_meas -2
 
    iter = 0;
    comb = ones(size(s));
@@ -4002,272 +4344,6 @@ cntc : interface between SDT and CONTACT
    end % while
 
   end % combine_close_meas
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-  function [ p_out ] = modify_profile(p_in, is_wheel, mirror_y, mirror_z, reverse_order, point_dist_min,delete_foldback, scale_yz, make_plot, idebug)
-
-   % [ p_out ] = modify_profile(p_in, is_wheel, mirror_y, mirror_z, reverse_order, point_dist_min, ...
-   %                                     delete_foldback, scale_yz, make_plot, idebug)
-   %
-   % apply a number of common filters to the input profile p_in
-   %   - mirror_y         - change y(i)  --> -y(i)    <=0 means no, >=1 yes
-   %   - mirror_z         - change z(i)  --> -z(i)    <=0 means no, >=1 yes
-   %   - reverse_order    - change [1:n] --> [n:-1:1]
-   %   - point_dist_min   - delete points that lie too close together
-   %   - delete_foldback  - identify & remove points where y(i+1)<y(i) (rail) or y(i+1)>y(i) (wheel)
-   %   - scale_yz         - scale y(i), z(i) --> scale*y(i), scale*z(i)
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % #modify_profile
-
-   if (nargin<2 | isempty(is_wheel))
-    is_wheel = 0;
-   end
-   if (nargin<3 | isempty(mirror_y))
-    mirror_y = 0;
-   end
-   if (nargin<4 | isempty(mirror_z))
-    mirror_z = 0;
-   end
-   if (nargin<5 | isempty(reverse_order))
-    reverse_order = 0;
-   end
-   if (nargin<6 | isempty(point_dist_min))
-    point_dist_min = -1;
-   end
-   if (nargin<7 | isempty(delete_foldback))
-    delete_foldback = 0;
-   end
-   if (nargin<8 | isempty(scale_yz))
-    scale_yz = 1;
-   end
-   if (nargin<9 | isempty(make_plot))
-    make_plot = 0;
-   end
-   if (nargin<10 | isempty(idebug))
-    idebug = 1;
-   end
-
-   % Initialize output structure
-
-   p_out          = p_in;
-   if (~isfield(p_out, 'ProfileAngle') | isempty(p_out.ProfileAngle))
-    p_out.ProfileAngle = zeros(size(p_out.ProfileY));
-   end
-   if (~isfield(p_out, 'ProfileCurvature') | isempty(p_out.ProfileCurvature))
-    p_out.ProfileCurvature = zeros(size(p_out.ProfileY));
-   end
-   if (~isfield(p_out, 'ProfileData'))
-    p_out.ProfileData = [ p_out.ProfileY, p_out.ProfileZ, ...
-     p_out.ProfileAngle, p_out.ProfileCurvature];
-   end
-   p_out.OrigData = p_out.ProfileData;
-
-   % Apply modifications to original input data
-
-   % modification 1: mirror horizontally w.r.t. y=0, changing y into -y
-
-   if (mirror_y>=1)
-    if (idebug>=1)
-     disp('Mirroring y-values from left-side to right-side profile...');
-    end
-    p_out.ProfileY     = -p_out.ProfileY;
-    p_out.ProfileAngle = -p_out.ProfileAngle;
-   end
-
-   % modification 2: mirror vertically w.r.t. z=0, changing z into -z
-
-   if (mirror_z>0)
-    if (idebug>=1)
-     disp('Mirroring z-values to get z positive downwards...');
-    end
-    p_out.ProfileZ     = -p_out.ProfileZ;
-    p_out.ProfileAngle = -p_out.ProfileAngle;
-   end
-
-   % modification 3: reverse the order of the data points
-
-   if (reverse_order)
-    if (idebug>=1)
-     disp('Reversing the order of the points, get inside at right hand...');
-    end
-    p_out.ProfileY         = flipud(p_out.ProfileY);
-    p_out.ProfileZ         = flipud(p_out.ProfileZ);
-    p_out.ProfileAngle     = flipud(p_out.ProfileAngle);
-    p_out.ProfileCurvature = flipud(p_out.ProfileCurvature);
-   end
-
-   % modification 4: remove points that lie too close together
-
-   if (point_dist_min>=1e-6)
-    np   = length(p_out.ProfileY);
-    dy   = diff(p_out.ProfileY);
-    dz   = diff(p_out.ProfileZ);
-    dist = sqrt(dy.^2 + dz.^2);
-    cum  = [0; cumsum(dist)];
-
-    keep = ones(np,1);
-    ik   = 1; % highest number that is kept so far
-    for ip = 2 : np
-     if (cum(ip)-cum(ik) < point_dist_min)
-      keep(ip) = 0;
-     else
-      ik = ip;
-     end
-    end
-    ix0 = find(keep==0); ix1 = find(keep==1);
-
-    if (idebug>=1 & ~isempty(ix0))
-     for i = ix0'
-      disp(sprintf('Deleting (%7.2f,%7.2f) (ip=%4d), too close to adjacent', ...
-       p_out.ProfileY(i), p_out.ProfileZ(i), i));
-     end
-    end
-    if ((idebug>=1 & ~isempty(ix0)) | idebug>=2)
-     disp(sprintf('Point_dist_min=%6.0e: deleted %d points from profile, %d remaining', point_dist_min, ...
-      length(ix0), length(ix1)));
-    end
-
-    p_out.ProfileY         = p_out.ProfileY(ix1);
-    p_out.ProfileZ         = p_out.ProfileZ(ix1);
-    p_out.ProfileAngle     = p_out.ProfileAngle(ix1);
-    p_out.ProfileCurvature = p_out.ProfileCurvature(ix1);
-   end
-
-   % modification 5: remove points where the profile folds back
-   %                 (i.e. where the function y --> z(y) is multi-valued)
-
-   if (~delete_foldback)
-    p_out.Mask             = ones(size(p_out.ProfileY));
-   else
-    if (idebug>=2)
-     disp('Checking for points where the profile folds back...');
-    end
-
-    % copy data to work variables
-    points0 = [p_out.ProfileY, p_out.ProfileZ, p_out.ProfileAngle, ...
-     p_out.ProfileCurvature];
-    np0 = size(points0,1);
-
-    % find "midpoint" of profile: tread of rail, bottom of flange on wheel
-    % z is assumed positive downwards: tread == minimum z, flange == maximum z
-    if (is_wheel)
-     [~,i_mid0] = max(points0(:,2));
-    else
-     [~,i_mid0] = min(points0(:,2));
-    end
-
-    % set threshold "dy" below which y-values are "the same"
-    dy_thresh = 1e-6 * (max(points0(:,1))-min(points0(:,1)));
-
-    % delete points where the profile is "vertical", i.e. |y(i+1)-y(i)|<thresh
-    % where (i<i_mid0) keep i, where (i>i_mid0) keep i+1.
-
-    dy   = diff(points0(:,1));
-    idel = find(abs(dy)<dy_thresh);
-    if (isempty(idel))
-     points1 = points0; np1 = np0; ikeep1 = [1:np0]; i_mid1=i_mid0;
-    else
-     j = find(idel<i_mid0); idel(j) = idel(j) + 1;
-     keep1 = ones(np0,1); keep1(idel) = 0; ikeep1 = find(keep1);
-     points1 = points0(ikeep1,:); np1 = size(points1,1);
-     i_mid1 = nnz(keep1(1:i_mid0));
-     if (idebug>=1)
-      disp(sprintf('Identified %d points with vertical slope', length(idel)));
-     end
-    end
-
-    % delete points where the profile folds back, i.e. y(i+1) < yrmx(i) (rail)
-    %                                              or  y(i+1) > yrmx(i) (wheel)
-
-    keep2 = zeros(np1,1); keep2(i_mid1) = 1;
-    y = points1(:,1);
-    if (is_wheel), sgn = -1; else, sgn = 1; end
-
-    % rail: check right of mid-point (wheel: left of mid-point)
-    y_runmax = sgn*y(i_mid1);
-    for i = i_mid1+1 : np1
-     if (sgn*y(i) >= y_runmax+dy_thresh)
-      keep2(i) = 1;
-     end
-     y_runmax = max(y_runmax, sgn*y(i));
-    end
-
-    % rail: check left of mid-point (wheel: right)
-    y_runmin = sgn*y(i_mid1);
-    for i = i_mid1-1 : -1 : 1
-     if (sgn*y(i) <= y_runmin-dy_thresh)
-      keep2(i) = 1;
-     end
-     y_runmin = min(y_runmin, sgn*y(i));
-    end
-
-    idel = find(keep2==0);
-    if (isempty(idel))
-     points2 = points1; np2 = np1; ikeep2 = [1:np1];
-    else
-     ikeep2 = find(keep2);
-     points2 = points1(ikeep2,:); np2 = size(points2,1);
-     if (idebug>=1)
-      disp(sprintf('Identified %d points where profile folds back', length(idel)));
-     end
-    end
-
-    % get mask that combines keep1 and keep2
-
-    msk = zeros(np0,1);
-    msk( ikeep1(ikeep2) ) = 1;
-
-    if (delete_foldback<=1)
-     p_out.Mask             = msk;
-     p_out.ProfileY         = points0(:,1);
-     p_out.ProfileZ         = points0(:,2);
-     p_out.ProfileAngle     = points0(:,3);
-     p_out.ProfileCurvature = points0(:,4);
-    else
-     p_out.Mask             = ones(np2,1);
-     p_out.ProfileY         = points2(:,1);
-     p_out.ProfileZ         = points2(:,2);
-     p_out.ProfileAngle     = points2(:,3);
-     p_out.ProfileCurvature = points2(:,4);
-    end
-   end
-
-   % modification 6: scale y,z-coordinates
-
-   if (scale_yz~=1)
-    if (idebug>=1)
-     disp(sprintf('Scaling y,z-values with factor %3.1f to convert to mm...',scale_yz));
-    end
-    p_out.ProfileY     = scale_yz * p_out.ProfileY;
-    p_out.ProfileZ     = scale_yz * p_out.ProfileZ;
-    p_out.ProfileCurvature = p_out.ProfileCurvature / scale_yz;
-   end
-
-   % combine the columns into array ProfileData
-
-   p_out.ProfileData = [p_out.ProfileY, p_out.ProfileZ, p_out.ProfileAngle, p_out.ProfileCurvature];
-   p_out.XYPoints = size(p_out.ProfileData,1);
-
-   % plot the modified profile if requested
-
-   if (make_plot)
-    figure(make_plot); clf; hold on;
-    plot(p_out.OrigData(:,1), p_out.OrigData(:,2), '-*');
-    plot(p_out.ProfileY, p_out.ProfileZ, '-o');
-    % axis([-70 70 -5 30]);
-    grid on;
-    xlabel('y_{prf} [mm]'); ylabel('z_{prf} [mm]');
-    set(gca,'ydir','reverse');
-    % legend('Original data','Modified data','location','NorthWest');
-   end
-
-  end % modify_profile
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -4349,7 +4425,7 @@ cntc : interface between SDT and CONTACT
    % read contents of file into memory
 
    f = cntc.read_file(fname, idebug);
-   f = find_all_headers(f, headers, idebug);
+   f = cntc.find_all_headers(f, headers, idebug);
 
    % read first/second lines for checking that it is a .out-file.
 
@@ -4393,7 +4469,7 @@ cntc : interface between SDT and CONTACT
 
     % skip lines until one of the headers is found
 
-    [ s, iline, ihdr ] = next_header(f, iline, idebug);
+    [ s, iline, ihdr ] = cntc.next_header(f, iline, idebug);
     if (ihdr<0), break; end
 
     % Process the consecutive section
@@ -5073,7 +5149,7 @@ cntc : interface between SDT and CONTACT
 
     % skip lines until one of the headers is found (case-sensitive)
 
-    [ s, iline, ihdr ] = find_header(f, iline, headers, 1, idebug);
+    [ s, iline, ihdr ] = cntc.find_header(f, iline, headers, 1, idebug);
     if (ihdr<0), break; end
 
     % Process the consecutive section
@@ -5321,9 +5397,1953 @@ cntc : interface between SDT and CONTACT
 
   end % find_header
 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% #show
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  %% #plot
+  
+  function [ ] = show_profiles(sol, opt)
+   %
+   % [ ] = show_profiles(sol, opt)
+   %
+   % create 3d surf plot of rail and/or wheel profiles
+   %   sol     - structure with CONTACT results as returned by loadcase
+   %   opt     - structure with options as defined by plot3d.
+   %
+
+   % set the x range for plotting
+   % #show_profiles
+
+   if (isempty(opt.xrange))
+    if (any(strcmp(opt.rw_surfc,{'prr','both'})))
+
+     xmax = max( abs(sol.meta.xcp_r) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
+     if (isfield(sol,'slcs')), xmax = 3 * xmax; end
+     if (isfield(sol,'slcw')), xmax = sol.meta.rnom_whl; end
+
+    else
+
+     xmax = max( abs(sol.meta.xcp_w) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
+    end
+
+    opt.xrange = [-xmax, xmax ];
+   end
+
+   % set target step-sizes for plotting
+
+   if (isempty(opt.xysteps))
+    xlen = opt.xrange(2) - opt.xrange(1);
+    ylen = 0;
+    if (any(strcmp(opt.rw_surfc,{'prr','both'})))
+     ylen = max(ylen, max(sol.prr.ProfileY) - min(sol.prr.ProfileY));
+    end
+    if (any(strcmp(opt.rw_surfc,{'prw','both'})))
+     ylen = max(ylen, max(sol.prw.ProfileY) - min(sol.prw.ProfileY));
+    end
+    opt.xysteps = max(xlen/4, ylen/15);
+   end
+   if (isscalar(opt.xysteps))
+    opt.xysteps = [1 1] * opt.xysteps;
+   end
+
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % if requested, show the rail profile
+
+   want_rail = 1;
+
+   if (any(strcmp(opt.rw_surfc,{'prr','both'})) & strcmp(opt.typplot,'rw_rear'))
+
+    % 2d rear view of y-z-plane
+
+    % form profile curve at x_cp
+
+    xval = sol.meta.xcp_r;
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
+     [], [], []);
+
+    plot(ycurv, zcurv, 'color',matlab_color(1));
+    set(gca,'ydir','reverse');
+    axis equal;
+    hold on
+
+   elseif (any(strcmp(opt.rw_surfc,{'prr','both'})) & strcmp(opt.typplot,'rw_side'))
+
+    % 2d side view of x-z-plane
+
+    % s-value with y(ip) closest to y_cp
+
+    [~,ip] = min( abs(sol.prr.ProfileY - sol.meta.ycp_r) );
+    sval = sol.prr.ProfileS(ip);
+
+    % form profile curve at given x, s
+
+    totlen = opt.xrange(2) - opt.xrange(1);
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [sval, sval], [], 1);
+
+    plot(xcurv, zcurv, 'color',matlab_color(1));
+    set(gca,'ydir','reverse');
+    axis equal;
+    hold on
+
+   elseif (any(strcmp(opt.rw_surfc,{'prr','both'})))
+
+    % 3d view of rail surface
+
+    % form profile surface at given x, all s - fine sampling
+
+    % disp('...full surface')
+    [ xsurf, ysurf, zsurf ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [], [], []);
+
+    % plot 90% transparent surface (alpha=0.1); color-value?
+
+    csurf = -1 * ones(size(xsurf));
+    l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
+    set(l,'tag','prr');
+
+    % set view appropriate for rails with z positive downwards
+
+    set(gca,'xdir','reverse', 'zdir','reverse');
+    axis equal;
+    hold on
+
+    % determine transverse curves along the surface at fixed steps in x
+
+    % disp('...transverse curves')
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1), ...
+     [], [], []);
+
+    % plot transverse curves along the surface
+
+    l = plot3(xcurv', ycurv', zcurv', 'color',[.5 .5 .5], 'linewidth',0.5);
+
+    [~,imin] = min(abs(xcurv(:,1)));
+    set(l(imin), 'color', [.3 .3 .3], 'linewidth',1);
+
+    % determine longitudinal curves along the surface at fixed steps in s
+
+    % disp('...longitudinal curves')
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [], [], opt.xysteps(2));
+
+    % plot curves along surface in longitudinal direction
+
+    clear l ip;
+    l = plot3(xcurv, ycurv, zcurv, 'color',[.5 .5 .5], 'linewidth',0.5);
+    imid = ceil(length(l)/2);
+    set(l(imid), 'color', [.3 .3 .3], 'linewidth',1);
+
+   end
+
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % if requested, show the wheel profile
+
+   want_rail = 0;
+
+   if (any(strcmp(opt.rw_surfc,{'prw','both'})) & strcmp(opt.typplot,'rw_rear'))
+
+    % 2d rear view of y-z-plane
+
+    if (sol.meta.npatch>1)
+     xval = 0;      % use principal profile; xcp_w can be much different between patches
+    else
+     xval = sol.meta.xcp_w;
+    end
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
+     [], [], []);
+
+    plot(ycurv, zcurv, 'color',matlab_color(3));
+    set(gca,'ydir','reverse');
+    axis equal;
+    hold on
+
+   elseif (any(strcmp(opt.rw_surfc,{'prw','both'})) & strcmp(opt.typplot,'rw_side'))
+
+    % 2d side view of x-z-plane
+
+    % s-value with y(ip) closest to y_cp
+
+    [~,ip] = min( abs(sol.prw.ProfileY - sol.meta.ycp_w) );
+    sval = sol.prw.ProfileS(ip);
+
+    % form wheel profile curve at given x, s
+
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [sval, sval], [], 1);
+
+    plot(xcurv, zcurv, 'color',matlab_color(3));
+    set(gca,'ydir','reverse');
+    axis equal;
+    hold on
+
+   elseif (any(strcmp(opt.rw_surfc,{'prw','both'})))
+
+    % 3d view of wheel surface
+
+    % form profile surface at given x, all s - fine sampling
+
+    [ xsurf, ysurf, zsurf ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [], [], []);
+
+    % plot 90% transparent surface (alpha=0.1); color-value?
+
+    csurf = -1 * ones(size(xsurf));
+    l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
+    set(l,'tag','prw');
+
+    % set view appropriate for rails with z positive downwards
+
+    set(gca,'xdir','reverse', 'zdir','reverse');
+    axis equal;
+    hold on
+
+    % determine transverse curves along the surface at fixed steps in x
+
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1), ...
+     [], [], []);
+
+    % plot transverse curves along the surface
+
+    l = plot3(xcurv', ycurv', zcurv', 'color',[.5 .5 .5], 'linewidth',0.5);
+
+    [~,imin] = min(abs(xcurv(:,1)));
+    set(l(imin), 'color', [.3 .3 .3], 'linewidth',1);
+
+    % determine curves along the surface at fixed steps in s
+
+    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+     [], [], opt.xysteps(2));
+
+    % plot curves along surface in longitudinal direction
+
+    clear l ip;
+    l = plot3(xcurv, ycurv, zcurv, 'color',[.5 .5 .5], 'linewidth',0.5);
+    imid = ceil(length(l)/2);
+    set(l(imid), 'color', [.3 .3 .3], 'linewidth',1);
+
+   end
+
+  end % show_profiles
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, xrange, dx_true, dx_appx,srange, ds_true, ds_appx, idebug)
+
+   % create 2D arrays (x,y,z) for a prismatic rail (prr), variable rail (slcs), roller (prr, nom_radius),
+   %    round wheel (prw, nom_radius), or out-of-round wheel (slcw)
+   %  - the profile will be plotted for xrange = [xmin, xmax] in track coordinates
+   %  - fixed steps of size dx_true may be requested, or n-time fitting steps of approximately dx_appx
+   %  - the whole profile will be used if srange = [smin, smax] is left empty
+   %  - the profile will be sampled at sj-values in the profile close to uniform sj = [smin: ds: smax]
+   %  - all profile points will be used if both ds_true and ds_appx are left empty
+   %  - for variable profiles, x-positions and arc-lengths s are replaced by the (u,v)-parametrization
+   % #make_3d_surface -2
+
+   if (nargin< 5), dx_true = []; end
+   if (nargin< 6), dx_appx = []; end
+   if (nargin< 7), srange  = []; end
+   if (nargin< 8), ds_true = []; end
+   if (nargin< 9), ds_appx = []; end
+   if (nargin<10 | isempty(idebug)), idebug  =  0; end
+
+   if (want_rail)
+    prf = sol.prr;
+    nom_radius = sol.meta.rnom_rol;
+   else
+    prf = sol.prw;
+    nom_radius = sol.meta.rnom_whl;
+   end
+   has_slcs   = ( want_rail & isfield(sol,'slcs'));
+   has_slcw   = (~want_rail & isfield(sol,'slcw'));
+
+   % determine longitudinal positions xi (track coords) for evaluation of surface
+
+   if (~isempty(dx_true))
+
+    % if 'final' dx_true is prescribed,
+    %    set xi = { i * dx_true } for appropriate i
+
+    i0 = ceil( xrange(1) / dx_true );
+    i1 = floor( xrange(2) / dx_true );
+    xi = [i0 : i1] * dx_true;
+
+   elseif (~isempty(dx_appx))
+
+    % if 'target' dx_appx is given,
+    %    divide [xmin,xmax] in odd #intervals of size dx_true close to dx_appx
+
+    nintv   = floor( (xrange(2) - xrange(1)) / dx_appx );
+    if (mod(nintv,2)==1)  % prefer odd #lines for symmetric [-xmax, xmax]
+     nintv = nintv + 1;
+    end
+    dx = (xrange(2) - xrange(1)) / max(1,nintv);
+    xi = xrange(1) + [0:nintv] * dx;
+
+   else
+
+    disp('Error: either dx_true or dx_appx must be given');
+    return
+
+   end
+
+   % determine lateral positions sj for evaluation of surface
+
+   if (has_slcs)
+    profile_s = sol.slcs.vj;
+   elseif (has_slcw)
+    profile_s = sol.slcw.vj;
+   else
+    profile_s = prf.ProfileS;
+   end
+
+   if (isempty(srange))
+    srange = [ profile_s(1), profile_s(end) ];
+   end
+
+   if (~isempty(ds_true))
+
+    % if 'final' ds_true is prescribed,
+    %    set si = { j * ds_true } for appropriate j
+
+    j0 = ceil( (srange(1)-profile_s(1)) / ds_true );
+    j1 = floor( (srange(2)-profile_s(1)) / ds_true );
+    sj = [j0 : j1] * ds_true;
+
+   elseif (~isempty(ds_appx))
+
+    % if 'target' ds_appx is given,
+    %    divide [smin,smax] in odd #intervals of size ds_true close to ds_appx
+
+    if (has_slcs)
+     len = 1.3 * max(max(sol.slcs.ysurf)) - min(min(sol.slcs.ysurf));
+     nintv = floor ( len / ds_appx );
+    elseif (has_slcw)
+     len = 1.3 * max(max(sol.slcw.ysurf)) - min(min(sol.slcw.ysurf));
+     nintv = floor ( len / ds_appx );
+    else
+     nintv = floor( (srange(2) - srange(1)) / ds_appx );
+    end
+    if (mod(nintv,2)==1)
+     nintv = nintv + 1;  % prefer odd #lines for symmetric [-smax, smax]
+    end
+    ds = (srange(2) - srange(1)) / max(1,nintv);
+    sj = srange(1) + [0:nintv] * ds;
+
+   else
+
+    % if neither is given, use all profile points in range srange
+
+    j  = find( profile_s>=srange(1) & profile_s<=srange(2) );
+    sj = profile_s(j);
+
+   end
+
+   % determine indices js closest to each sj
+
+   js = zeros(size(sj));
+   for j = 1 : length(sj)
+    [~,js(j)] = min(abs(profile_s - sj(j)));
+   end
+
+   % form profile surface at given xi and js
+
+   nx    = length(xi);
+   ns    = length(js);
+
+   if (want_rail & ~has_slcs & abs(nom_radius)<1e-3)
+
+    % prismatic rail
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    zsurf = ones(nx,1) * prf.ProfileZ(js)';
+
+   elseif (want_rail & cntc.myisfield(sol, 'slcs.spl2d'))
+
+    % variable rail profile, using 2D spline algorithm
+
+    % form profile surface at given ui (==x_fc) and vj
+
+    sf_min = min(sol.slcs.spl2d.ui);
+    sf_max = max(sol.slcs.spl2d.ui);
+    ui     = max(sf_min, min(sf_max, sol.meta.s_ws + xi));
+    vj     = sj;
+
+    [ ~, xsurf, ysurf, zsurf ] = cntc.eval_2dspline( sol.slcs.spl2d, ui, vj );
+
+   elseif (want_rail & has_slcs)
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = []; zsurf = [];
+    for ix = 1 : nx
+     x_cur = sol.meta.s_ws + xi(ix);
+     tmp_prr = cntc.get_profile_slice(sol.slcs, x_cur);
+     ysurf = [ysurf; tmp_prr.ProfileY(js)'];
+     zsurf = [zsurf; tmp_prr.ProfileZ(js)'];
+    end
+
+   elseif (want_rail)
+
+    % roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    r_y   = nom_radius - prf.ProfileZ(js)';
+    zsurf = nom_radius - sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
+
+   elseif (~want_rail & ~has_slcw)
+
+    % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    r_y   =  nom_radius + prf.ProfileZ(js)';
+    zsurf = -nom_radius + sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
+
+   elseif (~want_rail & cntc.myisfield(sol, 'slcw.spl2d'))
+
+    % variable wheel profile, using 2D spline algorithm
+
+    % form profile surface at given ui (==th_w) and vj
+
+    th_min = min(sol.slcw.spl2d.ui);
+    th_max = max(sol.slcw.spl2d.ui);
+    th_w   = -sol.meta.th_ws + mean(xi)/sol.meta.rnom_whl;
+    ui     = max(th_min, min(th_max, -sol.meta.th_ws + xi/sol.meta.rnom_whl));
+    vj     = sj;
+
+    [ ~, thsurf, ysurf, drsurf ] = cntc.eval_2dspline( sol.slcw.spl2d, ui, vj );
+    [xsurf, ysurf, zsurf] = cntc.wcyl_to_wprof_coords(sol, thsurf, ysurf, drsurf);
+
+   else
+
+    disp('make_3d_surface: ERROR: case not supported.')
+    disp([want_rail, has_slcs, has_slcw, cntc.myisfield(sol,'slcw.spl2d'), exist('eval_2dspline')])
+    return;
+
+   end
+
+   % profiles are given for right-side w/r combination
+   % mirror y for left-side w/r combination
+
+   if (cntc.is_left_side(sol))
+    ysurf = -ysurf;
+   end
+
+   % transform to track coordinates if needed
+
+   if (want_rail & strcmp(opt.rw_surfc,'both'))
+
+    [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
+
+   elseif (strcmp(opt.rw_surfc,'both'))
+
+    [xsurf, ysurf, zsurf] = cntc.wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
+
+   end
+
+  end % make_3d_surface
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = show_scalar_field(sol, field, opt)
+   %
+   % [ ] = show_scalar_field(sol, field, opt)
+   %
+   % generic routine for plotting a grid with cell-centered values
+   %   sol     - structure with CONTACT results as returned by loadcase
+   %   field   - the actual array to be plotted, or a field name within sol
+   %   opt     - structure with options as defined by plot3d.
+   %
+
+   % delegate work to separate functions depending on type of plot
+   % #show_scalar_field
+
+   if (strcmp(opt.typplot, 'rw_rear'))
+    cntc.show_rw_rear_view(sol, field, opt);
+    if (isfield(sol, 'subs'))
+     cntc.show_subs_field(sol, opt);
+    end
+   elseif (strcmp(opt.typplot, 'rw_side'))
+    cntc.show_rw_side_view(sol, field, opt);
+   else
+    cntc.show_3d_field(sol, field, opt);
+   end
+
+  end % show_scalar_field
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = show_subs_field(sol, opt)
+   %
+   % [ ] = show_subs_field(sol, field, opt)
+   %
+   % add plot of subsurface stresses to rw_rear plot
+   % #show_subs_field
+
+   if (0==1)
+    % use slice closest to xc=0
+    [~,ix] = min(abs(sol.subs.x));
+    fld = squeeze( sol.subs.sigvm(ix,:,:) );
+   else
+    fld = squeeze( max(abs(sol.subs.sigvm), [], 1) );
+   end
+
+   % plot the potential contact area
+
+   [YC, ZC] = meshgrid(sol.subs.y, sol.subs.z);
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ ~, ypln, zpln ] = cntc.to_rail_coords(sol, [], YC, ZC);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ ~, ypln, zpln ] = cntc.to_wheel_coords(sol, [], YC, ZC);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ ~, ypln, zpln ] = cntc.to_track_coords(sol, [], YC, ZC);
+   end
+
+   [C, h] = contourf( ypln, zpln, fld' );
+   set(h, 'linewidth', 0.01);
+
+  end % show_subs_field
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = show_3d_field(sol, field, opt)
+
+   % determine version information on the Matlab graphics system
+   % #show_3d_field
+
+   old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
+   new_graphics = ~old_graphics;
+
+   % get field to be plotted
+
+   if (ischar(field))
+    eval(['tmp = sol.',field,';']);
+   else
+    tmp = field;
+   end
+
+   % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
+
+   [ix_plot, iy_plot] = cntc.plot_ranges(sol, opt);
+
+   % select the range to be plotted
+
+   tmp    = tmp(iy_plot,ix_plot);
+   eldiv  = sol.eldiv(iy_plot,ix_plot);
+   xcornr = sol.xl + [ix_plot(1)-1, ix_plot]*sol.dx;
+   ycornr = sol.yl + [iy_plot(1)-1, iy_plot]*sol.dy;
+   if (~isempty(sol.x_offset)), xcornr = xcornr + sol.x_offset; end
+   if (~isempty(sol.y_offset)), ycornr = ycornr + sol.y_offset; end
+   xcornr = opt.xstretch * xcornr;
+
+   % fill exterior area with default values
+
+   if (~isempty(opt.exterval))
+    ii = find(eldiv==0);
+    tmp(ii) = opt.exterval;
+   end
+
+   if (isempty(opt.exterval) | ~isnan(opt.exterval))
+
+    % expand one row/column for shading flat for cell-centered values
+
+    tmp = [tmp, tmp(:,end)];
+    tmp = [tmp; tmp(end,:)];
+
+   elseif (exist('repelem','builtin'))
+
+    % with flat shading, Matlab doesn't show faces where one of the corners
+    % has value NaN --> duplicate values, shift-duplicate corner coordinates
+
+    tmp = repelem(tmp,2,2);
+    xcornr = [xcornr(1), repelem(xcornr(2:end-1),2), xcornr(end)];
+    ycornr = [ycornr(1), repelem(ycornr(2:end-1),2), ycornr(end)];
+
+   else
+
+    % fall-back for Matlab versions < R2015a
+
+    % expand one row/column for shading flat for cell-centered values
+
+    tmp = [tmp, tmp(:,end)];
+    tmp = [tmp; tmp(end,:)];
+
+    %  perform dilatation:
+    %  at exterior elements that lie to the right or above of interior
+    %  elements, the tmp-value must be non-NaN
+
+    sz=size(tmp);
+    % rows 1:end-1 ==> rows 2:end
+    [i,j]=find(eldiv(1:end-1,:)~=0 & eldiv(2:end,:)==0);
+    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
+
+    % row end ==> row end+1
+    [i,j]=find(eldiv(end,:)~=0); i = i + size(eldiv,1) - 1;
+    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
+    ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
+    % columns 1:end-1 ==> columns 2:end
+    [i,j]=find(eldiv(:,1:end-1)~=0 & eldiv(:,2:end)==0);
+    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i  ,j+1); tmp(ii1)=tmp(ii0);
+
+    % column end ==> column end+1
+    [i,j]=find(eldiv(:,end)~=0); j = j + size(eldiv,2) - 1;
+    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
+    ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
+
+    % diagonally iend,jend -> iend+1,jend+1
+    [i,j]=find(eldiv(1:end-1,1:end-1)~=0 & eldiv(2:end,2:end)==0);
+    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
+   end
+
+   % mark lower-left corner
+
+   if (~strcmp(field,'ptarg'))
+    minval   = min(min(tmp));
+    tmp(1,1) = -0.2*max(max(abs(tmp)));
+   end
+
+   % expand x,y-coordinates to 2d arrays
+
+   nx = length(xcornr);
+   ny = length(ycornr);
+   xcornr = ones(ny,1) * xcornr;
+   ycornr = ycornr' * ones(1,nx);
+
+   % set z-coordinates for plotting
+   %% #XXXgae Position -2
+   if (strcmp(opt.rw_surfc,'none'))
+    zcornr = tmp;
+   elseif (strcmp(opt.rw_surfc,'prr'))
+    [ xcornr, ycornr, zcornr ] =cntc.to_rail_coords(sol, xcornr, ycornr);
+    ii = find(isnan(tmp)); zcornr(ii) = NaN;
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ xcornr, ycornr, zcornr ] =cntc.to_wheel_coords(sol, xcornr, ycornr);
+    ii = find(isnan(tmp)); zcornr(ii) = NaN;
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ xcornr, ycornr, zcornr ] =cntc.to_track_coords(sol, xcornr, ycornr);
+    ii = find(isnan(tmp)); zcornr(ii) = NaN;
+   end
+
+   % make plot, adjust colormap, z-range
+
+   if (strcmp(opt.colormap,'none') | strcmp(opt.colormap,'black'))
+    mesh( xcornr, ycornr, zcornr, tmp );
+    view(opt.view);
+    colormap([0 0 0]);
+   else
+    if (strcmp(opt.typplot,'contourf'))
+     contourf( xcornr, ycornr, tmp, 'ShowText','on' );
+    else
+     % surf( xcornr, ycornr, tmp );
+     surf( xcornr, ycornr, zcornr, tmp );
+    end
+    view(opt.view);
+    if (strcmp(opt.rw_surfc,'none'))
+     shading faceted;
+    else
+     shading flat;
+    end
+    colormap(opt.colormap);
+    if (~isempty(opt.zrange))
+     % use prescribed clim
+     set(gca,'clim',opt.zrange);
+    else
+     % avoid spoiling of clim by special value at point (1,1):
+     cl=get(gca,'clim');
+     if (minval<cl(2))      % ensure that clim is increasing
+      cl(1)=max(minval,cl(1));
+      set(gca,'clim',cl);
+     end
+    end
+   end
+
+   % adjust axis
+
+   nw_ax = [ min(min(xcornr)), max(max(xcornr)), min(min(ycornr)), max(max(ycornr)) ];
+   if (opt.addplot==1)  % allow growing of plot region only
+    pv_ax = axis;
+    nw_ax = [ min(pv_ax(1),nw_ax(1)), max(pv_ax(2),nw_ax(2)) ...
+     min(pv_ax(3),nw_ax(3)), max(pv_ax(4),nw_ax(4)) ];
+   end
+
+   if (strcmp(opt.rw_surfc,'none'))
+    axis( nw_ax );
+   end
+
+   % optionally override automatic ticks, set ticks at cell-centers
+
+   if (0==1)
+    ixstep = max(1, round( (ix_plot(end)-ix_plot(1)+1) / 5 ));
+    iystep = max(1, round( (iy_plot(end)-iy_plot(1)+1) / 5 ));
+    x_tick = sol.xl + (0.5+[ix_plot(1):ixstep:ix_plot(end)])*sol.dx;
+    y_tick = sol.yl + (0.5+[iy_plot(1):iystep:iy_plot(end)])*sol.dy;
+    set(gca,'xtick', x_tick * opt.xstretch, ...
+     'xticklabel', num2str(x_tick', '%5.3f'));
+    set(gca,'ytick', y_tick, 'yticklabel', num2str(y_tick', '%5.3f'));
+   elseif (opt.xstretch~=1)
+    %     set tick-labels to unstretched values
+    xt = get(gca,'xtick');
+    xv = xt / opt.xstretch;
+    %     #digits before decimal point, negative: zeros after decimal point -3
+    lg = ceil(log10(max(abs(xv))));
+    if (lg>=2)
+     fmt = '%2.0f';
+    elseif (lg==1 | lg==0)
+     fmt = '%3.1f';
+    elseif (lg==-1)
+     fmt = '%4.2f';
+    else
+     fmt = '%5.3f';
+    end
+    set(gca, 'xtick', xt', 'xticklabel', num2str(xv', fmt));
+   end
+
+   % set grid, labels
+
+   grid on
+   cntc.set_xyzlabels(sol, opt);
+
+   % draw colorbar, set label, if not done so before
+   % note: no colorbar on mesh plot
+
+   if (opt.addplot<=0 & ...
+     ~(strcmp(opt.colormap,'none') | strcmp(opt.colormap,'black')))
+
+    h = colorbar;
+    if (strcmp(opt.field,'pn'))
+     ylabel(h, 'Pressure [N/mm^2]');
+    elseif (strcmp(opt.field,'ptabs') | ...
+      strcmp(opt.field,'ptabs+vec') | ...
+      strcmp(opt.field,'px') | ...
+      strcmp(opt.field,'py'))
+     ylabel(h, 'Traction [N/mm^2]');
+    elseif (strcmp(opt.field,'un') | strcmp(opt.field,'ux') | ...
+      strcmp(opt.field,'uy') | strcmp(opt.field,'h'))
+     ylabel(h, 'Displacement [mm]');
+    elseif (strcmp(opt.field,'ptarg'))
+     ylabel(h, 'Direction [deg]');
+    elseif (strcmp(opt.field,'shft') | (sol.kincns.t_digit<=1 & ...
+      (strcmp(opt.field,'sx')  | strcmp(opt.field,'sy'))))
+     ylabel(h, 'Shift distance [mm]');
+    elseif (strcmp(opt.field,'uplsx') | strcmp(opt.field,'uplsy') | strcmp(opt.field,'upls+vec'))
+     ylabel(h, 'Plastic deformation [mm]');
+    elseif (strcmp(opt.field,'taucrt'))
+     ylabel(h, 'Tangential yield stress [N/mm^2]');
+    elseif (strcmp(opt.field,'srel') | ...
+      (sol.kincns.t_digit>=2 & (strcmp(opt.field,'sx')  | strcmp(opt.field,'sy'))) )
+     ylabel(h, 'Relative slip velocity [-]');
+    elseif (strcmp(opt.field,'sabs'))
+     ylabel(h, 'Absolute slip velocity [mm/s]');
+    elseif (strcmp(opt.field,'fricdens'))
+     ylabel(h, 'Frictional power density [W/mm^2]');
+    elseif (strcmp(opt.field,'temp1') | strcmp(opt.field,'temp2'))
+     ylabel(h, 'Temperature (increase) [{}^\circ{}C]');
+     % provisional support for user-added fields:
+    elseif (strcmp(opt.field,'wx') | strcmp(opt.field,'wy'))
+     ylabel(h, 'Rigid slip velocity [-]');
+    elseif (strcmp(opt.field,'kyield'))
+     ylabel(h, 'Yield strength K [N/mm^2]');
+    elseif (strcmp(opt.field,'rcf'))
+     ylabel(h, 'RCF index [-]');
+    end
+   end
+
+  end % show_3d_field
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = show_vec_field(sol, vx, vy, opt)
+   %
+   % [ ] = show_vec_field(sol, vx, vy, opt)
+   %
+   % generic routine for a quiver plot for cell-centered values
+   %   sol     - structure with CONTACT results as returned by loadcase
+   %   vx, vy  - the vector data to be plotted
+   %   opt     - structure with options as defined by plot3d.
+   %
+   % #show_vec_field
+
+   if (any(strcmp(opt.typplot,{'rw_rear','rw_side'})))
+    return
+   end
+
+   % determine whether there are just vectors in the plot or magnitudes as well
+
+   has_mgn = ~isempty(strfind(opt.field,'+vec'));
+
+   % add to existing plot if magnitudes are already there
+
+   if (has_mgn)
+    hold on;
+   end
+
+   % set the vector color and line width, using defaults depending on
+   % field to be plotted
+
+   if (has_mgn)
+    col='k';
+    wid=2;
+   else
+    col='b';
+    wid=1;
+   end
+   if (~isempty(opt.veccolor))
+    col=opt.veccolor;
+   end
+   if (~isempty(opt.vecwidth))
+    wid=opt.vecwidth;
+   end
+
+   % draw vectors in maximally about numvecx x numvecy points
+
+   [ix_plot, iy_plot] = cntc.plot_ranges(sol, opt);
+   ixstep = max(1, round( (ix_plot(end)-ix_plot(1)+1) / opt.numvecx ));
+   iystep = max(1, round( (iy_plot(end)-iy_plot(1)+1) / opt.numvecy ));
+   ix_vec = [ix_plot(1) : ixstep : ix_plot(end)];
+   iy_vec = [iy_plot(1) : iystep : iy_plot(end)];
+   x  = ones(size(iy_vec'))*sol.x(ix_vec);
+   y  = sol.y(iy_vec)'*ones(size(ix_vec));
+   if (~isempty(sol.x_offset)), x = x + sol.x_offset; end
+   if (~isempty(sol.y_offset)), y = y + sol.y_offset; end
+   x = x * opt.xstretch;
+
+   % select components for actual vectors
+
+   vx = vx(iy_vec,ix_vec);
+   vy = vy(iy_vec,ix_vec);
+
+   % eliminate vectors for points outside the contact area
+
+   ix = find(sol.eldiv(iy_vec,ix_vec)==0); x(ix)=NaN;
+
+   % set z-coordinates for plotting
+
+   if (strcmp(opt.rw_surfc,'none'))
+    zval = 1e6 * sign(opt.view(2)); z = zval * ones(size(x));
+    vz = zeros(size(vx));
+   elseif (strcmp(opt.rw_surfc,'prr'))
+    [ x, y, z, deltar ] =cntc.to_rail_coords(sol, x, y);
+    vz = sin(deltar) * vy;
+    vy = cos(deltar) * vy;
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ x, y, z, deltaw ] =cntc.to_wheel_coords(sol, x, y);
+    vz = sin(deltaw) * vy;
+    vy = cos(deltaw) * vy;
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ x, y, z, deltar ] =cntc.to_track_coords(sol, x, y);
+    vz = sin(deltar) * vy;
+    vy = cos(deltar) * vy;
+   end
+
+   % draw the actual vectors using quiver
+
+   if (isempty(opt.vecscale) | opt.vecscale<=0)
+    h = quiver3(x, y, z, vx, vy, vz, col);
+   else
+    % manual scaling of vectors, needed for addplot option:
+    scl = opt.vecscale;
+    h = quiver3(x, y, z, scl*vx, scl*vy, scl*vz, 0, col);
+   end
+   set(h,'linewidth',wid);
+
+   % set huge z-data (+ or -) for the vectors when there are magnitudes as well
+
+   % if (has_mgn)
+   %    set(h,'zdata',sign(opt.view(2))*1e5*ones(size(get(h,'vdata'))));
+   %    set(h,'wdata',    zeros(size(get(h,'vdata'))));
+   % end
+
+   % change axis range in 3D plots
+
+   if (~cntc.is_2d_view(gca, opt.view) & strcmp(opt.rw_surfc,'none'))
+    v=axis; axis([v -1e-6 1e-6]); axis equal;
+    set(gca,'ztick',[]);
+   end
+   view(opt.view);
+
+   % set labels
+
+   cntc.set_xyzlabels(sol, opt);
+
+  end % show_vec_field
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = show_eldiv_contour(sol, opt)
+   %
+   % [ ] = show_eldiv_contour(sol, opt)
+   %
+   % routine for plotting outlines of contact area if opt.addeldiv>=1, adhesion/plasticity area (>=2)
+   %   sol     - structure with CONTACT results as returned by loadcase
+   %   opt     - structure with options as defined by plot3d.
+   %
+   % #show_eldiv_contour
+
+   if (opt.addeldiv<=0)
+    return;
+   end
+   if (sol.mx<=1 | sol.my<=1)
+    if (0==1)
+     disp('WARNING: option "eldiv_contour" is not available for 2D grids');
+    end
+    return
+   end
+
+   % set the line width, using default depending on field to be plotted
+   if (~isempty(opt.eldivwid))
+    wid = opt.eldivwid;
+   elseif (strcmp(opt.field,'eldiv_contour'))
+    wid = 1;
+   else
+    wid = 2;
+   end
+
+   [ix_plot, iy_plot] = cntc.plot_ranges(sol, opt);
+   xcentr = sol.x(ix_plot); ycentr = sol.y(iy_plot);
+   if (~isempty(sol.x_offset)), xcentr = xcentr + sol.x_offset; end
+   if (~isempty(sol.y_offset)), ycentr = ycentr + sol.y_offset; end
+   xcentr = xcentr * opt.xstretch;
+
+   eldiv = cntc.derived_data(sol, opt, 'eldiv');
+   eldiv = mod(eldiv,10); % diffcase: difference is stored in tens-digit
+   eldiv = eldiv(iy_plot,ix_plot);
+
+   % expand selection 'eldiv' and x/ycentr when there are elements in
+   % contact in first/last rows/columns
+   if (any(eldiv(1,:)))
+    eldiv = [zeros(1,size(eldiv,2)) ; eldiv];
+    ycentr = [ ycentr(1)-sol.dy, ycentr ];
+   end
+   if (any(eldiv(end,:)))
+    eldiv = [eldiv ; zeros(1,size(eldiv,2))];
+    ycentr = [ ycentr, ycentr(end)+sol.dy ];
+   end
+   if (any(eldiv(:,1)))
+    eldiv = [zeros(size(eldiv,1),1) , eldiv];
+    xcentr = [ xcentr(1)-sol.dx, xcentr ];
+   end
+   if (any(eldiv(:,end)))
+    eldiv = [eldiv , zeros(size(eldiv,1),1)];
+    xcentr = [ xcentr, xcentr(end)+sol.dx ];
+   end
+
+   zval = 1e5;
+   l1 = []; l2 = []; l3 = [];
+
+   % plot double line around adhesion area
+   if (opt.addeldiv>=2)
+    mask = 1.0*(eldiv==1);
+    col  = opt.eldivcol(1,:);
+    if (nnz(mask)>0 & ~strcmp(opt.field,'pn'))
+     ContourLvl = [0.45, 0.55]';
+     c = contourc(xcentr, ycentr, mask, ContourLvl);
+     nx = size(c,2); ix = 1;
+     while(ix < nx);
+      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
+     end
+
+     % set xyz-coordinates for plotting
+
+     if (strcmp(opt.rw_surfc,'none'))
+      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
+     elseif (strcmp(opt.rw_surfc,'prr'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'prw'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'both'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
+     end
+
+     l1 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Adhes');
+    end
+   end
+
+   % plot double line around plasticity area
+   if (opt.addeldiv>=2)
+    mask = 1.0*(eldiv==3);
+    col  = opt.eldivcol(3,:);
+    if (nnz(mask)>0 & ~strcmp(opt.field,'pn'))
+     ContourLvl = [0.45, 0.55]';
+     c = contourc(xcentr, ycentr, mask, ContourLvl);
+     nx = size(c,2); ix = 1;
+     while(ix < nx);
+      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
+     end
+
+     % set xyz-coordinates for plotting
+
+     if (strcmp(opt.rw_surfc,'none'))
+      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
+     elseif (strcmp(opt.rw_surfc,'prr'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'prw'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'both'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
+     end
+
+     l3 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Plast');
+    end
+   end
+
+   % plot single line around contact area
+   if (opt.addeldiv>=1)
+    mask = 1.0*(eldiv>=1);
+    col = opt.eldivcol(2,:);
+    if (nnz(mask)>0)
+     ContourLvl = [0.5, 9.99]';
+     c = contourc(xcentr, ycentr, mask, ContourLvl);
+     nx = size(c,2); ix = 1;
+     while(ix < nx);
+      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
+     end
+
+     % set xyz-coordinates for plotting
+
+     if (strcmp(opt.rw_surfc,'none'))
+      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
+     elseif (strcmp(opt.rw_surfc,'prr'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'prw'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
+     elseif (strcmp(opt.rw_surfc,'both'))
+      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
+     end
+
+     l2 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Contact');
+    end
+   end
+
+   % adapt axis in order to fit the plotted range of the contact area
+   if (strcmp(opt.rw_surfc,'none'))
+    xcornr = sol.xl + [ ix_plot(1)-1, ix_plot ]*sol.dx;
+    ycornr = sol.yl + [ iy_plot(1)-1, iy_plot ]*sol.dy;
+    if (~isempty(sol.x_offset)), xcornr = xcornr + sol.x_offset; end
+    if (~isempty(sol.y_offset)), ycornr = ycornr + sol.y_offset; end
+    nw_ax = [ min(xcornr), max(xcornr), min(ycornr), max(ycornr) ];
+    if (opt.addplot==1)  % allow growing of plot region only
+     pv_ax = axis;
+     nw_ax = [ min(pv_ax(1),nw_ax(1)), max(pv_ax(2),nw_ax(2)) ...
+      min(pv_ax(3),nw_ax(3)), max(pv_ax(4),nw_ax(4)) ];
+    end
+    axis( nw_ax );
+
+    % in 3D plots, concentrate on plane Oxy using tiny z-range
+    %    except when the eldiv is added to another 3D plot
+    if (~cntc.is_2d_view(gca, opt.view) & strcmp(opt.field,'eldiv_contour'))
+     v=axis; axis([v -1e-6 1e-6]); axis equal;
+     set(gca,'ztick',[]);
+    end
+   end
+
+   % set view and labels
+   view(opt.view);
+   cntc.set_xyzlabels(sol, opt);
+
+  end % show_eldiv_contour
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function show_rw_rear_view(sol, field, opt)
+
+   % show_rw_rear_view: plot w/r profiles, contact plane & contact results
+
+   % plot the potential contact area
+   % #show_rw_rear_view
+
+   yc = sol.y; zc = zeros(1,sol.my);
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ ~, ypln, zpln ] =cntc.to_rail_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ ~, ypln, zpln ] =cntc.to_wheel_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ ~, ypln, zpln ] =cntc.to_track_coords(sol, [], yc, zc);
+   end
+
+   plot(ypln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
+
+   % get field to be plotted, replace values in exterior elements
+   if (ischar(field))
+    eval(['val = sol.',field,';']);
+   else
+    val = field;
+   end
+   if (~isempty(opt.exterval))
+    eldiv = cntc.derived_data(sol, opt, 'eldiv');
+    adjac = eldiv;
+    adjac(1:end-1,:) = max(adjac(1:end-1,:), eldiv(2:end  ,:));
+    adjac(2:end  ,:) = max(adjac(2:end  ,:), eldiv(1:end-1,:));
+    adjac(:,1:end-1) = max(adjac(:,1:end-1), eldiv(:,2:end  ));
+    adjac(:,2:end  ) = max(adjac(:,2:end  ), eldiv(:,1:end-1));
+    ii = find(adjac==0);
+    val(ii) = opt.exterval;
+   end
+
+   % convert field to 2d view, aggregating values over columns
+   % TODO: provide max, absmax, maxabs, sum
+   val   = max(val, [], 2)';
+   scale = cntc.get_vecscale( sol, opt, val );
+
+   yc = sol.y; zc = -scale*val;
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ ~, yval, zval ] =cntc.to_rail_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ ~, yval, zval ] =cntc.to_wheel_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ ~, yval, zval ] =cntc.to_track_coords(sol, [], yc, zc);
+   end
+
+   col = matlab_color(6);
+   if (~isempty(opt.veccolor))
+    col = opt.veccolor;
+   end
+   plot( yval, zval, 'linewidth',1, 'color',col );
+   plot( [ypln; yval], [zpln; zval], 'linewidth',1, 'color',col );
+
+   % plot contact reference point, origin of contact local coordinate system
+
+   axlen = 0.1 * (sol.y(end) - sol.y(1));
+   yc = sol.meta.spinyo+[0,0,1]*axlen; zc = [1,0,0]*axlen;
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ ~, yval, zval, delta ] =cntc.to_rail_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ ~, yval, zval, delta ] =cntc.to_wheel_coords(sol, [], yc, zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ ~, yval, zval, delta ] =cntc.to_track_coords(sol, [], yc, zc);
+   end
+
+   if (exist('plot_cm','file'))
+    l  = cntc.plot_cm([yval(2),zval(2)], 0.3, axlen, delta*180/pi, 'k');
+    set(l, 'Tag','CM');
+   else
+    l1 = plot(yval, zval, 'k');
+    l2 = plot(yval(2), zval(2), 'k.', 'markersize',18);
+    set([l1,l2], 'Tag','CM');
+   end
+
+   cntc.set_yzlabels(sol, opt);
+   grid on;
+
+  end % show_rw_rear_view
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function show_rw_side_view(sol, field, opt)
+
+   % show_rw_side_view: plot w/r profiles, contact plane & contact results
+
+   % plot the potential contact area
+   % #show_rw_side_view
+
+   xc = sol.x; zc = zeros(1,sol.mx);
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ xpln, ~, zpln ] =cntc.to_rail_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ xpln, ~, zpln ] =cntc.to_wheel_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ xpln, ~, zpln ] =cntc.to_track_coords(sol, xc, [], zc);
+   end
+
+   plot(xpln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
+
+   % get field to be plotted, replace values in exterior elements
+   if (ischar(field))
+    eval(['val = sol.',field,';']);
+   else
+    val = field;
+   end
+   if (~isempty(opt.exterval))
+    eldiv = cntc.derived_data(sol, opt, 'eldiv');
+    adjac = eldiv;
+    adjac(1:end-1,:) = max(adjac(1:end-1,:), eldiv(2:end  ,:));
+    adjac(2:end  ,:) = max(adjac(2:end  ,:), eldiv(1:end-1,:));
+    adjac(:,1:end-1) = max(adjac(:,1:end-1), eldiv(:,2:end  ));
+    adjac(:,2:end  ) = max(adjac(:,2:end  ), eldiv(:,1:end-1));
+    ii = find(adjac==0);
+    val(ii) = opt.exterval;
+   end
+
+   % convert field to 2d view, aggregating values over rows
+   % TODO: provide max, absmax, maxabs, sum
+
+   val   = max(val, [], 1);
+   scale = cntc.get_vecscale( sol, opt, val );
+
+   xc = sol.x; zc = -scale*val;
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ xval, ~, zval ] =cntc.to_rail_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ xval, ~, zval ] =cntc.to_wheel_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
+   end
+
+   col = matlab_color(6);
+   if (~isempty(opt.veccolor))
+    col = opt.veccolor;
+   end
+
+   plot( xval, zval, 'linewidth',1, 'color',col );
+   plot( [xpln; xval], [zpln; zval], 'linewidth',1, 'color',col );
+
+   % plot contact reference point, origin of contact local coordinate system
+
+   v = axis;
+   axlen = 0.03 * (v(2) - v(1));
+   xc = sol.meta.spinxo+[0,0,1]*axlen; zc = [1,0,0]*axlen;
+   if (strcmp(opt.rw_surfc,'prr'))
+    [ xval, ~, zval ] =cntc.to_rail_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    [ xval, ~, zval ] =cntc.to_wheel_coords(sol, xc, [], zc);
+   elseif (strcmp(opt.rw_surfc,'both'))
+    [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
+   end
+
+   if (exist('plot_cm','file'))
+    roty = 0; % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
+    if (isfield(sol.meta, 'roty')), roty = sol.meta.roty*180/pi; end
+    l = cntc.plot_cm([xval(2),zval(2)], 0.15*axlen, axlen, -roty, 'k');
+    set(l, 'Tag','CM');
+   else
+    l1 = plot(xval, zval, 'k');
+    l2 = plot(xval(2), zval(2), 'k.', 'markersize',18);
+    set([l1,l2], 'Tag','CM');
+   end
+
+   cntc.set_xyzlabels(sol, opt);
+   grid on;
+
+  end % show_rw_side_view
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ is2d ] = is_2d_view(ax, view);
+
+   % return 1 if the current plot uses 2D view and 0 in case of a 3D view
+   % 2D view: myopt.view = [ *, +/-90 ];  axis returns vector of 4 elements.
+   % #is_2d_view -2
+
+   is2d = (abs(90 - abs(view(2))) <= 1e-3);
+
+  end % is_2d_view
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = set_yzlabels(sol, opt)
+   % #set_yzlabels -2
+
+   if (strcmp(opt.rw_surfc,'prr'))
+    xlabel ('y_r [mm]');
+    ylabel ('z_r [mm]');
+   elseif (strcmp(opt.rw_surfc,'prw'))
+    xlabel ('y_w [mm]');
+    ylabel ('z_w [mm]');
+   elseif (strcmp(opt.rw_surfc,'both'))
+    xlabel ('y_{tr} [mm]');
+    ylabel ('z_{tr} [mm]');
+   end
+
+  end % set_yzlabels
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = set_xyzlabels(sol, opt)
+   % #set_xyzlabels -2
+
+   if (strcmp(opt.typplot,'rw_rear'))
+
+    if (strcmp(opt.rw_surfc,'prr'))
+     xlabel ('y_r [mm]');
+     ylabel ('z_r [mm]');
+    elseif (strcmp(opt.rw_surfc,'prw'))
+     xlabel ('y_w [mm]');
+     ylabel ('z_w [mm]');
+    elseif (strcmp(opt.rw_surfc,'both'))
+     xlabel ('y_{tr} [mm]');
+     ylabel ('z_{tr} [mm]');
+    end
+
+   elseif (strcmp(opt.typplot,'rw_side'))
+
+    if (strcmp(opt.rw_surfc,'prr'))
+     xlabel ('x_r [mm]');
+     ylabel ('z_r [mm]');
+    elseif (strcmp(opt.rw_surfc,'prw'))
+     xlabel ('x_w [mm]');
+     ylabel ('z_w [mm]');
+    elseif (strcmp(opt.rw_surfc,'both'))
+     xlabel ('x_{tr} [mm]');
+     ylabel ('z_{tr} [mm]');
+    end
+
+   else
+
+    if (strcmp(opt.rw_surfc,'prr'))
+     xlabel ('x_r [mm]');
+     ylabel ('y_r [mm]');
+    elseif (strcmp(opt.rw_surfc,'prw'))
+     xlabel ('x_w [mm]');
+     ylabel ('y_w [mm]');
+    elseif (strcmp(opt.rw_surfc,'both'))
+     xlabel ('x_{tr} [mm]');
+     ylabel ('y_{tr} [mm]');
+    else
+     xlabel ('x_c [mm]');
+     if (sol.d_digit==4)
+      ylabel ('s_c [mm]');
+     else
+      ylabel ('y_c [mm]');
+     end
+     %     else
+     %        xlabel ('X-coordinate [mm]');
+     %        ylabel ('Y-coordinate [mm]');
+    end
+   end
+
+  end % set_xyzlabels
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ix_plot, iy_plot] = plot_ranges(sol, opt);
+
+   % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
+   % #plot_ranges -2
+
+   if (isempty(opt.ixrange) | ...
+     (ischar(opt.ixrange) & strcmp(opt.ixrange,'all')) )
+    ix_plot = [1, sol.mx];
+   elseif (ischar(opt.ixrange) & strcmp(opt.ixrange,'tight'))
+    num_inter = sum(sol.eldiv,1);
+    ix_plot = find(num_inter);
+    ix_plot = [ix_plot(1)-1 : ix_plot(end)+1 ];
+   elseif (ischar(opt.ixrange) & strcmp(opt.ixrange,'auto'))
+    num_inter = sum(sol.eldiv,1);
+    ix_plot = find(num_inter);
+    if (isempty(ix_plot))
+     ix_plot = [1, sol.mx];
+    else
+     ix_plot = [ix_plot(1)-3 : ix_plot(end)+3 ];
+    end
+   else
+    ix_plot = opt.ixrange;
+   end
+   if (isempty(opt.iyrange) | ...
+     (ischar(opt.iyrange) & strcmp(opt.iyrange,'all')) )
+    iy_plot = [1, sol.my];
+   elseif (ischar(opt.iyrange) & strcmp(opt.iyrange,'tight'))
+    num_inter = sum(sol.eldiv,2);
+    iy_plot = find(num_inter);
+    iy_plot = [iy_plot(1)-1 : iy_plot(end)+1 ];
+   elseif (ischar(opt.iyrange) & strcmp(opt.iyrange,'auto'))
+    num_inter = sum(sol.eldiv,2);
+    iy_plot = find(num_inter);
+    if (isempty(iy_plot))
+     iy_plot = [1, sol.my];
+    else
+     iy_plot = [iy_plot(1)-3 : iy_plot(end)+3 ];
+    end
+   else
+    iy_plot = opt.iyrange;
+   end
+   ix_plot = max(1,min(ix_plot)) : min(sol.mx,max(ix_plot));
+   iy_plot = max(1,min(iy_plot)) : min(sol.my,max(iy_plot));
+
+  end % plot_ranges
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ f1, f2, f3, f4, f5, f6 ] =derived_data(sol, opt, n1, n2, n3, n4, n5, n6)
+   % #derived_data -2
+
+   px = sol.px; py = sol.py; eldiv = sol.eldiv;
+
+   nfield = nargin - 2;
+   for ifield = 1 : nfield
+    % get name of requested derived field, by copying n1, n2, .. or n6
+    eval(sprintf('nam = n%d;',ifield));
+
+    % compute the derived field
+    if (strcmp(nam,'eldiv'))
+     field = eldiv;
+    elseif (strcmp(nam,'px'))
+     field = px;
+    elseif (strcmp(nam,'py'))
+     field = py;
+    elseif (strcmp(nam,'pt'))
+     field = sqrt(px.^2 + py.^2);
+    elseif (strcmp(nam,'ptarg'))
+     field = 180/pi*atan2(py, px);   % range [-180,180]
+    elseif (strcmp(nam,'pxdir'))
+     field = sol.px ./ max(1d-9,sqrt(sol.px.^2 + sol.py.^2));
+    elseif (strcmp(nam,'sabs'))
+     field = sol.kincns.veloc * sol.srel;
+    else
+     disp(sprintf('Error: unknown derived field %s.',nam));
+    end
+
+    % store derived field, by copying to f1, f2, .. or f6
+    eval(sprintf('f%d = field;',ifield));
+   end
+
+  end % derived_data
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ scale ] = get_vecscale( sol, opt, val )
+   % #get_vecscale -2
+
+   if (~isempty(opt.vecscale))
+    scale = opt.vecscale;
+   else
+    scale = 10 / max(abs(val));
+   end
+
+  end % get_vecscale
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ is_left ] = is_left_side(sol)
+   % #is_left_side
+
+   if (length(sol)>1)
+    is_left = (sol(1).config==0 | sol(1).config==4);
+   else
+    is_left = (sol.config==0 | sol.config==4);
+   end
+
+  end % is_left_side
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
+   % #get_profile_slice
+
+   if (nargin<3)
+    make_plot = 0;
+   end
+   i0 = find(slcs.u <  u_i, 1, 'last');
+   i1 = find(slcs.u >= u_i, 1, 'first');
+   % disp([u_i, i0, i1])
+   if (i0 >= slcs.nslc)
+    yi = slcs.ysurf(end,:); zi = slcs.zsurf(end,:);
+    % disp(sprintf('u_i = %5.1f > u(end) = %5.1f, using slice %d', u_i, slcs.u(end), i1));
+   elseif (i1 <= 1)
+    yi = slcs.ysurf(1,:); zi = slcs.zsurf(1,:);
+    % disp(sprintf('u_i = %5.1f < u(1) = %5.1f, using slice %d', u_i, slcs.u(1), i0));
+   else
+    fac0 = (slcs.u(i1) - u_i) / (slcs.u(i1) - slcs.u(i0));
+    fac1 = (u_i - slcs.u(i0)) / (slcs.u(i1) - slcs.u(i0));
+    if (fac0>0.99 & nnz(slcs.mask_j(i0,:))>nnz(slcs.mask_j(i1,:)))
+     % disp(sprintf('Using longer slice i0=%d', i0));
+     yi = slcs.ysurf(i0,:); zi = slcs.zsurf(i0,:);
+    elseif (fac1>0.99 & nnz(slcs.mask_j(i1,:))>nnz(slcs.mask_j(i0,:)))
+     % disp(sprintf('Using longer slice i1=%d', i1));
+     yi = slcs.ysurf(i1,:); zi = slcs.zsurf(i1,:);
+    else
+     % disp(sprintf('Using %5.3f * slice %d + %5.3f * slice %d',fac0, i0, fac1, i1));
+     yi = fac0 * slcs.ysurf(i0,:) + fac1 * slcs.ysurf(i1,:);
+     zi = fac0 * slcs.zsurf(i0,:) + fac1 * slcs.zsurf(i1,:);
+    end
+
+    if (make_plot)
+     tmpfig = gcf;
+     figure(make_plot); clf; hold on;
+     plot([slcs.ysurf([i0:i1],:);yi]', [slcs.zsurf([i0:i1],:);zi]');
+     set(gca,'ydir','reverse'); grid on; axis equal;
+     legend(sprintf('slice %d, u=%6.2f',i0,slcs.u(i0)), sprintf('slice %d, u=%6.2f',i1,slcs.u(i1)), ...
+      sprintf('interpolated, u=%6.2f',u_i), 'location','southeast')
+     figure(tmpfig);
+    end
+   end
+
+   % set arc-length s, accounting for NaN's in 'missing parts'
+   % s  = slcs.vj; ix = find(isnan(yi)); s(ix) = NaN;
+
+   prr = struct('ProfileY',yi', 'ProfileZ',zi', 'ProfileS',slcs.vj);
+
+  end % get_profile_slice
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %% #Coordinates
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  function [ xtr, ytr, ztr, delta_tr ] = to_track_coords(sol, xc, yc, zc);
+
+   % transform contact [xc,yc/s]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #to_track_coords -2
+
+   if (nargin<3), yc = []; end
+   if (nargin<4), zc = []; end
+   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
+   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
+   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
+   if (isempty(zc)), zc = zeros(sz); end
+
+   % reshape inputs to row vectors
+
+   m = size(xc,1); n = size(xc,2);
+   xc = reshape(xc, 1, m*n);
+   yc = reshape(yc, 1, m*n);
+   zc = reshape(zc, 1, m*n);
+   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
+
+   % form transformation matrices and vectors
+
+   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
+   if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
+    Rref = Rref * cntc.roty(sol.meta.roty*180/pi);
+   end
+   oref = [sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
+
+   if (sol.d_digit~=4)
+
+    % change coordinates from contact to rail to track coordinates
+
+    coords = o_r*ones(1,m*n) + R_r * oref*ones(1,m*n) + R_r * Rref * coords;
+
+   else
+
+    % mirror ProfileY for left-side w/r pairs
+
+    prf_s = sol.prr.ProfileS; prf_y = sol.prr.ProfileY; prf_z = sol.prr.ProfileZ;
+    if (cntc.is_left_side(sol))
+     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
+    end
+
+    % find oref in the rail profile
+
+    dst = sqrt( (prf_y-sol.meta.ycp_r).^2 + (prf_z-sol.meta.zcp_r).^2 );
+    [~,ix] = min(dst);
+    rg = [max(1,ix-5) : min(length(prf_y),ix+5)];
+
+    sref = interp1(prf_y(rg), prf_s(rg), sol.meta.ycp_r);
+    if (isnan(sref))
+     disp(sprintf('ERROR: prr seems different from prr used in simulation (needs mirroring?).'))
+     sref = prf_s(ix);
+    end
+
+    % find grid points in the rail profile
+
+    sc = yc;
+    if (any(sol.kincns.t_digit==[1 2]))
+     sr =        sc;
+    else
+     sr = sref + sc;
+    end
+    yr_at_s = interp1(prf_s, prf_y, sr);
+    zr_at_s = interp1(prf_s, prf_z, sr);
+
+    % determine n-vectors on the rail profile
+
+    ds = 0.1;
+    dy = (interp1(prf_s, prf_y, sr+ds) - yr_at_s) / ds;
+    dz = (interp1(prf_s, prf_z, sr+ds) - zr_at_s) / ds;
+    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
+
+    % hack: slight raise to put the data above the surfaces
+    % zc = zc - 0.3;
+
+    coords = [xc+oref(1); yr_at_s; zr_at_s] + nvec .* ([1;1;1] * zc);
+
+    % change coordinates from rail to track coordinates
+
+    coords = o_r*ones(1,m*n) + R_r * coords;
+
+   end
+
+   % extract components & reshape to the original array sizes
+
+   xtr = reshape(coords(1,:), m, n);
+   ytr = reshape(coords(2,:), m, n);
+   ztr = reshape(coords(3,:), m, n);
+   % TODO: correction for \Delta\phi_rr
+   % delta_tr = sol.meta.deltcp_r + sol.meta.roll_r;
+   delta_tr = sol.meta.deltcp_r + sol.meta.roll_r;
+
+  end % cntc.to_track_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xr, yr, zr, deltar]=to_rail_coords(sol, xc, yc, zc);
+
+   % transform contact [xc,yc/s]-coordinates to rail [xr,yr,zr] coordinates
+   % #to_rail_coords -2
+
+   if (nargin<3), yc = []; end
+   if (nargin<4), zc = []; end
+   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
+   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
+   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
+   if (isempty(zc)), zc = zeros(sz); end
+
+   % reshape inputs to row vectors
+
+   m = size(xc,1); n = size(xc,2);
+   xc = reshape(xc, 1, m*n);
+   yc = reshape(yc, 1, m*n);
+   zc = reshape(zc, 1, m*n);
+   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
+
+   % form transformation matrices and vectors
+
+   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
+   if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
+    Rref = Rref * cntc.roty(sol.meta.roty*180/pi);
+   end
+
+   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
+
+   has_slcs = isfield(sol,'slcs');
+   if (has_slcs)
+    oref = [sol.meta.s_ws+sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+   else
+    oref = [              sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+   end
+
+   if (sol.d_digit~=4)
+
+    % change coordinates from contact to rail coordinates
+
+    coords = oref*ones(1,m*n) + Rref * coords;
+
+   else
+
+    if (has_slcs), disp('Rail coords not supported for conformal on variable profile'); end
+
+    % mirror ProfileY for left-side w/r pairs
+
+    prf_s = sol.prr.ProfileS; prf_y = sol.prr.ProfileY; prf_z = sol.prr.ProfileZ;
+    if (cntc.is_left_side(sol))
+     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
+    end
+
+    % find oref in the rail profile
+
+    dst = sqrt( (prf_y-sol.meta.ycp_r).^2 + (prf_z-sol.meta.zcp_r).^2 );
+    [~,ix] = min(dst);
+    rg = [max(1,ix-5), min(length(prf_y),ix+5)];
+
+    sref = interp1(prf_y(rg), prf_s(rg), sol.meta.ycp_r);
+
+    % find grid points in the rail profile
+
+    sc = yc;
+    if (any(sol.kincns.t_digit==[1 2]))
+     sr =        sc;
+    else
+     sr = sref + sc;
+    end
+    yr_at_s = interp1(prf_s, prf_y, sr);
+    zr_at_s = interp1(prf_s, prf_z, sr);
+
+    % determine n-vectors on the rail profile
+
+    ds = 0.1;
+    dy = (interp1(prf_s, prf_y, sr+ds) - yr_at_s) / ds;
+    dz = (interp1(prf_s, prf_z, sr+ds) - zr_at_s) / ds;
+    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
+
+    coords = [xc; yr_at_s; zr_at_s] + nvec .* ([1;1;1] * zc);
+
+   end
+
+   % extract components & reshape to the original array sizes
+
+   xr = reshape(coords(1,:), m, n);
+   yr = reshape(coords(2,:), m, n);
+   zr = reshape(coords(3,:), m, n);
+   deltar = sol.meta.deltcp_r;
+
+  end % cntc.to_rail_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xw, yw, zw, deltaw]=to_wheel_coords(sol, xc, yc, zc);
+
+   % transform contact [xc,yc/s]-coordinates to wheel [xw,yw,zw] coordinates
+   % #to_wheel_coords -2
+
+   if (nargin<3), yc = []; end
+   if (nargin<4), zc = []; end
+   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
+   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
+   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
+   if (isempty(zc)), zc = zeros(sz); end
+
+   % reshape inputs to row vectors
+
+   m = size(xc,1); n = size(xc,2);
+   xc = reshape(xc, 1, m*n);
+   yc = reshape(yc, 1, m*n);
+   zc = reshape(zc, 1, m*n);
+   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
+
+   % form transformation matrices and vectors
+
+   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
+   oref = [sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
+
+   R_w  = cntc.rotx(sol.meta.roll_w*180/pi) * cntc.rotz(sol.meta.yaw_w*180/pi);
+   o_w  = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
+
+   if (sol.d_digit~=4)
+
+    % change coordinates from contact to rail to track to wheel coordinates
+
+    xtr = o_r*ones(1,m*n) + R_r * oref*ones(1,m*n) + R_r * Rref * coords;
+    coords = R_w' * ( xtr - o_w*ones(1,m*n) );
+
+   else
+
+    % mirror ProfileY for left-side w/r pairs
+
+    prf_s = sol.prw.ProfileS; prf_y = sol.prw.ProfileY; prf_z = sol.prw.ProfileZ;
+    if (cntc.is_left_side(sol))
+     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
+    end
+
+    % change oref from rail to track to wheel coordinates
+
+    wref = R_w' * ( o_r + R_r * oref - o_w );
+
+    % find wref.y in the wheel profile
+
+    dst = sqrt( (prf_y-wref(2)).^2 + (prf_z-wref(3)).^2 );
+    [~,ix] = min(dst);
+    rg = [max(1,ix-5), min(length(prf_y),ix+5)];
+
+    sref = interp1(prf_y(rg), prf_s(rg), wref(2));
+
+    % find grid points in the wheel profile
+
+    sc = yc;
+    if (any(sol.kincns.t_digit==[1 2]))
+     sw =       -sc;
+    else
+     sw = sref - sc;    % sw increasing to the left
+    end
+    yw_at_s = interp1(prf_s, prf_y, sw);
+    zw_at_s = interp1(prf_s, prf_z, sw);
+
+    % determine n-vectors on the wheel profile
+
+    ds = 0.1;
+    dy = (interp1(prf_s, prf_y, sw-ds) - yw_at_s) / ds;
+    dz = (interp1(prf_s, prf_z, sw-ds) - zw_at_s) / ds;
+    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
+
+    coords = [xc; yw_at_s; zw_at_s] + nvec .* ([1;1;1] * zc);
+   end
+
+   % extract coordinates, add wheel curvature
+
+   fac_r = 1 / (2*sol.meta.rnom_whl);
+   xw = coords(1,:);
+   yw = coords(2,:);
+   zw = coords(3,:) - fac_r * xw.^2;
+
+   % reshape to the original array sizes
+
+   xw = reshape(xw, m, n);
+   yw = reshape(yw, m, n);
+   zw = reshape(zw, m, n);
+
+   deltaw = sol.meta.deltcp_r + sol.meta.roll_r - sol.meta.roll_w;
+
+  end % cntc.to_wheel_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xtr, ytr, ztr ] = rail_to_track_coords(sol, xr, yr, zr);
+
+   % transform rail [xr,yr,zr]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #rail_to_track_coords -2
+
+   % reshape inputs to row vectors
+
+   m = size(xr,1); n = size(xr,2);
+   xr = reshape(xr, 1, m*n);
+   yr = reshape(yr, 1, m*n);
+   zr = reshape(zr, 1, m*n);
+   coords = [xr; yr; zr];
+
+   % form transformation matrices and vectors
+
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+
+   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
+
+   has_slcs = isfield(sol,'slcs');
+   if (has_slcs)
+    o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
+   else
+    o_r  = [          0   ; sol.meta.y_r; sol.meta.z_r];
+   end
+
+   % change coordinates from rail to track coordinates
+
+   coords = o_r * ones(1,m*n) + R_r * coords;
+
+   % extract & reshape to the original array sizes
+
+   xtr = reshape(coords(1,:), m, n);
+   ytr = reshape(coords(2,:), m, n);
+   ztr = reshape(coords(3,:), m, n);
+
+  end % rail_to_track_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xw, yw, zw ] = wcyl_to_wprof_coords(sol, thw, yw, drw);
+
+   % transform cylindrical wheel [thw,yw,drw]-coordinates to wheel profile [xw,yw,zw] coordinates
+   % #wcyl_to_wprof_coords -2
+
+   % reshape inputs to row vectors
+
+   m = size(thw,1); n = size(thw,2);
+   thw = reshape(thw, 1, m*n);
+   yw  = reshape(yw,  1, m*n);
+   drw = reshape(drw, 1, m*n);
+
+   % add nominal radius rnom to offset dr
+
+   rw  = sol.meta.rnom_whl + drw;
+
+   % convert cylindrical to cartesian wheel profile coordinates -- lowest point at -theta_ws
+
+   xw  =                      rw .* sin(thw+sol.meta.th_ws);
+   zw  = -sol.meta.rnom_whl + rw .* cos(thw+sol.meta.th_ws);
+
+   % reshape to the original array sizes
+
+   xw = reshape(xw, m, n);
+   yw = reshape(yw, m, n);
+   zw = reshape(zw, m, n);
+
+  end % wcyl_to_wprof_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xtr, ytr, ztr ] = wheel_to_track_coords(sol, xw, yw, zw);
+
+   % transform wheel [xw,yw,zw]-coordinates to track [xtr,ytr,ztr] coordinates
+   % #wheel_to_track_coords -2
+
+   % reshape inputs to row vectors
+
+   m = size(xw,1); n = size(xw,2);
+   xw = reshape(xw, 1, m*n);
+   yw = reshape(yw, 1, m*n);
+   zw = reshape(zw, 1, m*n);
+   coords = [xw; yw; zw];
+
+   % form transformation matrices and vectors from rw/ws to tr coordinates
+
+   R_w_tr = cntc.rotx(sol.meta.roll_w*180/pi) * cntc.rotz(sol.meta.yaw_w*180/pi);
+   o_w_tr = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
+
+   % change coordinates from wheel to track coordinates
+
+   coords = o_w_tr * ones(1,m*n) + R_w_tr * coords;
+
+   % extract & reshape to the original array sizes
+
+   xtr = reshape(coords(1,:), m, n);
+   ytr = reshape(coords(2,:), m, n);
+   ztr = reshape(coords(3,:), m, n);
+
+  end % wheel_to_track_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ xr, yr, zr ] = wheel_to_rail_coords(sol, xw, yw, zw);
+
+   % transform wheel [xw,yw,zw]-coordinates to rail [xr,yr,zr] coordinates
+   % #wheel_to_rail_coords -2
+
+   % reshape inputs to row vectors
+
+   m = size(xw,1); n = size(xw,2);
+   xw = reshape(xw, 1, m*n);
+   yw = reshape(yw, 1, m*n);
+   zw = reshape(zw, 1, m*n);
+   coords = [xw; yw; zw];
+
+   % form transformation matrices and vectors
+
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
+
+   R_w  = cntc.rotx(sol.meta.roll_w*180/pi) * cntc.rotz(sol.meta.yaw_w*180/pi);
+   o_w  = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
+
+   % change coordinates from wheel to track to rail coordinates
+
+   coords = R_r' * (o_w-o_r)*ones(1,m*n) + R_r' * R_w * coords;
+
+   % extract & reshape to the original array sizes
+
+   xr = reshape(coords(1,:), m, n);
+   yr = reshape(coords(2,:), m, n);
+   zr = reshape(coords(3,:), m, n);
+
+  end % wheel_to_rail_coords
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ rot ] = rotx(roll_deg)
+   % #rotx -2
+
+   sn = sin(roll_deg*pi/180);
+   cs = cos(roll_deg*pi/180);
+   rot = [ 1,  0,   0;
+    0, cs, -sn;
+    0, sn,  cs];
+
+  end % rotx
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ rot ] = roty(pitch_deg)
+   % #roty -2
+
+   sn = sin(pitch_deg*pi/180);
+   cs = cos(pitch_deg*pi/180);
+   rot = [ cs,  0,  sn;
+    0,  1,   0;
+    -sn,  0,  cs];
+
+  end % roty
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ rot ] = rotz(yaw_deg)
+   % #rotz -2
+
+   sn = sin(yaw_deg*pi/180);
+   cs = cos(yaw_deg*pi/180);
+   rot = [ cs, -sn, 0;
+    sn,  cs, 0;
+    0,   0, 1];
+
+  end % rotz
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   %% #Plot
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
   function [ opts2 ] = plot2d(sol, opt2)
 
    %
@@ -5421,8 +7441,8 @@ cntc : interface between SDT and CONTACT
 
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
-    if (isfield(opt2, myopts{i}) & ~isempty(mygetfield(opt2,myopts{i})))
-     myopt = setfield(myopt, myopts{i}, mygetfield(opt2,myopts{i}));
+    if (isfield(opt2, myopts{i}) & ~isempty(cntc.mygetfield(opt2,myopts{i})))
+     myopt = setfield(myopt, myopts{i}, cntc.mygetfield(opt2,myopts{i}));
     end
    end
 
@@ -5685,6 +7705,8 @@ cntc : interface between SDT and CONTACT
    end
   end
 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
   function [ opts3 ] = plot3d(sol, opt3, prr, prw, subs)
 
    %
@@ -5852,7 +7874,7 @@ cntc : interface between SDT and CONTACT
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
     if (isfield(opt3, myopts{i}))
-     myopt = setfield(myopt, myopts{i}, mygetfield(opt3,myopts{i}));
+     myopt = setfield(myopt, myopts{i}, cntc.mygetfield(opt3,myopts{i}));
     end
    end
 
@@ -5994,7 +8016,7 @@ cntc : interface between SDT and CONTACT
      myopt.view=[180 90];
     elseif (strcmp(myopt.view,'default') & ~strcmp(myopt.rw_surfc,'none'))
      % default: 3D wheel-rail profile view
-     if (is_left_side(sol))
+     if (cntc.is_left_side(sol))
       myopt.view=[115 30];
      else
       myopt.view=[65 30];
@@ -6047,11 +8069,11 @@ cntc : interface between SDT and CONTACT
     for isol = 1 : length(sol)
      pmax(isol) = max(max(sol(isol).pn));
     end
-    myopt.vecscale = get_vecscale( sol, myopt, pmax ); % fix vecscale -- same for all patches
+    myopt.vecscale = cntc.get_vecscale( sol, myopt, pmax ); % fix vecscale -- same for all patches
 
     [~,jsol] = sort(pmax, 'descend');    % process highest->lowest -- axes based on first one
     for i = 1 : length(sol)
-     plot3d( sol(jsol(i)), myopt, prr, prw );
+     cntc.plot3d( sol(jsol(i)), myopt, prr, prw );
      myopt.addplot = 1;
     end
     return
@@ -6064,7 +8086,7 @@ cntc : interface between SDT and CONTACT
    if (any(strcmp(myopt.rw_surfc, {'prr','both'})))
     if (isfield(prr,'nslc')) % variable profile
      sol.slcs = prr;
-     sol.prr = get_profile_slice(sol.slcs, sol.meta.s_ws+sol.meta.xcp_r);
+     sol.prr = cntc.get_profile_slice(sol.slcs, sol.meta.s_ws+sol.meta.xcp_r);
     else
      sol.prr = prr;
     end
@@ -6072,7 +8094,7 @@ cntc : interface between SDT and CONTACT
    if (any(strcmp(myopt.rw_surfc, {'prw','both'})))
     if (isfield(prw,'nslc')) % variable profile
      sol.slcw = prw;
-     sol.prw = get_profile_slice(sol.slcw, -sol.meta.th_ws+sol.meta.xcp_w/sol.meta.rnom_whl);
+     sol.prw = cntc.get_profile_slice(sol.slcw, -sol.meta.th_ws+sol.meta.xcp_w/sol.meta.rnom_whl);
     else
      sol.prw = prw;
     end
@@ -6089,7 +8111,7 @@ cntc : interface between SDT and CONTACT
 
    if (~isfield(sol, 'x_offset')), sol.x_offset = []; end
    if (~isfield(sol, 'y_offset')), sol.y_offset = []; end
-   if (~myisfield(sol, 'kincns.t_digit')), sol.kincns.t_digit = 3; end
+   if (~cntc.myisfield(sol, 'kincns.t_digit')), sol.kincns.t_digit = 3; end
    if (~isfield(sol, 'x'))
     sol.x = sol.xl + ([1:sol.mx]-0.5)*sol.dx;
    end
@@ -6126,70 +8148,70 @@ cntc : interface between SDT and CONTACT
 
    % start by plotting the rail and/or wheel surfaces
 
-   show_slcs = (isfield(sol,'slcs') & any(strcmp(myopt.rw_surfc,{'prr','both'})));
-   show_slcw = (isfield(sol,'slcw') & any(strcmp(myopt.rw_surfc,{'prw','both'})));
+   cntc.show_slcs = (isfield(sol,'slcs') & any(strcmp(myopt.rw_surfc,{'prr','both'})));
+   cntc.show_slcw = (isfield(sol,'slcw') & any(strcmp(myopt.rw_surfc,{'prw','both'})));
 
    %% Show and plot the profile xxxgae P
    if (myopt.addplot<=0 & ~strcmp(myopt.rw_surfc,'none'))  % create new plot
-    show_profiles(sol, myopt);
+    cntc.show_profiles(sol, myopt);
    elseif ( any(strcmp(myopt.typplot,{'rw_side','rw_rear'})) & (show_slcs | show_slcw) )
-    show_profiles(sol, myopt);   % add new cross-section to existing plot
+    cntc.show_profiles(sol, myopt);   % add new cross-section to existing plot
    end
    hold on;
 
    % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
 
-   [ix_plot, iy_plot] = plot_ranges(sol, myopt);
+   [ix_plot, iy_plot] = cntc.plot_ranges(sol, myopt);
 
    % make the plot, depending on the field that is requested
 
    if (strcmp(myopt.field,'h'))
 
-    show_scalar_field(sol, 'h', myopt);
+    cntc.show_scalar_field(sol, 'h', myopt);
     title ('Undeformed distance H');
 
    end
    if (strcmp(myopt.field,'mu'))
 
-    show_scalar_field(sol, 'mu', myopt);
+    cntc.show_scalar_field(sol, 'mu', myopt);
     title ('Actual local friction coefficient \mu(x)');
 
    end
    if (strcmp(myopt.field,'pn'))
 
-    show_scalar_field(sol, 'pn', myopt);
+    cntc.show_scalar_field(sol, 'pn', myopt);
     title ('Normal pressure P_n');
 
    end
    if (strcmp(myopt.field,'px'))
 
-    show_scalar_field(sol, derived_data(sol, myopt, 'px'), myopt);
+    cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'px'), myopt);
     title ([pfxtit, 'Tangential traction P_x']);
 
    end
    if (strcmp(myopt.field,'py'))
 
-    show_scalar_field(sol, derived_data(sol, myopt, 'py'), myopt);
+    cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'py'), myopt);
     title ([pfxtit, 'Tangential traction P_y']);
 
    end
    if (strcmp(myopt.field,'ptabs') | strcmp(myopt.field,'ptabs+vec'))
 
-    pt = derived_data(sol, myopt, 'pt');
-    show_scalar_field(sol, pt, myopt);
+    pt = cntc.derived_data(sol, myopt, 'pt');
+    cntc.show_scalar_field(sol, pt, myopt);
     title ([pfxtit, 'Magnitude of tangential tractions |P_t|']);
 
    end
    if (strcmp(myopt.field,'ptvec') | strcmp(myopt.field,'ptabs+vec'))
 
-    [px, py] = derived_data(sol, myopt, 'px', 'py');
-    show_vec_field(sol, px, py, myopt);
+    [px, py] = cntc.derived_data(sol, myopt, 'px', 'py');
+    cntc.show_vec_field(sol, px, py, myopt);
     title ([pfxtit, 'Tangential tractions p_t']);
 
    end
    if (strcmp(myopt.field,'ptarg'))
 
-    [eldiv, ptarg] = derived_data(sol, myopt, 'eldiv', 'ptarg');
+    [eldiv, ptarg] = cntc.derived_data(sol, myopt, 'eldiv', 'ptarg');
     % ptarg: range -180:180 deg
     % shift lower bound (-180) to "arg_low", to avoid wrap-around in the plot
     msk=(eldiv>0);
@@ -6201,7 +8223,7 @@ cntc : interface between SDT and CONTACT
     ix=find(ptarg<arg_low); ptarg(ix)=ptarg(ix)+360;
     ix=find(ptarg>arg_low+360); ptarg(ix)=ptarg(ix)-360;
 
-    show_scalar_field(sol, ptarg, myopt);
+    cntc.show_scalar_field(sol, ptarg, myopt);
     if (isempty(myopt.zrange))
      ix = find(eldiv>=1);
      rng=[ min(min(ptarg(ix))), max(max(ptarg(ix))) ];
@@ -6213,53 +8235,53 @@ cntc : interface between SDT and CONTACT
    end
    if (strcmp(myopt.field,'un'))
 
-    show_scalar_field(sol, 'un', myopt);
+    cntc.show_scalar_field(sol, 'un', myopt);
     title ('Normal displacement difference U_n');
 
    end
    if (strcmp(myopt.field,'ux'))
 
-    show_scalar_field(sol, 'ux', myopt);
+    cntc.show_scalar_field(sol, 'ux', myopt);
     title ([pfxtit, 'Tangential displacement difference U_x']);
 
    end
    if (strcmp(myopt.field,'uy'))
 
-    show_scalar_field(sol, 'uy', myopt);
+    cntc.show_scalar_field(sol, 'uy', myopt);
     title ([pfxtit, 'Tangential displacement difference U_y']);
 
    end
    if (strcmp(myopt.field,'utabs+vec'))
 
     ut = sqrt(sol.ux.^2 + sol.uy.^2);
-    show_scalar_field(sol, ut, myopt);
-    show_vec_field(sol, sol.ux, sol.uy, myopt);
+    cntc.show_scalar_field(sol, ut, myopt);
+    cntc.show_vec_field(sol, sol.ux, sol.uy, myopt);
     title ('Tangential displacements u_t');
 
    end
    if (strcmp(myopt.field,'uplsx'))
 
-    show_scalar_field(sol, 'uplsx', myopt);
+    cntc.show_scalar_field(sol, 'uplsx', myopt);
     title ('Plastic deformation u_{pl,x}');
 
    end
    if (strcmp(myopt.field,'uplsy'))
 
-    show_scalar_field(sol, 'uplsy', myopt);
+    cntc.show_scalar_field(sol, 'uplsy', myopt);
     title ('Plastic deformation u_{pl,y}');
 
    end
    if (strcmp(myopt.field,'upls+vec'))
 
     upls = sqrt(sol.uplsx.^2 + sol.uplsy.^2);
-    show_scalar_field(sol, upls, myopt);
-    show_vec_field(sol, sol.uplsx, sol.uplsy, myopt);
+    cntc.show_scalar_field(sol, upls, myopt);
+    cntc.show_vec_field(sol, sol.uplsx, sol.uplsy, myopt);
     title ('Plastic deformation u_{pl}');
 
    end
    if (strcmp(myopt.field,'taucrt'))
 
-    show_scalar_field(sol, 'taucrt', myopt);
+    cntc.show_scalar_field(sol, 'taucrt', myopt);
     title ('Tangential yield stress \tau_{crt}');
 
    end
@@ -6293,7 +8315,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'sx'))
 
-    show_scalar_field(sol, sx, myopt);
+    cntc.show_scalar_field(sol, sx, myopt);
     if (sol.kincns.t_digit>=2)
      title ([pfxtit, 'Relative slip component s_x']);
     else
@@ -6302,7 +8324,7 @@ cntc : interface between SDT and CONTACT
    end
    if (strcmp(myopt.field,'sy'))
 
-    show_scalar_field(sol, sy, myopt);
+    cntc.show_scalar_field(sol, sy, myopt);
     if (sol.kincns.t_digit>=2)
      title ([pfxtit, 'Relative slip component s_y']);
     else
@@ -6312,20 +8334,20 @@ cntc : interface between SDT and CONTACT
    end
    if (strcmp(myopt.field,'shft') | strcmp(myopt.field,'shft+vec'))
 
-    show_scalar_field(sol, 'shft', myopt);
+    cntc.show_scalar_field(sol, 'shft', myopt);
     title ([pfxtit, 'Shift distance']);
 
    end
    if (strcmp(myopt.field,'sabs') | strcmp(myopt.field,'sabs+vec'))
 
-    sabs = derived_data(sol, myopt, 'sabs');
-    show_scalar_field(sol, sabs, myopt);
+    sabs = cntc.derived_data(sol, myopt, 'sabs');
+    cntc.show_scalar_field(sol, sabs, myopt);
     title ([pfxtit, 'Absolute slip velocity']);
 
    end
    if (strcmp(myopt.field,'srel') | strcmp(myopt.field,'srel+vec'))
 
-    show_scalar_field(sol, 'srel', myopt);
+    cntc.show_scalar_field(sol, 'srel', myopt);
     title ([pfxtit, 'Relative slip velocity']);
 
    end
@@ -6333,7 +8355,7 @@ cntc : interface between SDT and CONTACT
      strcmp(myopt.field,'sabs_vec') | strcmp(myopt.field,'sabs+vec') | ...
      strcmp(myopt.field,'srel_vec') | strcmp(myopt.field,'srel+vec'))
 
-    show_vec_field(sol, sx, sy, myopt)
+    cntc.show_vec_field(sol, sx, sy, myopt)
 
     if (strcmp(myopt.field,'shft_vec') | strcmp(myopt.field,'shft+vec'))
      title ([pfxtit, 'Tangential shift S_\tau']);
@@ -6349,34 +8371,34 @@ cntc : interface between SDT and CONTACT
     % unit [W / mm2] = ([mm/s]/1000) * [-]  * [ N/mm2],   [W] = [J/s] = [N.m/s]
     % note: srel is dimensionless, using V.dt=dq=1 in shifts (T=1)
     fricdens = sol.kincns.veloc/1000 * sol.srel .* sqrt(sol.px.^2 + sol.py.^2);
-    show_scalar_field(sol, fricdens, myopt);
+    cntc.show_scalar_field(sol, fricdens, myopt);
     title ([pfxtit, 'Frictional power density']);
 
    end
    if (strcmp(myopt.field,'temp1'))
 
-    show_scalar_field(sol, 'temp1', myopt);
+    cntc.show_scalar_field(sol, 'temp1', myopt);
     title ('Surface temperature T^{(1)}');
 
    end
    if (strcmp(myopt.field,'temp2'))
 
-    show_scalar_field(sol, 'temp2', myopt);
+    cntc.show_scalar_field(sol, 'temp2', myopt);
     title ('Surface temperature T^{(2)}');
 
    end
    if (user_added_fld & isfield(sol, myopt.field))
 
-    show_scalar_field(sol, myopt.field, myopt);
+    cntc.show_scalar_field(sol, myopt.field, myopt);
     title (sprintf('User-added field "%s"', myopt.field));
 
    end
    if (strcmp(myopt.field,'eldiv'))
 
     myopt.zrange = [-0.1 2.1];
-    eldiv = derived_data(sol, myopt, 'eldiv');
+    eldiv = cntc.derived_data(sol, myopt, 'eldiv');
     ix = find(eldiv==3); eldiv(ix) = 1.5; % set Plast(3) between Adhes(1) and Slip(2)
-    show_scalar_field(sol, eldiv, myopt);
+    cntc.show_scalar_field(sol, eldiv, myopt);
     h = get(gcf,'children'); ix = strmatch('Colorbar', get(h,'tag'));
     if (isscalar(ix))
      jx = find(sol.eldiv==3);
@@ -6394,7 +8416,7 @@ cntc : interface between SDT and CONTACT
    end
    if (strcmp(myopt.field,'eldiv_spy'))
 
-    eldiv = derived_data(sol, myopt, 'eldiv');
+    eldiv = cntc.derived_data(sol, myopt, 'eldiv');
     mask = (eldiv==1); spy(mask, 'b.', 6); % ones in the adhesion area
     mask = (eldiv==2); spy(mask, 'r.', 6); % ones in the slip area
     mask = (eldiv==3); spy(mask, 'g.', 6); % ones in the platicity area
@@ -6407,8 +8429,8 @@ cntc : interface between SDT and CONTACT
     if (~isempty(sol.y_offset)), ycentr = ycentr + sol.y_offset; end
     set(gca,'xticklabel', num2str(xcentr, '%5.3f'));
     set(gca,'yticklabel', num2str(ycentr, '%5.3f'));
-    set_xyzlabels(sol, myopt);
-    if (~is_2d_view(gca, myopt.view))
+    cntc.set_xyzlabels(sol, myopt);
+    if (~cntc.is_2d_view(gca, myopt.view))
      v=axis; axis([v -1e-6 1e-6]); axis equal;
      set(gca,'ztick',[]);
     end
@@ -6416,8 +8438,8 @@ cntc : interface between SDT and CONTACT
    end
    if ( strcmp(myopt.field,'eldiv_contour') | myopt.addeldiv )
     % eldiv_contour can be used in 2D view & on rail/wheel surface
-    if (is_2d_view(gca,myopt.view) | ~strcmp(myopt.rw_surfc,'none') )
-     show_eldiv_contour(sol, myopt);
+    if (cntc.is_2d_view(gca,myopt.view) | ~strcmp(myopt.rw_surfc,'none') )
+     cntc.show_eldiv_contour(sol, myopt);
     end
    end
    if (any(strcmp(myopt.rw_surfc,{'prr','both'})) & ~any(strcmp(myopt.typplot,{'rw_rear','rw_side'})))
@@ -6432,1953 +8454,6 @@ cntc : interface between SDT and CONTACT
    end
 
   end % plot3d
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% #show
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
-  function [ ] = show_profiles(sol, opt)
-   %
-   % [ ] = show_profiles(sol, opt)
-   %
-   % create 3d surf plot of rail and/or wheel profiles
-   %   sol     - structure with CONTACT results as returned by loadcase
-   %   opt     - structure with options as defined by plot3d.
-   %
-
-   % set the x range for plotting
-   % #show_profiles
-
-   if (isempty(opt.xrange))
-    if (any(strcmp(opt.rw_surfc,{'prr','both'})))
-
-     xmax = max( abs(sol.meta.xcp_r) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
-     if (isfield(sol,'slcs')), xmax = 3 * xmax; end
-     if (isfield(sol,'slcw')), xmax = sol.meta.rnom_whl; end
-
-    else
-
-     xmax = max( abs(sol.meta.xcp_w) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
-    end
-
-    opt.xrange = [-xmax, xmax ];
-   end
-
-   % set target step-sizes for plotting
-
-   if (isempty(opt.xysteps))
-    xlen = opt.xrange(2) - opt.xrange(1);
-    ylen = 0;
-    if (any(strcmp(opt.rw_surfc,{'prr','both'})))
-     ylen = max(ylen, max(sol.prr.ProfileY) - min(sol.prr.ProfileY));
-    end
-    if (any(strcmp(opt.rw_surfc,{'prw','both'})))
-     ylen = max(ylen, max(sol.prw.ProfileY) - min(sol.prw.ProfileY));
-    end
-    opt.xysteps = max(xlen/4, ylen/15);
-   end
-   if (isscalar(opt.xysteps))
-    opt.xysteps = [1 1] * opt.xysteps;
-   end
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   % if requested, show the rail profile
-
-   want_rail = 1;
-
-   if (any(strcmp(opt.rw_surfc,{'prr','both'})) & strcmp(opt.typplot,'rw_rear'))
-
-    % 2d rear view of y-z-plane
-
-    % form profile curve at x_cp
-
-    xval = sol.meta.xcp_r;
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
-     [], [], []);
-
-    plot(ycurv, zcurv, 'color',matlab_color(1));
-    set(gca,'ydir','reverse');
-    axis equal;
-    hold on
-
-   elseif (any(strcmp(opt.rw_surfc,{'prr','both'})) & strcmp(opt.typplot,'rw_side'))
-
-    % 2d side view of x-z-plane
-
-    % s-value with y(ip) closest to y_cp
-
-    [~,ip] = min( abs(sol.prr.ProfileY - sol.meta.ycp_r) );
-    sval = sol.prr.ProfileS(ip);
-
-    % form profile curve at given x, s
-
-    totlen = opt.xrange(2) - opt.xrange(1);
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [sval, sval], [], 1);
-
-    plot(xcurv, zcurv, 'color',matlab_color(1));
-    set(gca,'ydir','reverse');
-    axis equal;
-    hold on
-
-   elseif (any(strcmp(opt.rw_surfc,{'prr','both'})))
-
-    % 3d view of rail surface
-
-    % form profile surface at given x, all s - fine sampling
-
-    % disp('...full surface')
-    [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [], [], []);
-
-    % plot 90% transparent surface (alpha=0.1); color-value?
-
-    csurf = -1 * ones(size(xsurf));
-    l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
-    set(l,'tag','prr');
-
-    % set view appropriate for rails with z positive downwards
-
-    set(gca,'xdir','reverse', 'zdir','reverse');
-    axis equal;
-    hold on
-
-    % determine transverse curves along the surface at fixed steps in x
-
-    % disp('...transverse curves')
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1), ...
-     [], [], []);
-
-    % plot transverse curves along the surface
-
-    l = plot3(xcurv', ycurv', zcurv', 'color',[.5 .5 .5], 'linewidth',0.5);
-
-    [~,imin] = min(abs(xcurv(:,1)));
-    set(l(imin), 'color', [.3 .3 .3], 'linewidth',1);
-
-    % determine longitudinal curves along the surface at fixed steps in s
-
-    % disp('...longitudinal curves')
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [], [], opt.xysteps(2));
-
-    % plot curves along surface in longitudinal direction
-
-    clear l ip;
-    l = plot3(xcurv, ycurv, zcurv, 'color',[.5 .5 .5], 'linewidth',0.5);
-    imid = ceil(length(l)/2);
-    set(l(imid), 'color', [.3 .3 .3], 'linewidth',1);
-
-   end
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   % if requested, show the wheel profile
-
-   want_rail = 0;
-
-   if (any(strcmp(opt.rw_surfc,{'prw','both'})) & strcmp(opt.typplot,'rw_rear'))
-
-    % 2d rear view of y-z-plane
-
-    if (sol.meta.npatch>1)
-     xval = 0;      % use principal profile; xcp_w can be much different between patches
-    else
-     xval = sol.meta.xcp_w;
-    end
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
-     [], [], []);
-
-    plot(ycurv, zcurv, 'color',matlab_color(3));
-    set(gca,'ydir','reverse');
-    axis equal;
-    hold on
-
-   elseif (any(strcmp(opt.rw_surfc,{'prw','both'})) & strcmp(opt.typplot,'rw_side'))
-
-    % 2d side view of x-z-plane
-
-    % s-value with y(ip) closest to y_cp
-
-    [~,ip] = min( abs(sol.prw.ProfileY - sol.meta.ycp_w) );
-    sval = sol.prw.ProfileS(ip);
-
-    % form wheel profile curve at given x, s
-
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [sval, sval], [], 1);
-
-    plot(xcurv, zcurv, 'color',matlab_color(3));
-    set(gca,'ydir','reverse');
-    axis equal;
-    hold on
-
-   elseif (any(strcmp(opt.rw_surfc,{'prw','both'})))
-
-    % 3d view of wheel surface
-
-    % form profile surface at given x, all s - fine sampling
-
-    [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [], [], []);
-
-    % plot 90% transparent surface (alpha=0.1); color-value?
-
-    csurf = -1 * ones(size(xsurf));
-    l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
-    set(l,'tag','prw');
-
-    % set view appropriate for rails with z positive downwards
-
-    set(gca,'xdir','reverse', 'zdir','reverse');
-    axis equal;
-    hold on
-
-    % determine transverse curves along the surface at fixed steps in x
-
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1), ...
-     [], [], []);
-
-    % plot transverse curves along the surface
-
-    l = plot3(xcurv', ycurv', zcurv', 'color',[.5 .5 .5], 'linewidth',0.5);
-
-    [~,imin] = min(abs(xcurv(:,1)));
-    set(l(imin), 'color', [.3 .3 .3], 'linewidth',1);
-
-    % determine curves along the surface at fixed steps in s
-
-    [ xcurv, ycurv, zcurv ] = make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
-     [], [], opt.xysteps(2));
-
-    % plot curves along surface in longitudinal direction
-
-    clear l ip;
-    l = plot3(xcurv, ycurv, zcurv, 'color',[.5 .5 .5], 'linewidth',0.5);
-    imid = ceil(length(l)/2);
-    set(l(imid), 'color', [.3 .3 .3], 'linewidth',1);
-
-   end
-
-  end % show_profiles
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, xrange, dx_true, dx_appx,srange, ds_true, ds_appx, idebug)
-
-   % create 2D arrays (x,y,z) for a prismatic rail (prr), variable rail (slcs), roller (prr, nom_radius),
-   %    round wheel (prw, nom_radius), or out-of-round wheel (slcw)
-   %  - the profile will be plotted for xrange = [xmin, xmax] in track coordinates
-   %  - fixed steps of size dx_true may be requested, or n-time fitting steps of approximately dx_appx
-   %  - the whole profile will be used if srange = [smin, smax] is left empty
-   %  - the profile will be sampled at sj-values in the profile close to uniform sj = [smin: ds: smax]
-   %  - all profile points will be used if both ds_true and ds_appx are left empty
-   %  - for variable profiles, x-positions and arc-lengths s are replaced by the (u,v)-parametrization
-   % #make_3d_surface -2
-
-   if (nargin< 5), dx_true = []; end
-   if (nargin< 6), dx_appx = []; end
-   if (nargin< 7), srange  = []; end
-   if (nargin< 8), ds_true = []; end
-   if (nargin< 9), ds_appx = []; end
-   if (nargin<10 | isempty(idebug)), idebug  =  0; end
-
-   if (want_rail)
-    prf = sol.prr;
-    nom_radius = sol.meta.rnom_rol;
-   else
-    prf = sol.prw;
-    nom_radius = sol.meta.rnom_whl;
-   end
-   has_slcs   = ( want_rail & isfield(sol,'slcs'));
-   has_slcw   = (~want_rail & isfield(sol,'slcw'));
-
-   % determine longitudinal positions xi (track coords) for evaluation of surface
-
-   if (~isempty(dx_true))
-
-    % if 'final' dx_true is prescribed,
-    %    set xi = { i * dx_true } for appropriate i
-
-    i0 = ceil( xrange(1) / dx_true );
-    i1 = floor( xrange(2) / dx_true );
-    xi = [i0 : i1] * dx_true;
-
-   elseif (~isempty(dx_appx))
-
-    % if 'target' dx_appx is given,
-    %    divide [xmin,xmax] in odd #intervals of size dx_true close to dx_appx
-
-    nintv   = floor( (xrange(2) - xrange(1)) / dx_appx );
-    if (mod(nintv,2)==1)  % prefer odd #lines for symmetric [-xmax, xmax]
-     nintv = nintv + 1;
-    end
-    dx = (xrange(2) - xrange(1)) / max(1,nintv);
-    xi = xrange(1) + [0:nintv] * dx;
-
-   else
-
-    disp('Error: either dx_true or dx_appx must be given');
-    return
-
-   end
-
-   % determine lateral positions sj for evaluation of surface
-
-   if (has_slcs)
-    profile_s = sol.slcs.vj;
-   elseif (has_slcw)
-    profile_s = sol.slcw.vj;
-   else
-    profile_s = prf.ProfileS;
-   end
-
-   if (isempty(srange))
-    srange = [ profile_s(1), profile_s(end) ];
-   end
-
-   if (~isempty(ds_true))
-
-    % if 'final' ds_true is prescribed,
-    %    set si = { j * ds_true } for appropriate j
-
-    j0 = ceil( (srange(1)-profile_s(1)) / ds_true );
-    j1 = floor( (srange(2)-profile_s(1)) / ds_true );
-    sj = [j0 : j1] * ds_true;
-
-   elseif (~isempty(ds_appx))
-
-    % if 'target' ds_appx is given,
-    %    divide [smin,smax] in odd #intervals of size ds_true close to ds_appx
-
-    if (has_slcs)
-     len = 1.3 * max(max(sol.slcs.ysurf)) - min(min(sol.slcs.ysurf));
-     nintv = floor ( len / ds_appx );
-    elseif (has_slcw)
-     len = 1.3 * max(max(sol.slcw.ysurf)) - min(min(sol.slcw.ysurf));
-     nintv = floor ( len / ds_appx );
-    else
-     nintv = floor( (srange(2) - srange(1)) / ds_appx );
-    end
-    if (mod(nintv,2)==1)
-     nintv = nintv + 1;  % prefer odd #lines for symmetric [-smax, smax]
-    end
-    ds = (srange(2) - srange(1)) / max(1,nintv);
-    sj = srange(1) + [0:nintv] * ds;
-
-   else
-
-    % if neither is given, use all profile points in range srange
-
-    j  = find( profile_s>=srange(1) & profile_s<=srange(2) );
-    sj = profile_s(j);
-
-   end
-
-   % determine indices js closest to each sj
-
-   js = zeros(size(sj));
-   for j = 1 : length(sj)
-    [~,js(j)] = min(abs(profile_s - sj(j)));
-   end
-
-   % form profile surface at given xi and js
-
-   nx    = length(xi);
-   ns    = length(js);
-
-   if (want_rail & ~has_slcs & abs(nom_radius)<1e-3)
-
-    % prismatic rail
-
-    xsurf = xi' * ones(1,ns);
-    ysurf = ones(nx,1) * prf.ProfileY(js)';
-    zsurf = ones(nx,1) * prf.ProfileZ(js)';
-
-   elseif (want_rail & myisfield(sol, 'slcs.spl2d'))
-
-    % variable rail profile, using 2D spline algorithm
-
-    % form profile surface at given ui (==x_fc) and vj
-
-    sf_min = min(sol.slcs.spl2d.ui);
-    sf_max = max(sol.slcs.spl2d.ui);
-    ui     = max(sf_min, min(sf_max, sol.meta.s_ws + xi));
-    vj     = sj;
-
-    [ ~, xsurf, ysurf, zsurf ] = eval_2dspline( sol.slcs.spl2d, ui, vj );
-
-   elseif (want_rail & has_slcs)
-
-    xsurf = xi' * ones(1,ns);
-    ysurf = []; zsurf = [];
-    for ix = 1 : nx
-     x_cur = sol.meta.s_ws + xi(ix);
-     tmp_prr = get_profile_slice(sol.slcs, x_cur);
-     ysurf = [ysurf; tmp_prr.ProfileY(js)'];
-     zsurf = [zsurf; tmp_prr.ProfileZ(js)'];
-    end
-
-   elseif (want_rail)
-
-    % roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
-
-    xsurf = xi' * ones(1,ns);
-    ysurf = ones(nx,1) * prf.ProfileY(js)';
-    r_y   = nom_radius - prf.ProfileZ(js)';
-    zsurf = nom_radius - sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
-
-   elseif (~want_rail & ~has_slcw)
-
-    % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
-
-    xsurf = xi' * ones(1,ns);
-    ysurf = ones(nx,1) * prf.ProfileY(js)';
-    r_y   =  nom_radius + prf.ProfileZ(js)';
-    zsurf = -nom_radius + sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
-
-   elseif (~want_rail & myisfield(sol, 'slcw.spl2d'))
-
-    % variable wheel profile, using 2D spline algorithm
-
-    % form profile surface at given ui (==th_w) and vj
-
-    th_min = min(sol.slcw.spl2d.ui);
-    th_max = max(sol.slcw.spl2d.ui);
-    th_w   = -sol.meta.th_ws + mean(xi)/sol.meta.rnom_whl;
-    ui     = max(th_min, min(th_max, -sol.meta.th_ws + xi/sol.meta.rnom_whl));
-    vj     = sj;
-
-    [ ~, thsurf, ysurf, drsurf ] = eval_2dspline( sol.slcw.spl2d, ui, vj );
-    [xsurf, ysurf, zsurf] = wcyl_to_wprof_coords(sol, thsurf, ysurf, drsurf);
-
-   else
-
-    disp('make_3d_surface: ERROR: case not supported.')
-    disp([want_rail, has_slcs, has_slcw, myisfield(sol,'slcw.spl2d'), exist('eval_2dspline')])
-    return;
-
-   end
-
-   % profiles are given for right-side w/r combination
-   % mirror y for left-side w/r combination
-
-   if (is_left_side(sol))
-    ysurf = -ysurf;
-   end
-
-   % transform to track coordinates if needed
-
-   if (want_rail & strcmp(opt.rw_surfc,'both'))
-
-    [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
-
-   elseif (strcmp(opt.rw_surfc,'both'))
-
-    [xsurf, ysurf, zsurf] = cntc.wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
-
-   end
-
-  end % make_3d_surface
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = show_scalar_field(sol, field, opt)
-   %
-   % [ ] = show_scalar_field(sol, field, opt)
-   %
-   % generic routine for plotting a grid with cell-centered values
-   %   sol     - structure with CONTACT results as returned by loadcase
-   %   field   - the actual array to be plotted, or a field name within sol
-   %   opt     - structure with options as defined by plot3d.
-   %
-
-   % delegate work to separate functions depending on type of plot
-   % #show_scalar_field
-
-   if (strcmp(opt.typplot, 'rw_rear'))
-    show_rw_rear_view(sol, field, opt);
-    if (isfield(sol, 'subs'))
-     show_subs_field(sol, opt);
-    end
-   elseif (strcmp(opt.typplot, 'rw_side'))
-    show_rw_side_view(sol, field, opt);
-   else
-    show_3d_field(sol, field, opt);
-   end
-
-  end % show_scalar_field
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = show_subs_field(sol, opt)
-   %
-   % [ ] = show_subs_field(sol, field, opt)
-   %
-   % add plot of subsurface stresses to rw_rear plot
-   % #show_subs_field
-
-   if (0==1)
-    % use slice closest to xc=0
-    [~,ix] = min(abs(sol.subs.x));
-    fld = squeeze( sol.subs.sigvm(ix,:,:) );
-   else
-    fld = squeeze( max(abs(sol.subs.sigvm), [], 1) );
-   end
-
-   % plot the potential contact area
-
-   [YC, ZC] = meshgrid(sol.subs.y, sol.subs.z);
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ ~, ypln, zpln ] = cntc.to_rail_coords(sol, [], YC, ZC);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ ~, ypln, zpln ] = cntc.to_wheel_coords(sol, [], YC, ZC);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ ~, ypln, zpln ] = cntc.to_track_coords(sol, [], YC, ZC);
-   end
-
-   [C, h] = contourf( ypln, zpln, fld' );
-   set(h, 'linewidth', 0.01);
-
-  end % show_subs_field
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = show_3d_field(sol, field, opt)
-
-   % determine version information on the Matlab graphics system
-   % #show_3d_field
-
-   old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
-   new_graphics = ~old_graphics;
-
-   % get field to be plotted
-
-   if (ischar(field))
-    eval(['tmp = sol.',field,';']);
-   else
-    tmp = field;
-   end
-
-   % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
-
-   [ix_plot, iy_plot] = plot_ranges(sol, opt);
-
-   % select the range to be plotted
-
-   tmp    = tmp(iy_plot,ix_plot);
-   eldiv  = sol.eldiv(iy_plot,ix_plot);
-   xcornr = sol.xl + [ix_plot(1)-1, ix_plot]*sol.dx;
-   ycornr = sol.yl + [iy_plot(1)-1, iy_plot]*sol.dy;
-   if (~isempty(sol.x_offset)), xcornr = xcornr + sol.x_offset; end
-   if (~isempty(sol.y_offset)), ycornr = ycornr + sol.y_offset; end
-   xcornr = opt.xstretch * xcornr;
-
-   % fill exterior area with default values
-
-   if (~isempty(opt.exterval))
-    ii = find(eldiv==0);
-    tmp(ii) = opt.exterval;
-   end
-
-   if (isempty(opt.exterval) | ~isnan(opt.exterval))
-
-    % expand one row/column for shading flat for cell-centered values
-
-    tmp = [tmp, tmp(:,end)];
-    tmp = [tmp; tmp(end,:)];
-
-   elseif (exist('repelem','builtin'))
-
-    % with flat shading, Matlab doesn't show faces where one of the corners
-    % has value NaN --> duplicate values, shift-duplicate corner coordinates
-
-    tmp = repelem(tmp,2,2);
-    xcornr = [xcornr(1), repelem(xcornr(2:end-1),2), xcornr(end)];
-    ycornr = [ycornr(1), repelem(ycornr(2:end-1),2), ycornr(end)];
-
-   else
-
-    % fall-back for Matlab versions < R2015a
-
-    % expand one row/column for shading flat for cell-centered values
-
-    tmp = [tmp, tmp(:,end)];
-    tmp = [tmp; tmp(end,:)];
-
-    %  perform dilatation:
-    %  at exterior elements that lie to the right or above of interior
-    %  elements, the tmp-value must be non-NaN
-
-    sz=size(tmp);
-    % rows 1:end-1 ==> rows 2:end
-    [i,j]=find(eldiv(1:end-1,:)~=0 & eldiv(2:end,:)==0);
-    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
-
-    % row end ==> row end+1
-    [i,j]=find(eldiv(end,:)~=0); i = i + size(eldiv,1) - 1;
-    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
-    ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
-    % columns 1:end-1 ==> columns 2:end
-    [i,j]=find(eldiv(:,1:end-1)~=0 & eldiv(:,2:end)==0);
-    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i  ,j+1); tmp(ii1)=tmp(ii0);
-
-    % column end ==> column end+1
-    [i,j]=find(eldiv(:,end)~=0); j = j + size(eldiv,2) - 1;
-    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j  ); tmp(ii1)=tmp(ii0);
-    ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
-
-    % diagonally iend,jend -> iend+1,jend+1
-    [i,j]=find(eldiv(1:end-1,1:end-1)~=0 & eldiv(2:end,2:end)==0);
-    ii0=sub2ind(sz,i,j); ii1=sub2ind(sz,i+1,j+1); tmp(ii1)=tmp(ii0);
-   end
-
-   % mark lower-left corner
-
-   if (~strcmp(field,'ptarg'))
-    minval   = min(min(tmp));
-    tmp(1,1) = -0.2*max(max(abs(tmp)));
-   end
-
-   % expand x,y-coordinates to 2d arrays
-
-   nx = length(xcornr);
-   ny = length(ycornr);
-   xcornr = ones(ny,1) * xcornr;
-   ycornr = ycornr' * ones(1,nx);
-
-   % set z-coordinates for plotting
-   %% #XXXgae Position
-   if (strcmp(opt.rw_surfc,'none'))
-    zcornr = tmp;
-   elseif (strcmp(opt.rw_surfc,'prr'))
-    [ xcornr, ycornr, zcornr ] =cntc.to_rail_coords(sol, xcornr, ycornr);
-    ii = find(isnan(tmp)); zcornr(ii) = NaN;
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ xcornr, ycornr, zcornr ] =cntc.to_wheel_coords(sol, xcornr, ycornr);
-    ii = find(isnan(tmp)); zcornr(ii) = NaN;
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ xcornr, ycornr, zcornr ] =cntc.to_track_coords(sol, xcornr, ycornr);
-    ii = find(isnan(tmp)); zcornr(ii) = NaN;
-   end
-
-   % make plot, adjust colormap, z-range
-
-   if (strcmp(opt.colormap,'none') | strcmp(opt.colormap,'black'))
-    mesh( xcornr, ycornr, zcornr, tmp );
-    view(opt.view);
-    colormap([0 0 0]);
-   else
-    if (strcmp(opt.typplot,'contourf'))
-     contourf( xcornr, ycornr, tmp, 'ShowText','on' );
-    else
-     % surf( xcornr, ycornr, tmp );
-     surf( xcornr, ycornr, zcornr, tmp );
-    end
-    view(opt.view);
-    if (strcmp(opt.rw_surfc,'none'))
-     shading faceted;
-    else
-     shading flat;
-    end
-    colormap(opt.colormap);
-    if (~isempty(opt.zrange))
-     % use prescribed clim
-     set(gca,'clim',opt.zrange);
-    else
-     % avoid spoiling of clim by special value at point (1,1):
-     cl=get(gca,'clim');
-     if (minval<cl(2))      % ensure that clim is increasing
-      cl(1)=max(minval,cl(1));
-      set(gca,'clim',cl);
-     end
-    end
-   end
-
-   % adjust axis
-
-   nw_ax = [ min(min(xcornr)), max(max(xcornr)), min(min(ycornr)), max(max(ycornr)) ];
-   if (opt.addplot==1)  % allow growing of plot region only
-    pv_ax = axis;
-    nw_ax = [ min(pv_ax(1),nw_ax(1)), max(pv_ax(2),nw_ax(2)) ...
-     min(pv_ax(3),nw_ax(3)), max(pv_ax(4),nw_ax(4)) ];
-   end
-
-   if (strcmp(opt.rw_surfc,'none'))
-    axis( nw_ax );
-   end
-
-   % optionally override automatic ticks, set ticks at cell-centers
-
-   if (0==1)
-    ixstep = max(1, round( (ix_plot(end)-ix_plot(1)+1) / 5 ));
-    iystep = max(1, round( (iy_plot(end)-iy_plot(1)+1) / 5 ));
-    x_tick = sol.xl + (0.5+[ix_plot(1):ixstep:ix_plot(end)])*sol.dx;
-    y_tick = sol.yl + (0.5+[iy_plot(1):iystep:iy_plot(end)])*sol.dy;
-    set(gca,'xtick', x_tick * opt.xstretch, ...
-     'xticklabel', num2str(x_tick', '%5.3f'));
-    set(gca,'ytick', y_tick, 'yticklabel', num2str(y_tick', '%5.3f'));
-   elseif (opt.xstretch~=1)
-    %     set tick-labels to unstretched values
-    xt = get(gca,'xtick');
-    xv = xt / opt.xstretch;
-    %     #digits before decimal point, negative: zeros after decimal point -3
-    lg = ceil(log10(max(abs(xv))));
-    if (lg>=2)
-     fmt = '%2.0f';
-    elseif (lg==1 | lg==0)
-     fmt = '%3.1f';
-    elseif (lg==-1)
-     fmt = '%4.2f';
-    else
-     fmt = '%5.3f';
-    end
-    set(gca, 'xtick', xt', 'xticklabel', num2str(xv', fmt));
-   end
-
-   % set grid, labels
-
-   grid on
-   set_xyzlabels(sol, opt);
-
-   % draw colorbar, set label, if not done so before
-   % note: no colorbar on mesh plot
-
-   if (opt.addplot<=0 & ...
-     ~(strcmp(opt.colormap,'none') | strcmp(opt.colormap,'black')))
-
-    h = colorbar;
-    if (strcmp(opt.field,'pn'))
-     ylabel(h, 'Pressure [N/mm^2]');
-    elseif (strcmp(opt.field,'ptabs') | ...
-      strcmp(opt.field,'ptabs+vec') | ...
-      strcmp(opt.field,'px') | ...
-      strcmp(opt.field,'py'))
-     ylabel(h, 'Traction [N/mm^2]');
-    elseif (strcmp(opt.field,'un') | strcmp(opt.field,'ux') | ...
-      strcmp(opt.field,'uy') | strcmp(opt.field,'h'))
-     ylabel(h, 'Displacement [mm]');
-    elseif (strcmp(opt.field,'ptarg'))
-     ylabel(h, 'Direction [deg]');
-    elseif (strcmp(opt.field,'shft') | (sol.kincns.t_digit<=1 & ...
-      (strcmp(opt.field,'sx')  | strcmp(opt.field,'sy'))))
-     ylabel(h, 'Shift distance [mm]');
-    elseif (strcmp(opt.field,'uplsx') | strcmp(opt.field,'uplsy') | strcmp(opt.field,'upls+vec'))
-     ylabel(h, 'Plastic deformation [mm]');
-    elseif (strcmp(opt.field,'taucrt'))
-     ylabel(h, 'Tangential yield stress [N/mm^2]');
-    elseif (strcmp(opt.field,'srel') | ...
-      (sol.kincns.t_digit>=2 & (strcmp(opt.field,'sx')  | strcmp(opt.field,'sy'))) )
-     ylabel(h, 'Relative slip velocity [-]');
-    elseif (strcmp(opt.field,'sabs'))
-     ylabel(h, 'Absolute slip velocity [mm/s]');
-    elseif (strcmp(opt.field,'fricdens'))
-     ylabel(h, 'Frictional power density [W/mm^2]');
-    elseif (strcmp(opt.field,'temp1') | strcmp(opt.field,'temp2'))
-     ylabel(h, 'Temperature (increase) [{}^\circ{}C]');
-     % provisional support for user-added fields:
-    elseif (strcmp(opt.field,'wx') | strcmp(opt.field,'wy'))
-     ylabel(h, 'Rigid slip velocity [-]');
-    elseif (strcmp(opt.field,'kyield'))
-     ylabel(h, 'Yield strength K [N/mm^2]');
-    elseif (strcmp(opt.field,'rcf'))
-     ylabel(h, 'RCF index [-]');
-    end
-   end
-
-  end % show_3d_field
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = show_vec_field(sol, vx, vy, opt)
-   %
-   % [ ] = show_vec_field(sol, vx, vy, opt)
-   %
-   % generic routine for a quiver plot for cell-centered values
-   %   sol     - structure with CONTACT results as returned by loadcase
-   %   vx, vy  - the vector data to be plotted
-   %   opt     - structure with options as defined by plot3d.
-   %
-   % #show_vec_field
-
-   if (any(strcmp(opt.typplot,{'rw_rear','rw_side'})))
-    return
-   end
-
-   % determine whether there are just vectors in the plot or magnitudes as well
-
-   has_mgn = ~isempty(strfind(opt.field,'+vec'));
-
-   % add to existing plot if magnitudes are already there
-
-   if (has_mgn)
-    hold on;
-   end
-
-   % set the vector color and line width, using defaults depending on
-   % field to be plotted
-
-   if (has_mgn)
-    col='k';
-    wid=2;
-   else
-    col='b';
-    wid=1;
-   end
-   if (~isempty(opt.veccolor))
-    col=opt.veccolor;
-   end
-   if (~isempty(opt.vecwidth))
-    wid=opt.vecwidth;
-   end
-
-   % draw vectors in maximally about numvecx x numvecy points
-
-   [ix_plot, iy_plot] = plot_ranges(sol, opt);
-   ixstep = max(1, round( (ix_plot(end)-ix_plot(1)+1) / opt.numvecx ));
-   iystep = max(1, round( (iy_plot(end)-iy_plot(1)+1) / opt.numvecy ));
-   ix_vec = [ix_plot(1) : ixstep : ix_plot(end)];
-   iy_vec = [iy_plot(1) : iystep : iy_plot(end)];
-   x  = ones(size(iy_vec'))*sol.x(ix_vec);
-   y  = sol.y(iy_vec)'*ones(size(ix_vec));
-   if (~isempty(sol.x_offset)), x = x + sol.x_offset; end
-   if (~isempty(sol.y_offset)), y = y + sol.y_offset; end
-   x = x * opt.xstretch;
-
-   % select components for actual vectors
-
-   vx = vx(iy_vec,ix_vec);
-   vy = vy(iy_vec,ix_vec);
-
-   % eliminate vectors for points outside the contact area
-
-   ix = find(sol.eldiv(iy_vec,ix_vec)==0); x(ix)=NaN;
-
-   % set z-coordinates for plotting
-
-   if (strcmp(opt.rw_surfc,'none'))
-    zval = 1e6 * sign(opt.view(2)); z = zval * ones(size(x));
-    vz = zeros(size(vx));
-   elseif (strcmp(opt.rw_surfc,'prr'))
-    [ x, y, z, deltar ] =cntc.to_rail_coords(sol, x, y);
-    vz = sin(deltar) * vy;
-    vy = cos(deltar) * vy;
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ x, y, z, deltaw ] =cntc.to_wheel_coords(sol, x, y);
-    vz = sin(deltaw) * vy;
-    vy = cos(deltaw) * vy;
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ x, y, z, deltar ] =cntc.to_track_coords(sol, x, y);
-    vz = sin(deltar) * vy;
-    vy = cos(deltar) * vy;
-   end
-
-   % draw the actual vectors using quiver
-
-   if (isempty(opt.vecscale) | opt.vecscale<=0)
-    h = quiver3(x, y, z, vx, vy, vz, col);
-   else
-    % manual scaling of vectors, needed for addplot option:
-    scl = opt.vecscale;
-    h = quiver3(x, y, z, scl*vx, scl*vy, scl*vz, 0, col);
-   end
-   set(h,'linewidth',wid);
-
-   % set huge z-data (+ or -) for the vectors when there are magnitudes as well
-
-   % if (has_mgn)
-   %    set(h,'zdata',sign(opt.view(2))*1e5*ones(size(get(h,'vdata'))));
-   %    set(h,'wdata',    zeros(size(get(h,'vdata'))));
-   % end
-
-   % change axis range in 3D plots
-
-   if (~is_2d_view(gca, opt.view) & strcmp(opt.rw_surfc,'none'))
-    v=axis; axis([v -1e-6 1e-6]); axis equal;
-    set(gca,'ztick',[]);
-   end
-   view(opt.view);
-
-   % set labels
-
-   set_xyzlabels(sol, opt);
-
-  end % show_vec_field
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = show_eldiv_contour(sol, opt)
-   %
-   % [ ] = show_eldiv_contour(sol, opt)
-   %
-   % routine for plotting outlines of contact area if opt.addeldiv>=1, adhesion/plasticity area (>=2)
-   %   sol     - structure with CONTACT results as returned by loadcase
-   %   opt     - structure with options as defined by plot3d.
-   %
-   % #show_eldiv_contour
-
-   if (opt.addeldiv<=0)
-    return;
-   end
-   if (sol.mx<=1 | sol.my<=1)
-    if (0==1)
-     disp('WARNING: option "eldiv_contour" is not available for 2D grids');
-    end
-    return
-   end
-
-   % set the line width, using default depending on field to be plotted
-   if (~isempty(opt.eldivwid))
-    wid = opt.eldivwid;
-   elseif (strcmp(opt.field,'eldiv_contour'))
-    wid = 1;
-   else
-    wid = 2;
-   end
-
-   [ix_plot, iy_plot] = plot_ranges(sol, opt);
-   xcentr = sol.x(ix_plot); ycentr = sol.y(iy_plot);
-   if (~isempty(sol.x_offset)), xcentr = xcentr + sol.x_offset; end
-   if (~isempty(sol.y_offset)), ycentr = ycentr + sol.y_offset; end
-   xcentr = xcentr * opt.xstretch;
-
-   eldiv = derived_data(sol, opt, 'eldiv');
-   eldiv = mod(eldiv,10); % diffcase: difference is stored in tens-digit
-   eldiv = eldiv(iy_plot,ix_plot);
-
-   % expand selection 'eldiv' and x/ycentr when there are elements in
-   % contact in first/last rows/columns
-   if (any(eldiv(1,:)))
-    eldiv = [zeros(1,size(eldiv,2)) ; eldiv];
-    ycentr = [ ycentr(1)-sol.dy, ycentr ];
-   end
-   if (any(eldiv(end,:)))
-    eldiv = [eldiv ; zeros(1,size(eldiv,2))];
-    ycentr = [ ycentr, ycentr(end)+sol.dy ];
-   end
-   if (any(eldiv(:,1)))
-    eldiv = [zeros(size(eldiv,1),1) , eldiv];
-    xcentr = [ xcentr(1)-sol.dx, xcentr ];
-   end
-   if (any(eldiv(:,end)))
-    eldiv = [eldiv , zeros(size(eldiv,1),1)];
-    xcentr = [ xcentr, xcentr(end)+sol.dx ];
-   end
-
-   zval = 1e5;
-   l1 = []; l2 = []; l3 = [];
-
-   % plot double line around adhesion area
-   if (opt.addeldiv>=2)
-    mask = 1.0*(eldiv==1);
-    col  = opt.eldivcol(1,:);
-    if (nnz(mask)>0 & ~strcmp(opt.field,'pn'))
-     ContourLvl = [0.45, 0.55]';
-     c = contourc(xcentr, ycentr, mask, ContourLvl);
-     nx = size(c,2); ix = 1;
-     while(ix < nx);
-      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
-     end
-
-     % set xyz-coordinates for plotting
-
-     if (strcmp(opt.rw_surfc,'none'))
-      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
-     elseif (strcmp(opt.rw_surfc,'prr'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'prw'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'both'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
-     end
-
-     l1 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Adhes');
-    end
-   end
-
-   % plot double line around plasticity area
-   if (opt.addeldiv>=2)
-    mask = 1.0*(eldiv==3);
-    col  = opt.eldivcol(3,:);
-    if (nnz(mask)>0 & ~strcmp(opt.field,'pn'))
-     ContourLvl = [0.45, 0.55]';
-     c = contourc(xcentr, ycentr, mask, ContourLvl);
-     nx = size(c,2); ix = 1;
-     while(ix < nx);
-      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
-     end
-
-     % set xyz-coordinates for plotting
-
-     if (strcmp(opt.rw_surfc,'none'))
-      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
-     elseif (strcmp(opt.rw_surfc,'prr'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'prw'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'both'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
-     end
-
-     l3 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Plast');
-    end
-   end
-
-   % plot single line around contact area
-   if (opt.addeldiv>=1)
-    mask = 1.0*(eldiv>=1);
-    col = opt.eldivcol(2,:);
-    if (nnz(mask)>0)
-     ContourLvl = [0.5, 9.99]';
-     c = contourc(xcentr, ycentr, mask, ContourLvl);
-     nx = size(c,2); ix = 1;
-     while(ix < nx);
-      npnt = c(2,ix); c(:,ix) = NaN; ix = ix + 1 + npnt;
-     end
-
-     % set xyz-coordinates for plotting
-
-     if (strcmp(opt.rw_surfc,'none'))
-      xcrv = c(1,:); ycrv = c(2,:); zcrv = zval*[1;-1]*ones(1,nx);
-     elseif (strcmp(opt.rw_surfc,'prr'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_rail_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'prw'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_wheel_coords(sol, c(1,:), c(2,:));
-     elseif (strcmp(opt.rw_surfc,'both'))
-      [ xcrv, ycrv, zcrv ] =cntc.to_track_coords(sol, c(1,:), c(2,:));
-     end
-
-     l2 = plot3(xcrv, ycrv, zcrv, 'color',col, 'linewidth',wid, 'Tag','Contact');
-    end
-   end
-
-   % adapt axis in order to fit the plotted range of the contact area
-   if (strcmp(opt.rw_surfc,'none'))
-    xcornr = sol.xl + [ ix_plot(1)-1, ix_plot ]*sol.dx;
-    ycornr = sol.yl + [ iy_plot(1)-1, iy_plot ]*sol.dy;
-    if (~isempty(sol.x_offset)), xcornr = xcornr + sol.x_offset; end
-    if (~isempty(sol.y_offset)), ycornr = ycornr + sol.y_offset; end
-    nw_ax = [ min(xcornr), max(xcornr), min(ycornr), max(ycornr) ];
-    if (opt.addplot==1)  % allow growing of plot region only
-     pv_ax = axis;
-     nw_ax = [ min(pv_ax(1),nw_ax(1)), max(pv_ax(2),nw_ax(2)) ...
-      min(pv_ax(3),nw_ax(3)), max(pv_ax(4),nw_ax(4)) ];
-    end
-    axis( nw_ax );
-
-    % in 3D plots, concentrate on plane Oxy using tiny z-range
-    %    except when the eldiv is added to another 3D plot
-    if (~is_2d_view(gca, opt.view) & strcmp(opt.field,'eldiv_contour'))
-     v=axis; axis([v -1e-6 1e-6]); axis equal;
-     set(gca,'ztick',[]);
-    end
-   end
-
-   % set view and labels
-   view(opt.view);
-   set_xyzlabels(sol, opt);
-
-  end % show_eldiv_contour
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function show_rw_rear_view(sol, field, opt)
-
-   % show_rw_rear_view: plot w/r profiles, contact plane & contact results
-
-   % plot the potential contact area
-   % #show_rw_rear_view
-
-   yc = sol.y; zc = zeros(1,sol.my);
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ ~, ypln, zpln ] =cntc.to_rail_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ ~, ypln, zpln ] =cntc.to_wheel_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ ~, ypln, zpln ] =cntc.to_track_coords(sol, [], yc, zc);
-   end
-
-   plot(ypln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
-
-   % get field to be plotted, replace values in exterior elements
-   if (ischar(field))
-    eval(['val = sol.',field,';']);
-   else
-    val = field;
-   end
-   if (~isempty(opt.exterval))
-    eldiv = derived_data(sol, opt, 'eldiv');
-    adjac = eldiv;
-    adjac(1:end-1,:) = max(adjac(1:end-1,:), eldiv(2:end  ,:));
-    adjac(2:end  ,:) = max(adjac(2:end  ,:), eldiv(1:end-1,:));
-    adjac(:,1:end-1) = max(adjac(:,1:end-1), eldiv(:,2:end  ));
-    adjac(:,2:end  ) = max(adjac(:,2:end  ), eldiv(:,1:end-1));
-    ii = find(adjac==0);
-    val(ii) = opt.exterval;
-   end
-
-   % convert field to 2d view, aggregating values over columns
-   % TODO: provide max, absmax, maxabs, sum
-   val   = max(val, [], 2)';
-   scale = get_vecscale( sol, opt, val );
-
-   yc = sol.y; zc = -scale*val;
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ ~, yval, zval ] =cntc.to_rail_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ ~, yval, zval ] =cntc.to_wheel_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ ~, yval, zval ] =cntc.to_track_coords(sol, [], yc, zc);
-   end
-
-   col = matlab_color(6);
-   if (~isempty(opt.veccolor))
-    col = opt.veccolor;
-   end
-   plot( yval, zval, 'linewidth',1, 'color',col );
-   plot( [ypln; yval], [zpln; zval], 'linewidth',1, 'color',col );
-
-   % plot contact reference point, origin of contact local coordinate system
-
-   axlen = 0.1 * (sol.y(end) - sol.y(1));
-   yc = sol.meta.spinyo+[0,0,1]*axlen; zc = [1,0,0]*axlen;
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ ~, yval, zval, delta ] =cntc.to_rail_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ ~, yval, zval, delta ] =cntc.to_wheel_coords(sol, [], yc, zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ ~, yval, zval, delta ] =cntc.to_track_coords(sol, [], yc, zc);
-   end
-
-   if (exist('plot_cm','file'))
-    l  = plot_cm([yval(2),zval(2)], 0.3, axlen, delta*180/pi, 'k');
-    set(l, 'Tag','CM');
-   else
-    l1 = plot(yval, zval, 'k');
-    l2 = plot(yval(2), zval(2), 'k.', 'markersize',18);
-    set([l1,l2], 'Tag','CM');
-   end
-
-   set_yzlabels(sol, opt);
-   grid on;
-
-  end % show_rw_rear_view
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function show_rw_side_view(sol, field, opt)
-
-   % show_rw_side_view: plot w/r profiles, contact plane & contact results
-
-   % plot the potential contact area
-   % #show_rw_side_view
-
-   xc = sol.x; zc = zeros(1,sol.mx);
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ xpln, ~, zpln ] =cntc.to_rail_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ xpln, ~, zpln ] =cntc.to_wheel_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ xpln, ~, zpln ] =cntc.to_track_coords(sol, xc, [], zc);
-   end
-
-   plot(xpln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
-
-   % get field to be plotted, replace values in exterior elements
-   if (ischar(field))
-    eval(['val = sol.',field,';']);
-   else
-    val = field;
-   end
-   if (~isempty(opt.exterval))
-    eldiv = derived_data(sol, opt, 'eldiv');
-    adjac = eldiv;
-    adjac(1:end-1,:) = max(adjac(1:end-1,:), eldiv(2:end  ,:));
-    adjac(2:end  ,:) = max(adjac(2:end  ,:), eldiv(1:end-1,:));
-    adjac(:,1:end-1) = max(adjac(:,1:end-1), eldiv(:,2:end  ));
-    adjac(:,2:end  ) = max(adjac(:,2:end  ), eldiv(:,1:end-1));
-    ii = find(adjac==0);
-    val(ii) = opt.exterval;
-   end
-
-   % convert field to 2d view, aggregating values over rows
-   % TODO: provide max, absmax, maxabs, sum
-
-   val   = max(val, [], 1);
-   scale = get_vecscale( sol, opt, val );
-
-   xc = sol.x; zc = -scale*val;
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ xval, ~, zval ] =cntc.to_rail_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ xval, ~, zval ] =cntc.to_wheel_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
-   end
-
-   col = matlab_color(6);
-   if (~isempty(opt.veccolor))
-    col = opt.veccolor;
-   end
-
-   plot( xval, zval, 'linewidth',1, 'color',col );
-   plot( [xpln; xval], [zpln; zval], 'linewidth',1, 'color',col );
-
-   % plot contact reference point, origin of contact local coordinate system
-
-   v = axis;
-   axlen = 0.03 * (v(2) - v(1));
-   xc = sol.meta.spinxo+[0,0,1]*axlen; zc = [1,0,0]*axlen;
-   if (strcmp(opt.rw_surfc,'prr'))
-    [ xval, ~, zval ] =cntc.to_rail_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    [ xval, ~, zval ] =cntc.to_wheel_coords(sol, xc, [], zc);
-   elseif (strcmp(opt.rw_surfc,'both'))
-    [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
-   end
-
-   if (exist('plot_cm','file'))
-    roty = 0; % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
-    if (isfield(sol.meta, 'roty')), roty = sol.meta.roty*180/pi; end
-    l = plot_cm([xval(2),zval(2)], 0.15*axlen, axlen, -roty, 'k');
-    set(l, 'Tag','CM');
-   else
-    l1 = plot(xval, zval, 'k');
-    l2 = plot(xval(2), zval(2), 'k.', 'markersize',18);
-    set([l1,l2], 'Tag','CM');
-   end
-
-   set_xyzlabels(sol, opt);
-   grid on;
-
-  end % show_rw_side_view
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ is2d ] = is_2d_view(ax, view);
-
-   % return 1 if the current plot uses 2D view and 0 in case of a 3D view
-   % 2D view: myopt.view = [ *, +/-90 ];  axis returns vector of 4 elements.
-   % #is_2d_view
-
-   is2d = (abs(90 - abs(view(2))) <= 1e-3);
-
-  end % is_2d_view
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = set_yzlabels(sol, opt)
-   % #set_yzlabels
-
-   if (strcmp(opt.rw_surfc,'prr'))
-    xlabel ('y_r [mm]');
-    ylabel ('z_r [mm]');
-   elseif (strcmp(opt.rw_surfc,'prw'))
-    xlabel ('y_w [mm]');
-    ylabel ('z_w [mm]');
-   elseif (strcmp(opt.rw_surfc,'both'))
-    xlabel ('y_{tr} [mm]');
-    ylabel ('z_{tr} [mm]');
-   end
-
-  end % set_yzlabels
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ ] = set_xyzlabels(sol, opt)
-   % #set_xyzlabels
-
-   if (strcmp(opt.typplot,'rw_rear'))
-
-    if (strcmp(opt.rw_surfc,'prr'))
-     xlabel ('y_r [mm]');
-     ylabel ('z_r [mm]');
-    elseif (strcmp(opt.rw_surfc,'prw'))
-     xlabel ('y_w [mm]');
-     ylabel ('z_w [mm]');
-    elseif (strcmp(opt.rw_surfc,'both'))
-     xlabel ('y_{tr} [mm]');
-     ylabel ('z_{tr} [mm]');
-    end
-
-   elseif (strcmp(opt.typplot,'rw_side'))
-
-    if (strcmp(opt.rw_surfc,'prr'))
-     xlabel ('x_r [mm]');
-     ylabel ('z_r [mm]');
-    elseif (strcmp(opt.rw_surfc,'prw'))
-     xlabel ('x_w [mm]');
-     ylabel ('z_w [mm]');
-    elseif (strcmp(opt.rw_surfc,'both'))
-     xlabel ('x_{tr} [mm]');
-     ylabel ('z_{tr} [mm]');
-    end
-
-   else
-
-    if (strcmp(opt.rw_surfc,'prr'))
-     xlabel ('x_r [mm]');
-     ylabel ('y_r [mm]');
-    elseif (strcmp(opt.rw_surfc,'prw'))
-     xlabel ('x_w [mm]');
-     ylabel ('y_w [mm]');
-    elseif (strcmp(opt.rw_surfc,'both'))
-     xlabel ('x_{tr} [mm]');
-     ylabel ('y_{tr} [mm]');
-    else
-     xlabel ('x_c [mm]');
-     if (sol.d_digit==4)
-      ylabel ('s_c [mm]');
-     else
-      ylabel ('y_c [mm]');
-     end
-     %     else
-     %        xlabel ('X-coordinate [mm]');
-     %        ylabel ('Y-coordinate [mm]');
-    end
-   end
-
-  end % set_xyzlabels
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ix_plot, iy_plot] = plot_ranges(sol, opt);
-
-   % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
-   % #plot_ranges
-
-   if (isempty(opt.ixrange) | ...
-     (ischar(opt.ixrange) & strcmp(opt.ixrange,'all')) )
-    ix_plot = [1, sol.mx];
-   elseif (ischar(opt.ixrange) & strcmp(opt.ixrange,'tight'))
-    num_inter = sum(sol.eldiv,1);
-    ix_plot = find(num_inter);
-    ix_plot = [ix_plot(1)-1 : ix_plot(end)+1 ];
-   elseif (ischar(opt.ixrange) & strcmp(opt.ixrange,'auto'))
-    num_inter = sum(sol.eldiv,1);
-    ix_plot = find(num_inter);
-    if (isempty(ix_plot))
-     ix_plot = [1, sol.mx];
-    else
-     ix_plot = [ix_plot(1)-3 : ix_plot(end)+3 ];
-    end
-   else
-    ix_plot = opt.ixrange;
-   end
-   if (isempty(opt.iyrange) | ...
-     (ischar(opt.iyrange) & strcmp(opt.iyrange,'all')) )
-    iy_plot = [1, sol.my];
-   elseif (ischar(opt.iyrange) & strcmp(opt.iyrange,'tight'))
-    num_inter = sum(sol.eldiv,2);
-    iy_plot = find(num_inter);
-    iy_plot = [iy_plot(1)-1 : iy_plot(end)+1 ];
-   elseif (ischar(opt.iyrange) & strcmp(opt.iyrange,'auto'))
-    num_inter = sum(sol.eldiv,2);
-    iy_plot = find(num_inter);
-    if (isempty(iy_plot))
-     iy_plot = [1, sol.my];
-    else
-     iy_plot = [iy_plot(1)-3 : iy_plot(end)+3 ];
-    end
-   else
-    iy_plot = opt.iyrange;
-   end
-   ix_plot = max(1,min(ix_plot)) : min(sol.mx,max(ix_plot));
-   iy_plot = max(1,min(iy_plot)) : min(sol.my,max(iy_plot));
-
-  end % plot_ranges
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ f1, f2, f3, f4, f5, f6 ] =derived_data(sol, opt, n1, n2, n3, n4, n5, n6)
-   % #derived_data
-
-   px = sol.px; py = sol.py; eldiv = sol.eldiv;
-
-   nfield = nargin - 2;
-   for ifield = 1 : nfield
-    % get name of requested derived field, by copying n1, n2, .. or n6
-    eval(sprintf('nam = n%d;',ifield));
-
-    % compute the derived field
-    if (strcmp(nam,'eldiv'))
-     field = eldiv;
-    elseif (strcmp(nam,'px'))
-     field = px;
-    elseif (strcmp(nam,'py'))
-     field = py;
-    elseif (strcmp(nam,'pt'))
-     field = sqrt(px.^2 + py.^2);
-    elseif (strcmp(nam,'ptarg'))
-     field = 180/pi*atan2(py, px);   % range [-180,180]
-    elseif (strcmp(nam,'pxdir'))
-     field = sol.px ./ max(1d-9,sqrt(sol.px.^2 + sol.py.^2));
-    elseif (strcmp(nam,'sabs'))
-     field = sol.kincns.veloc * sol.srel;
-    else
-     disp(sprintf('Error: unknown derived field %s.',nam));
-    end
-
-    % store derived field, by copying to f1, f2, .. or f6
-    eval(sprintf('f%d = field;',ifield));
-   end
-
-  end % derived_data
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ scale ] = get_vecscale( sol, opt, val )
-   % #get_vecscale
-
-   if (~isempty(opt.vecscale))
-    scale = opt.vecscale;
-   else
-    scale = 10 / max(abs(val));
-   end
-
-  end % get_vecscale
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ is_left ] = is_left_side(sol)
-   % #is_left_side
-
-   if (length(sol)>1)
-    is_left = (sol(1).config==0 | sol(1).config==4);
-   else
-    is_left = (sol.config==0 | sol.config==4);
-   end
-
-  end % is_left_side
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
-   % #get_profile_slice
-
-   if (nargin<3)
-    make_plot = 0;
-   end
-   i0 = find(slcs.u <  u_i, 1, 'last');
-   i1 = find(slcs.u >= u_i, 1, 'first');
-   % disp([u_i, i0, i1])
-   if (i0 >= slcs.nslc)
-    yi = slcs.ysurf(end,:); zi = slcs.zsurf(end,:);
-    % disp(sprintf('u_i = %5.1f > u(end) = %5.1f, using slice %d', u_i, slcs.u(end), i1));
-   elseif (i1 <= 1)
-    yi = slcs.ysurf(1,:); zi = slcs.zsurf(1,:);
-    % disp(sprintf('u_i = %5.1f < u(1) = %5.1f, using slice %d', u_i, slcs.u(1), i0));
-   else
-    fac0 = (slcs.u(i1) - u_i) / (slcs.u(i1) - slcs.u(i0));
-    fac1 = (u_i - slcs.u(i0)) / (slcs.u(i1) - slcs.u(i0));
-    if (fac0>0.99 & nnz(slcs.mask_j(i0,:))>nnz(slcs.mask_j(i1,:)))
-     % disp(sprintf('Using longer slice i0=%d', i0));
-     yi = slcs.ysurf(i0,:); zi = slcs.zsurf(i0,:);
-    elseif (fac1>0.99 & nnz(slcs.mask_j(i1,:))>nnz(slcs.mask_j(i0,:)))
-     % disp(sprintf('Using longer slice i1=%d', i1));
-     yi = slcs.ysurf(i1,:); zi = slcs.zsurf(i1,:);
-    else
-     % disp(sprintf('Using %5.3f * slice %d + %5.3f * slice %d',fac0, i0, fac1, i1));
-     yi = fac0 * slcs.ysurf(i0,:) + fac1 * slcs.ysurf(i1,:);
-     zi = fac0 * slcs.zsurf(i0,:) + fac1 * slcs.zsurf(i1,:);
-    end
-
-    if (make_plot)
-     tmpfig = gcf;
-     figure(make_plot); clf; hold on;
-     plot([slcs.ysurf([i0:i1],:);yi]', [slcs.zsurf([i0:i1],:);zi]');
-     set(gca,'ydir','reverse'); grid on; axis equal;
-     legend(sprintf('slice %d, u=%6.2f',i0,slcs.u(i0)), sprintf('slice %d, u=%6.2f',i1,slcs.u(i1)), ...
-      sprintf('interpolated, u=%6.2f',u_i), 'location','southeast')
-     figure(tmpfig);
-    end
-   end
-
-   % set arc-length s, accounting for NaN's in 'missing parts'
-   % s  = slcs.vj; ix = find(isnan(yi)); s(ix) = NaN;
-
-   prr = struct('ProfileY',yi', 'ProfileZ',zi', 'ProfileS',slcs.vj);
-
-  end % get_profile_slice
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Coordinates
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  function [ xtr, ytr, ztr, delta_tr ] = to_track_coords(sol, xc, yc, zc);
-
-   % transform contact [xc,yc/s]-coordinates to track [xtr,ytr,ztr] coordinates
-   % #to_track_coords -2
-
-   if (nargin<3), yc = []; end
-   if (nargin<4), zc = []; end
-   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
-   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
-   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
-   if (isempty(zc)), zc = zeros(sz); end
-
-   % reshape inputs to row vectors
-
-   m = size(xc,1); n = size(xc,2);
-   xc = reshape(xc, 1, m*n);
-   yc = reshape(yc, 1, m*n);
-   zc = reshape(zc, 1, m*n);
-   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
-
-   % form transformation matrices and vectors
-
-   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
-   if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
-    Rref = Rref * roty(sol.meta.roty*180/pi);
-   end
-   oref = [sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
-
-   R_r  = rotx(sol.meta.roll_r*180/pi);
-   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
-
-   if (sol.d_digit~=4)
-
-    % change coordinates from contact to rail to track coordinates
-
-    coords = o_r*ones(1,m*n) + R_r * oref*ones(1,m*n) + R_r * Rref * coords;
-
-   else
-
-    % mirror ProfileY for left-side w/r pairs
-
-    prf_s = sol.prr.ProfileS; prf_y = sol.prr.ProfileY; prf_z = sol.prr.ProfileZ;
-    if (is_left_side(sol))
-     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
-    end
-
-    % find oref in the rail profile
-
-    dst = sqrt( (prf_y-sol.meta.ycp_r).^2 + (prf_z-sol.meta.zcp_r).^2 );
-    [~,ix] = min(dst);
-    rg = [max(1,ix-5) : min(length(prf_y),ix+5)];
-
-    sref = interp1(prf_y(rg), prf_s(rg), sol.meta.ycp_r);
-    if (isnan(sref))
-     disp(sprintf('ERROR: prr seems different from prr used in simulation (needs mirroring?).'))
-     sref = prf_s(ix);
-    end
-
-    % find grid points in the rail profile
-
-    sc = yc;
-    if (any(sol.kincns.t_digit==[1 2]))
-     sr =        sc;
-    else
-     sr = sref + sc;
-    end
-    yr_at_s = interp1(prf_s, prf_y, sr);
-    zr_at_s = interp1(prf_s, prf_z, sr);
-
-    % determine n-vectors on the rail profile
-
-    ds = 0.1;
-    dy = (interp1(prf_s, prf_y, sr+ds) - yr_at_s) / ds;
-    dz = (interp1(prf_s, prf_z, sr+ds) - zr_at_s) / ds;
-    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
-
-    % hack: slight raise to put the data above the surfaces
-    % zc = zc - 0.3;
-
-    coords = [xc+oref(1); yr_at_s; zr_at_s] + nvec .* ([1;1;1] * zc);
-
-    % change coordinates from rail to track coordinates
-
-    coords = o_r*ones(1,m*n) + R_r * coords;
-
-   end
-
-   % extract components & reshape to the original array sizes
-
-   xtr = reshape(coords(1,:), m, n);
-   ytr = reshape(coords(2,:), m, n);
-   ztr = reshape(coords(3,:), m, n);
-   % TODO: correction for \Delta\phi_rr
-   % delta_tr = sol.meta.deltcp_r + sol.meta.roll_r;
-   delta_tr = sol.meta.deltcp_r + sol.meta.roll_r;
-
-  end % cntc.to_track_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xr, yr, zr, deltar]=to_rail_coords(sol, xc, yc, zc);
-
-   % transform contact [xc,yc/s]-coordinates to rail [xr,yr,zr] coordinates
-   % #to_rail_coords -2
-
-   if (nargin<3), yc = []; end
-   if (nargin<4), zc = []; end
-   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
-   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
-   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
-   if (isempty(zc)), zc = zeros(sz); end
-
-   % reshape inputs to row vectors
-
-   m = size(xc,1); n = size(xc,2);
-   xc = reshape(xc, 1, m*n);
-   yc = reshape(yc, 1, m*n);
-   zc = reshape(zc, 1, m*n);
-   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
-
-   % form transformation matrices and vectors
-
-   Rref = rotx(sol.meta.deltcp_r*180/pi);
-   if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
-    Rref = Rref * roty(sol.meta.roty*180/pi);
-   end
-
-   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
-
-   has_slcs = isfield(sol,'slcs');
-   if (has_slcs)
-    oref = [sol.meta.s_ws+sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
-   else
-    oref = [              sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
-   end
-
-   if (sol.d_digit~=4)
-
-    % change coordinates from contact to rail coordinates
-
-    coords = oref*ones(1,m*n) + Rref * coords;
-
-   else
-
-    if (has_slcs), disp('Rail coords not supported for conformal on variable profile'); end
-
-    % mirror ProfileY for left-side w/r pairs
-
-    prf_s = sol.prr.ProfileS; prf_y = sol.prr.ProfileY; prf_z = sol.prr.ProfileZ;
-    if (is_left_side(sol))
-     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
-    end
-
-    % find oref in the rail profile
-
-    dst = sqrt( (prf_y-sol.meta.ycp_r).^2 + (prf_z-sol.meta.zcp_r).^2 );
-    [~,ix] = min(dst);
-    rg = [max(1,ix-5), min(length(prf_y),ix+5)];
-
-    sref = interp1(prf_y(rg), prf_s(rg), sol.meta.ycp_r);
-
-    % find grid points in the rail profile
-
-    sc = yc;
-    if (any(sol.kincns.t_digit==[1 2]))
-     sr =        sc;
-    else
-     sr = sref + sc;
-    end
-    yr_at_s = interp1(prf_s, prf_y, sr);
-    zr_at_s = interp1(prf_s, prf_z, sr);
-
-    % determine n-vectors on the rail profile
-
-    ds = 0.1;
-    dy = (interp1(prf_s, prf_y, sr+ds) - yr_at_s) / ds;
-    dz = (interp1(prf_s, prf_z, sr+ds) - zr_at_s) / ds;
-    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
-
-    coords = [xc; yr_at_s; zr_at_s] + nvec .* ([1;1;1] * zc);
-
-   end
-
-   % extract components & reshape to the original array sizes
-
-   xr = reshape(coords(1,:), m, n);
-   yr = reshape(coords(2,:), m, n);
-   zr = reshape(coords(3,:), m, n);
-   deltar = sol.meta.deltcp_r;
-
-  end % cntc.to_rail_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xw, yw, zw, deltaw]=to_wheel_coords(sol, xc, yc, zc);
-
-   % transform contact [xc,yc/s]-coordinates to wheel [xw,yw,zw] coordinates
-   % #to_wheel_coords -2
-
-   if (nargin<3), yc = []; end
-   if (nargin<4), zc = []; end
-   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
-   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
-   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
-   if (isempty(zc)), zc = zeros(sz); end
-
-   % reshape inputs to row vectors
-
-   m = size(xc,1); n = size(xc,2);
-   xc = reshape(xc, 1, m*n);
-   yc = reshape(yc, 1, m*n);
-   zc = reshape(zc, 1, m*n);
-   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
-
-   % form transformation matrices and vectors
-
-   Rref = rotx(sol.meta.deltcp_r*180/pi);
-   oref = [sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
-
-   R_r  = rotx(sol.meta.roll_r*180/pi);
-   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
-
-   R_w  = rotx(sol.meta.roll_w*180/pi) * rotz(sol.meta.yaw_w*180/pi);
-   o_w  = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
-
-   if (sol.d_digit~=4)
-
-    % change coordinates from contact to rail to track to wheel coordinates
-
-    xtr = o_r*ones(1,m*n) + R_r * oref*ones(1,m*n) + R_r * Rref * coords;
-    coords = R_w' * ( xtr - o_w*ones(1,m*n) );
-
-   else
-
-    % mirror ProfileY for left-side w/r pairs
-
-    prf_s = sol.prw.ProfileS; prf_y = sol.prw.ProfileY; prf_z = sol.prw.ProfileZ;
-    if (is_left_side(sol))
-     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
-    end
-
-    % change oref from rail to track to wheel coordinates
-
-    wref = R_w' * ( o_r + R_r * oref - o_w );
-
-    % find wref.y in the wheel profile
-
-    dst = sqrt( (prf_y-wref(2)).^2 + (prf_z-wref(3)).^2 );
-    [~,ix] = min(dst);
-    rg = [max(1,ix-5), min(length(prf_y),ix+5)];
-
-    sref = interp1(prf_y(rg), prf_s(rg), wref(2));
-
-    % find grid points in the wheel profile
-
-    sc = yc;
-    if (any(sol.kincns.t_digit==[1 2]))
-     sw =       -sc;
-    else
-     sw = sref - sc;    % sw increasing to the left
-    end
-    yw_at_s = interp1(prf_s, prf_y, sw);
-    zw_at_s = interp1(prf_s, prf_z, sw);
-
-    % determine n-vectors on the wheel profile
-
-    ds = 0.1;
-    dy = (interp1(prf_s, prf_y, sw-ds) - yw_at_s) / ds;
-    dz = (interp1(prf_s, prf_z, sw-ds) - zw_at_s) / ds;
-    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
-
-    coords = [xc; yw_at_s; zw_at_s] + nvec .* ([1;1;1] * zc);
-   end
-
-   % extract coordinates, add wheel curvature
-
-   fac_r = 1 / (2*sol.meta.rnom_whl);
-   xw = coords(1,:);
-   yw = coords(2,:);
-   zw = coords(3,:) - fac_r * xw.^2;
-
-   % reshape to the original array sizes
-
-   xw = reshape(xw, m, n);
-   yw = reshape(yw, m, n);
-   zw = reshape(zw, m, n);
-
-   deltaw = sol.meta.deltcp_r + sol.meta.roll_r - sol.meta.roll_w;
-
-  end % cntc.to_wheel_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xtr, ytr, ztr ] = rail_to_track_coords(sol, xr, yr, zr);
-
-   % transform rail [xr,yr,zr]-coordinates to track (tr) [xtr,ytr,ztr] coordinates
-   % #rail_to_track_coords -2
-
-   % reshape inputs to row vectors
-
-   m = size(xr,1); n = size(xr,2);
-   xr = reshape(xr, 1, m*n);
-   yr = reshape(yr, 1, m*n);
-   zr = reshape(zr, 1, m*n);
-   coords = [xr; yr; zr];
-
-   % form transformation matrices and vectors
-
-   R_r  = rotx(sol.meta.roll_r*180/pi); % roll_r (actually called) -> rollr_tr
-
-   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
-
-   has_slcs = isfield(sol,'slcs');
-   if (has_slcs)
-    o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
-   else
-    o_r  = [          0   ; sol.meta.y_r; sol.meta.z_r];
-   end
-
-   % change coordinates from rail to track coordinates
-
-   coords = o_r * ones(1,m*n) + R_r * coords;
-
-   % extract & reshape to the original array sizes
-
-   xtr = reshape(coords(1,:), m, n);
-   ytr = reshape(coords(2,:), m, n);
-   ztr = reshape(coords(3,:), m, n);
-
-  end % rail_to_track_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xw, yw, zw ] = wcyl_to_wprof_coords(sol, thw, yw, drw);
-
-   % transform cylindrical wheel [thw,yw,drw]-coordinates to wheel profile [xw,yw,zw] coordinates
-   % #wcyl_to_wprof_coords -2
-
-   % reshape inputs to row vectors
-
-   m = size(thw,1); n = size(thw,2);
-   thw = reshape(thw, 1, m*n);
-   yw  = reshape(yw,  1, m*n);
-   drw = reshape(drw, 1, m*n);
-
-   % add nominal radius rnom to offset dr
-
-   rw  = sol.meta.rnom_whl + drw;
-
-   % convert cylindrical to cartesian wheel profile coordinates -- lowest point at -theta_ws
-
-   xw  =                      rw .* sin(thw+sol.meta.th_ws);
-   zw  = -sol.meta.rnom_whl + rw .* cos(thw+sol.meta.th_ws);
-
-   % reshape to the original array sizes
-
-   xw = reshape(xw, m, n);
-   yw = reshape(yw, m, n);
-   zw = reshape(zw, m, n);
-
-  end % wcyl_to_wprof_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xtr, ytr, ztr ] = wheel_to_track_coords(sol, xw, yw, zw);
-
-   % transform wheel [xw,yw,zw]-coordinates to track [xtr,ytr,ztr] coordinates
-   % #wheel_to_track_coords -2
-
-   % reshape inputs to row vectors
-
-   m = size(xw,1); n = size(xw,2);
-   xw = reshape(xw, 1, m*n);
-   yw = reshape(yw, 1, m*n);
-   zw = reshape(zw, 1, m*n);
-   coords = [xw; yw; zw];
-
-   % form transformation matrices and vectors from rw/ws to tr coordinates
-
-   R_w_tr = rotx(sol.meta.roll_w*180/pi) * rotz(sol.meta.yaw_w*180/pi);
-   o_w_tr = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
-
-   % change coordinates from wheel to track coordinates
-
-   coords = o_w_tr * ones(1,m*n) + R_w_tr * coords;
-
-   % extract & reshape to the original array sizes
-
-   xtr = reshape(coords(1,:), m, n);
-   ytr = reshape(coords(2,:), m, n);
-   ztr = reshape(coords(3,:), m, n);
-
-  end % wheel_to_track_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ xr, yr, zr ] = wheel_to_rail_coords(sol, xw, yw, zw);
-
-   % transform wheel [xw,yw,zw]-coordinates to rail [xr,yr,zr] coordinates
-   % #wheel_to_rail_coords -2
-
-   % reshape inputs to row vectors
-
-   m = size(xw,1); n = size(xw,2);
-   xw = reshape(xw, 1, m*n);
-   yw = reshape(yw, 1, m*n);
-   zw = reshape(zw, 1, m*n);
-   coords = [xw; yw; zw];
-
-   % form transformation matrices and vectors
-
-   R_r  = rotx(sol.meta.roll_r*180/pi);
-   o_r  = [0; sol.meta.y_r; sol.meta.z_r];
-
-   R_w  = rotx(sol.meta.roll_w*180/pi) * rotz(sol.meta.yaw_w*180/pi);
-   o_w  = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
-
-   % change coordinates from wheel to track to rail coordinates
-
-   coords = R_r' * (o_w-o_r)*ones(1,m*n) + R_r' * R_w * coords;
-
-   % extract & reshape to the original array sizes
-
-   xr = reshape(coords(1,:), m, n);
-   yr = reshape(coords(2,:), m, n);
-   zr = reshape(coords(3,:), m, n);
-
-  end % wheel_to_rail_coords
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ rot ] = rotx(roll_deg)
-   % #rotx -2
-
-   sn = sin(roll_deg*pi/180);
-   cs = cos(roll_deg*pi/180);
-   rot = [ 1,  0,   0;
-    0, cs, -sn;
-    0, sn,  cs];
-
-  end % rotx
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ rot ] = roty(pitch_deg)
-   % #roty -2
-
-   sn = sin(pitch_deg*pi/180);
-   cs = cos(pitch_deg*pi/180);
-   rot = [ cs,  0,  sn;
-    0,  1,   0;
-    -sn,  0,  cs];
-
-  end % roty
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ rot ] = rotz(yaw_deg)
-   % #rotz -2
-
-   sn = sin(yaw_deg*pi/180);
-   cs = cos(yaw_deg*pi/180);
-   rot = [ cs, -sn, 0;
-    sn,  cs, 0;
-    0,   0, 1];
-
-  end % rotz
-
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-   %% #Plot
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ myopt ] = plot_2dspline( slcs, opt )
 
@@ -8464,7 +8539,7 @@ cntc : interface between SDT and CONTACT
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
     if (isfield(opt, myopts{i}))
-     myopt = setfield(myopt, myopts{i}, mygetfield(opt,myopts{i}));
+     myopt = setfield(myopt, myopts{i}, cntc.mygetfield(opt,myopts{i}));
     end
    end
 
@@ -8526,7 +8601,7 @@ cntc : interface between SDT and CONTACT
 
    % form profile surface at given x, all u - fine sampling
 
-   [ xsurf, ysurf, zsurf ] = make_3d_surface( slcs, myopt, myopt.urange, [], myopt.xysteps(1)/20, ...
+   [ xsurf, ysurf, zsurf ] = cntc.make_3d_surface( slcs, myopt, myopt.urange, [], myopt.xysteps(1)/20, ...
     myopt.vrange, [], []);
 
    % plot 90% transparent surface (alpha=0.1); color-value?
@@ -8540,10 +8615,10 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.typplot, 'refl'))
     ix = find( slcs.spl2d.tui>= myopt.urange(1) & slcs.spl2d.tui<=myopt.urange(end) );
-    ui = refine_intv( slcs.spl2d.tui(ix), 4 );
+    ui = cntc.refine_intv( slcs.spl2d.tui(ix), 4 );
     ix = find( slcs.spl2d.tvj>= myopt.vrange(1) & slcs.spl2d.tvj<=myopt.vrange(end) );
-    vj = refine_intv( slcs.spl2d.tvj(ix), 4 );
-    [xsurf, ysurf, zsurf, th_rfl] = make_reflec( slcs.spl2d, myopt.refl_avec, myopt.view, ui, vj);
+    vj = cntc.refine_intv( slcs.spl2d.tvj(ix), 4 );
+    [xsurf, ysurf, zsurf, th_rfl] = cntc.make_reflec( slcs.spl2d, myopt.refl_avec, myopt.view, ui, vj);
     th_col = floor(th_rfl/myopt.refl_dth) * myopt.refl_dth;
 
     % tmp   = parula(12);
@@ -8583,7 +8658,7 @@ cntc : interface between SDT and CONTACT
 
    % determine transverse curves along the surface at selected u (x) positions
 
-   [ xcurv, ycurv, zcurv ] = make_3d_surface( slcs, myopt, myopt.urange, [], myopt.xysteps(1), ...
+   [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( slcs, myopt, myopt.urange, [], myopt.xysteps(1), ...
     [], [], []);
    % plot transverse curves along the surface
 
@@ -8594,7 +8669,7 @@ cntc : interface between SDT and CONTACT
 
    % determine longitudinal curves along the surface at selected v (y) positions
 
-   [ xcurv, ycurv, zcurv ] = make_3d_surface( slcs, myopt, ...
+   [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( slcs, myopt, ...
     myopt.urange, [], myopt.xysteps(1)/20, [], [], myopt.xysteps(2));
 
    % plot curves along surface in longitudinal direction
@@ -8619,7 +8694,7 @@ cntc : interface between SDT and CONTACT
       col  = myopt.slc_color(icol,:);
       if (isscalar(col) & isnumeric(col)), col = matlab_color(col); end
       if (1==1)
-       [ xcurv, ycurv, zcurv ] = make_3d_surface( slcs, myopt, slcs.u(jslc)*[1 1], [], 1, ...
+       [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( slcs, myopt, slcs.u(jslc)*[1 1], [], 1, ...
         myopt.vrange, [], myopt.xysteps(2)/20);
       else
        xcurv = slcs.xsurf(jslc,jv); ycurv = slcs.ysurf(jslc,jv); zcurv = slcs.zsurf(jslc,jv);
@@ -8637,7 +8712,7 @@ cntc : interface between SDT and CONTACT
     ncol  = size(myopt.feat_color,1);
     for j = 1 : nfeat
      jp   = slcs.iseg_p( ifeat(j) );
-     [ xcurv, ycurv, zcurv ] = make_3d_surface( slcs, myopt, ...
+     [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( slcs, myopt, ...
       myopt.urange, [], myopt.xysteps(1)/20, slcs.vj(jp)*[1 1], [], myopt.xysteps(2));
      jcol = mod((j-1), ncol) + 1;
      col  = myopt.feat_color(jcol,:);
@@ -8948,7 +9023,7 @@ cntc : interface between SDT and CONTACT
    % plot first axis ivec
 
    O1 = O + r*ivec;
-   h(5:6) = plot_arrow(O1, (scl-r)*ivec, col, scl_head);
+   h(5:6) = cntc.plot_arrow(O1, (scl-r)*ivec, col, scl_head);
 
    l1 = O + pos_txt(1,1)*ivec + pos_txt(1,2)*jvec;
    h(13) = text(l1(1), l1(2), deblank(axnams(1,:)), 'rotation', th_txt, ...
@@ -8958,7 +9033,7 @@ cntc : interface between SDT and CONTACT
    % plot second axis jvec
 
    O2 = O + r*jvec;
-   h(7:8) = plot_arrow(O2, (scl-r)*jvec, col, scl_head);
+   h(7:8) = cntc.plot_arrow(O2, (scl-r)*jvec, col, scl_head);
 
    l2 = O + pos_txt(2,1)*ivec + pos_txt(2,2)*jvec;
    h(14) = text(l2(1), l2(2), deblank(axnams(2,:)), 'rotation', th_txt, ...
@@ -8980,10 +9055,10 @@ cntc : interface between SDT and CONTACT
     h( 9) = plot(Orot(1)+ivec(1)*f, Orot(2)+ivec(2)*f, 'color',col);
     h(10) = plot(Orot(1)+jvec(1)*f, Orot(2)+jvec(2)*f, 'color',col);
     if (fac_ang*fac_y>0)
-     h(11:12) = circ_arrow(Orot, 0.15*scl, theta-120, theta+150, col, ...
+     h(11:12) = cntc.circ_arrow(Orot, 0.15*scl, theta-120, theta+150, col, ...
       0.7*scl_head, 0.8);
     else
-     h(11:12) = circ_arrow(Orot, 0.15*scl, theta+120, theta-150, col, ...
+     h(11:12) = cntc.circ_arrow(Orot, 0.15*scl, theta+120, theta-150, col, ...
       0.7*scl_head, 0.8);
     end
    end
@@ -9108,7 +9183,7 @@ cntc : interface between SDT and CONTACT
     roll  = rot(1);
     yaw   = rot(2);
     pitch = rot(3);
-    rot   = rotx(roll) * rotz(yaw) * roty(pitch);
+    rot   = cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
    end
    ivec = rot(:,1);
    jvec = rot(:,2);
@@ -9130,7 +9205,7 @@ cntc : interface between SDT and CONTACT
 
    % plot first axis ivec
 
-   h(2:3) = plot_arrow(O, scl*ivec, col, scl_head, [], jvec);
+   h(2:3) = cntc.plot_arrow(O, scl*ivec, col, scl_head, [], jvec);
 
    l1 = O + pos_txt(1,1)*ivec + pos_txt(1,2)*jvec + pos_txt(1,3)*kvec;
    h(4) = text(l1(1), l1(2), l1(3), deblank(axnams(1,:)), 'rotation', th_txt, ...
@@ -9139,7 +9214,7 @@ cntc : interface between SDT and CONTACT
 
    % plot second axis jvec
 
-   h(5:6) = plot_arrow(O, scl*jvec, col, scl_head, [], ivec);
+   h(5:6) = cntc.plot_arrow(O, scl*jvec, col, scl_head, [], ivec);
 
    l2 = O + pos_txt(2,1)*ivec + pos_txt(2,2)*jvec + pos_txt(2,3)*kvec;
    h(7) = text(l2(1), l2(2), l2(3), deblank(axnams(2,:)), 'rotation', th_txt, ...
@@ -9148,7 +9223,7 @@ cntc : interface between SDT and CONTACT
 
    % plot third axis kvec
 
-   h(8:9) = plot_arrow(O, scl*kvec, col, scl_head, [], jvec);
+   h(8:9) = cntc.plot_arrow(O, scl*kvec, col, scl_head, [], jvec);
 
    l3 = O + pos_txt(3,1)*ivec + pos_txt(3,2)*jvec + pos_txt(3,3)*kvec;
    h(10) = text(l3(1), l3(2), l3(3), deblank(axnams(3,:)), 'rotation',th_txt, ...
@@ -9160,7 +9235,7 @@ cntc : interface between SDT and CONTACT
 
 
 
-  function [ h ] = plot_cm(O, r, veclen, theta, col, no_vec, no_head)
+  function [ h ] = cntc.plot_cm(O, r, veclen, theta, col, no_vec, no_head)
 
    % [ h ] = plot_cm(O, r, veclen, theta, col, no_vec, no_head)
    %
@@ -9238,13 +9313,13 @@ cntc : interface between SDT and CONTACT
 
     n = [ cos(theta*pi/180); sin(theta*pi/180)];
     O1 = O + r*n;
-    h(4:5) = plot_arrow(O1, veclen*n, col, scl_head);
+    h(4:5) = cntc.plot_arrow(O1, veclen*n, col, scl_head);
 
     % plot y-axis
 
     t = [ -n(2) ; n(1) ];
     O2 = O + r*t;
-    h(6:7) = plot_arrow(O2, veclen*t, col, scl_head);
+    h(6:7) = cntc.plot_arrow(O2, veclen*t, col, scl_head);
    end
   end
 
@@ -9320,7 +9395,7 @@ cntc : interface between SDT and CONTACT
    if (n1~=n2 | force_spline)
     % form spline for profile 1
     lambda = 0; use_bspline = 0; wgt = []; ikinks = []; iaccel = [];
-    spl  = make_spline([], y1_in, z1_in, lambda, wgt, ikinks, iaccel, use_bspline);
+    spl  = cntc.make_spline([], y1_in, z1_in, lambda, wgt, ikinks, iaccel, use_bspline);
 
     % determine coordinates s1 in spline 1 for points (y2,z2)
     % figure(5); clf; hold on;
@@ -9604,8 +9679,8 @@ cntc : interface between SDT and CONTACT
 
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
-    if (isfield(opt, myopts{i}) & ~isempty(mygetfield(opt,myopts{i})))
-     myopt = setfield(myopt, myopts{i}, mygetfield(opt,myopts{i}));
+    if (isfield(opt, myopts{i}) & ~isempty(cntc.mygetfield(opt,myopts{i})))
+     myopt = setfield(myopt, myopts{i}, cntc.mygetfield(opt,myopts{i}));
     end
    end
 
@@ -9646,7 +9721,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'ux'))
 
-    show_2d_slice(sol, 'ux', myopt);
+    cntc.show_2d_slice(sol, 'ux', myopt);
     title (['Displacement U_x in X-direction', get(get(gca,'title'),'string')]);
     hc=colorbar; log_colorbar(hc, opt);
     ylabel(hc, 'Displacement U_x [mm]');
@@ -9655,7 +9730,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'uy'))
 
-    show_2d_slice(sol, 'uy', myopt);
+    cntc.show_2d_slice(sol, 'uy', myopt);
     title (['Displacement U_y in Y-direction', get(get(gca,'title'),'string')]);
     hc=colorbar; log_colorbar(hc, opt);
     ylabel(hc, 'Displacement U_y [mm]');
@@ -9664,7 +9739,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'uz'))
 
-    show_2d_slice(sol, 'uz', myopt);
+    cntc.show_2d_slice(sol, 'uz', myopt);
     title (['Displacement U_z in Z-direction', get(get(gca,'title'),'string')]);
     hc=colorbar; log_colorbar(hc, opt);
     ylabel(hc, 'Displacement U_z [mm]');
@@ -9673,7 +9748,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'sighyd') | strcmp(myopt.field,'hydro'))
 
-    show_2d_slice(sol, 'sighyd', myopt);
+    cntc.show_2d_slice(sol, 'sighyd', myopt);
     title (['Mean hydrostatic stress SIGHYD', get(get(gca,'title'),'string')]);
     hc=colorbar; log_colorbar(hc, opt);
     ylabel(hc, 'stress invariant \sigma_{hyd} [N/mm^2]');
@@ -9682,7 +9757,7 @@ cntc : interface between SDT and CONTACT
 
    if (strcmp(myopt.field,'sigvm') | strcmp(myopt.field,'mises'))
 
-    show_2d_slice(sol, 'sigvm', myopt);
+    cntc.show_2d_slice(sol, 'sigvm', myopt);
     title (['Von Mises stress \sigma_{vm}', get(get(gca,'title'),'string')]);
     hc=colorbar; log_colorbar(hc, opt);
     ylabel(hc, 'Von Mises stress \sigma_{vm} [N/mm^2]');
@@ -9695,7 +9770,7 @@ cntc : interface between SDT and CONTACT
     if (~isfield(sol, myopt.field))
      disp(['ERROR: no data available for ',myopt.field,'.']);
     else
-     show_2d_slice(sol, myopt.field, myopt);
+     cntc.show_2d_slice(sol, myopt.field, myopt);
      title (['Stress component ',myopt.field,' ',get(get(gca,'title'),'string')]);
      hc=colorbar; log_colorbar(hc, opt);
      ylabel(hc, ['Stress component ',myopt.field,' [N/mm^2]']);
@@ -9707,7 +9782,7 @@ cntc : interface between SDT and CONTACT
     if (~isfield(sol, myopt.field))
      disp(['ERROR: no data available for ',myopt.field,'.']);
     else
-     show_2d_slice(sol, myopt.field, myopt);
+     cntc.show_2d_slice(sol, myopt.field, myopt);
      title (['Principal stress \sigma_',myopt.field(6),' ',get(get(gca,'title'),'string')]);
      hc=colorbar; log_colorbar(hc, opt);
      ylabel(hc, ['principal stress \sigma_',myopt.field(6),' [N/mm^2]']);
@@ -9719,12 +9794,13 @@ cntc : interface between SDT and CONTACT
     if (~isfield(sol, 'sigtr'))
      disp(['ERROR: no data available for ',myopt.field,'.']);
     else
-     show_2d_slice(sol, 'sigtr', myopt);
+     cntc.show_2d_slice(sol, 'sigtr', myopt);
      title (['Maximum shear stress \sigma_{tresca}',get(get(gca,'title'),'string')]);
      hc=colorbar; log_colorbar(hc, opt);
      ylabel(hc, ['maximum shear stress \sigma_{tresca} [N/mm^2]']);
     end
    end
+
    function [ rgb ] = matlab_color( num )
 
     % [ rgb ] = matlab_color( num )
@@ -9762,6 +9838,107 @@ cntc : interface between SDT and CONTACT
    end
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   
+    function [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, rot )
+   % [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, [rot] )
+   %
+   % pos_c = position of arrow center of rotation, 2-vector or 3-vector
+   % r     = circle radius;  negative r: reversed rotation direction.
+   %         vectorial: [rx,ry], separate radius for x and y-direction
+   % th0   = angle of tail of arrow [deg]
+   % th1   = angle of head of arrow
+   % col   = color-spec for arrow; default='b';
+   % scale = scale factor for arrow head; default=1: 25% of arrow size
+   % width = width factor for arrow head; default=1: about 30 deg.
+   % rot   = for 3d plots: rotation matrix from [x,y,0] to desired orientation
+   %         [0,0,1; 1,0,0; 0,1,0] for arc in yz-plane
+   %
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % #circ_arrow -2
+
+   if (nargin<5 | isempty(col))
+    col = 1;
+   end
+   if (nargin<6 | isempty(scale))
+    scale = 1;
+   end
+   if (nargin<7 | isempty(width))
+    width = 1;
+   end
+   if (nargin<8 | isempty(rot))
+    rot   = eye(3);
+   end
+
+   % if r is a scalar, copy to make a 2-vector [rx,ry]
+   if (max(size(r))==1)
+    r = [r,r];
+   end
+   rx=r(1); ry=r(2);
+
+   % if col is just a single value, it is interpreted as a color index
+   if (isnumeric(col) & isscalar(col))
+    col = matlab_color(col);
+   end
+
+   if (size(pos_c,2)>1), pos_c=pos_c'; end % make column vectors
+
+   th0 = th0 * pi/180;             % convert to radians
+   th1 = th1 * pi/180;             % convert to radians
+
+   % use plot3 instead of plot when pos is a 3-vector
+
+   is_3d = (length(pos_c)==3);
+   if (is_3d)
+    pos_c = rot' * pos_c;
+   else
+    pos_c = [pos_c; 0];
+   end
+
+   hold on;
+
+   % compute circular arc with center pos_c, radius [rx,ry,0] and angles theta (th)
+   th   = th0 + [0:30]/30 * (th1-th0);
+   lin  = pos_c*ones(size(th)) + [rx*cos(th); ry*sin(th); 0*th];
+
+   pos1 = lin(:,end);
+   % plot(pos_c(1), pos_c(2), 'b*');
+
+   % compute nice theta-value for getting the arrow head direction
+   th_h = th1 - min(1,0.25*scale) * (th1-th0);
+
+   % compute point on the curve for the back of the arrow head
+   pos_h = pos_c + [rx*cos(th_h); ry*sin(th_h); 0*th_h];
+
+   % compute tangent vector at th_h == orientation of head;
+   % make size of arrowhead proportional to length of curve (th1-th0)
+   tng  = [-ry*sin(th_h); rx*cos(th_h); 0] * (th1-th0);
+
+   % compute the normal direction
+   nrm  = [-tng(2); tng(1); 0];
+
+   % reverse direction when needed
+   if (th0>th1), nrm=-nrm; end
+
+   % compute arrow head points, on the inside closer to the curve
+   head = [ pos_h+0.10*width*scale*nrm,  ...
+    pos1, ...
+    pos_h-0.13*width*scale*nrm];
+
+   if (is_3d)
+    lin  = rot * lin;
+    head = rot * head;
+    h(1) = plot3(lin(1,:), lin(2,:), lin(3,:), 'color',col);
+    h(2) = plot3(head(1,:), head(2,:), head(3,:), 'color',col);
+   else
+    h(1) = plot(lin(1,:), lin(2,:), 'color',col);
+    h(2) = plot(head(1,:), head(2,:), 'color',col);
+   end
+  end
+
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    function [ ] = show_2d_slice(sol, field, opt)
     %
@@ -9772,7 +9949,7 @@ cntc : interface between SDT and CONTACT
     %   field   - the actual array to be plotted, or a field name within sol
     %   opt     - structure with options as defined by plotstrs.
     %
-    % #show_2d_slice
+    % #show_2d_slice -2
 
     % get field to be plotted
 
@@ -9947,7 +10124,7 @@ cntc : interface between SDT and CONTACT
     % [ ] = log_colorbar(hc, opt)
     %
     % change colorbar to logarithmic scale when necessary
-    % #log_colorbar
+    % #log_colorbar -2
 
     if (strcmp(opt.scale,'log'))
      if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
@@ -9963,6 +10140,10 @@ cntc : interface between SDT and CONTACT
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   end % plotstrs
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %% #Read
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ p ] = read_miniprof(fname, idebug, make_plot)
 
@@ -10226,7 +10407,7 @@ cntc : interface between SDT and CONTACT
      field_name = strrep(field_name, ' ', '_');
      field_val  = deblank(s(ix+1:end));
      % check if the keyword is known - convert to case-sensitive name
-     my_field_name = check_field(known_fields, field_name);
+     my_field_name = cntc.check_field(known_fields, field_name);
      if (~keep_keyword_values)
       % do not store file header keyword/value information
      elseif (~isempty(my_field_name))
@@ -10316,10 +10497,10 @@ cntc : interface between SDT and CONTACT
 
   end % read_miniprof
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ my_field ] = check_field( known_fields, field_in )
-   % #check_field
+   % #check_field -2
 
    fn = fieldnames(known_fields);
    chk = strcmpi(field_in, fn);
@@ -10332,8 +10513,6 @@ cntc : interface between SDT and CONTACT
 
   end % check_field
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Read
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ p ] = read_profile(fname, is_wheel, mirror_y, mirror_z, scale_yz, rgt_side, idebug, make_plot)
@@ -10544,6 +10723,272 @@ cntc : interface between SDT and CONTACT
    p.Fname = fname;
 
   end % read_profile
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ p_out ] = modify_profile(p_in, is_wheel, mirror_y, mirror_z, reverse_order, point_dist_min,delete_foldback, scale_yz, make_plot, idebug)
+
+   % [ p_out ] = modify_profile(p_in, is_wheel, mirror_y, mirror_z, reverse_order, point_dist_min, ...
+   %                                     delete_foldback, scale_yz, make_plot, idebug)
+   %
+   % apply a number of common filters to the input profile p_in
+   %   - mirror_y         - change y(i)  --> -y(i)    <=0 means no, >=1 yes
+   %   - mirror_z         - change z(i)  --> -z(i)    <=0 means no, >=1 yes
+   %   - reverse_order    - change [1:n] --> [n:-1:1]
+   %   - point_dist_min   - delete points that lie too close together
+   %   - delete_foldback  - identify & remove points where y(i+1)<y(i) (rail) or y(i+1)>y(i) (wheel)
+   %   - scale_yz         - scale y(i), z(i) --> scale*y(i), scale*z(i)
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % #modify_profile -2
+
+   if (nargin<2 | isempty(is_wheel))
+    is_wheel = 0;
+   end
+   if (nargin<3 | isempty(mirror_y))
+    mirror_y = 0;
+   end
+   if (nargin<4 | isempty(mirror_z))
+    mirror_z = 0;
+   end
+   if (nargin<5 | isempty(reverse_order))
+    reverse_order = 0;
+   end
+   if (nargin<6 | isempty(point_dist_min))
+    point_dist_min = -1;
+   end
+   if (nargin<7 | isempty(delete_foldback))
+    delete_foldback = 0;
+   end
+   if (nargin<8 | isempty(scale_yz))
+    scale_yz = 1;
+   end
+   if (nargin<9 | isempty(make_plot))
+    make_plot = 0;
+   end
+   if (nargin<10 | isempty(idebug))
+    idebug = 1;
+   end
+
+   % Initialize output structure
+
+   p_out          = p_in;
+   if (~isfield(p_out, 'ProfileAngle') | isempty(p_out.ProfileAngle))
+    p_out.ProfileAngle = zeros(size(p_out.ProfileY));
+   end
+   if (~isfield(p_out, 'ProfileCurvature') | isempty(p_out.ProfileCurvature))
+    p_out.ProfileCurvature = zeros(size(p_out.ProfileY));
+   end
+   if (~isfield(p_out, 'ProfileData'))
+    p_out.ProfileData = [ p_out.ProfileY, p_out.ProfileZ, ...
+     p_out.ProfileAngle, p_out.ProfileCurvature];
+   end
+   p_out.OrigData = p_out.ProfileData;
+
+   % Apply modifications to original input data
+
+   % modification 1: mirror horizontally w.r.t. y=0, changing y into -y
+
+   if (mirror_y>=1)
+    if (idebug>=1)
+     disp('Mirroring y-values from left-side to right-side profile...');
+    end
+    p_out.ProfileY     = -p_out.ProfileY;
+    p_out.ProfileAngle = -p_out.ProfileAngle;
+   end
+
+   % modification 2: mirror vertically w.r.t. z=0, changing z into -z
+
+   if (mirror_z>0)
+    if (idebug>=1)
+     disp('Mirroring z-values to get z positive downwards...');
+    end
+    p_out.ProfileZ     = -p_out.ProfileZ;
+    p_out.ProfileAngle = -p_out.ProfileAngle;
+   end
+
+   % modification 3: reverse the order of the data points
+
+   if (reverse_order)
+    if (idebug>=1)
+     disp('Reversing the order of the points, get inside at right hand...');
+    end
+    p_out.ProfileY         = flipud(p_out.ProfileY);
+    p_out.ProfileZ         = flipud(p_out.ProfileZ);
+    p_out.ProfileAngle     = flipud(p_out.ProfileAngle);
+    p_out.ProfileCurvature = flipud(p_out.ProfileCurvature);
+   end
+
+   % modification 4: remove points that lie too close together
+
+   if (point_dist_min>=1e-6)
+    np   = length(p_out.ProfileY);
+    dy   = diff(p_out.ProfileY);
+    dz   = diff(p_out.ProfileZ);
+    dist = sqrt(dy.^2 + dz.^2);
+    cum  = [0; cumsum(dist)];
+
+    keep = ones(np,1);
+    ik   = 1; % highest number that is kept so far
+    for ip = 2 : np
+     if (cum(ip)-cum(ik) < point_dist_min)
+      keep(ip) = 0;
+     else
+      ik = ip;
+     end
+    end
+    ix0 = find(keep==0); ix1 = find(keep==1);
+
+    if (idebug>=1 & ~isempty(ix0))
+     for i = ix0'
+      disp(sprintf('Deleting (%7.2f,%7.2f) (ip=%4d), too close to adjacent', ...
+       p_out.ProfileY(i), p_out.ProfileZ(i), i));
+     end
+    end
+    if ((idebug>=1 & ~isempty(ix0)) | idebug>=2)
+     disp(sprintf('Point_dist_min=%6.0e: deleted %d points from profile, %d remaining', point_dist_min, ...
+      length(ix0), length(ix1)));
+    end
+
+    p_out.ProfileY         = p_out.ProfileY(ix1);
+    p_out.ProfileZ         = p_out.ProfileZ(ix1);
+    p_out.ProfileAngle     = p_out.ProfileAngle(ix1);
+    p_out.ProfileCurvature = p_out.ProfileCurvature(ix1);
+   end
+
+   % modification 5: remove points where the profile folds back
+   %                 (i.e. where the function y --> z(y) is multi-valued)
+
+   if (~delete_foldback)
+    p_out.Mask             = ones(size(p_out.ProfileY));
+   else
+    if (idebug>=2)
+     disp('Checking for points where the profile folds back...');
+    end
+
+    % copy data to work variables
+    points0 = [p_out.ProfileY, p_out.ProfileZ, p_out.ProfileAngle, ...
+     p_out.ProfileCurvature];
+    np0 = size(points0,1);
+
+    % find "midpoint" of profile: tread of rail, bottom of flange on wheel
+    % z is assumed positive downwards: tread == minimum z, flange == maximum z
+    if (is_wheel)
+     [~,i_mid0] = max(points0(:,2));
+    else
+     [~,i_mid0] = min(points0(:,2));
+    end
+
+    % set threshold "dy" below which y-values are "the same"
+    dy_thresh = 1e-6 * (max(points0(:,1))-min(points0(:,1)));
+
+    % delete points where the profile is "vertical", i.e. |y(i+1)-y(i)|<thresh
+    % where (i<i_mid0) keep i, where (i>i_mid0) keep i+1.
+
+    dy   = diff(points0(:,1));
+    idel = find(abs(dy)<dy_thresh);
+    if (isempty(idel))
+     points1 = points0; np1 = np0; ikeep1 = [1:np0]; i_mid1=i_mid0;
+    else
+     j = find(idel<i_mid0); idel(j) = idel(j) + 1;
+     keep1 = ones(np0,1); keep1(idel) = 0; ikeep1 = find(keep1);
+     points1 = points0(ikeep1,:); np1 = size(points1,1);
+     i_mid1 = nnz(keep1(1:i_mid0));
+     if (idebug>=1)
+      disp(sprintf('Identified %d points with vertical slope', length(idel)));
+     end
+    end
+
+    % delete points where the profile folds back, i.e. y(i+1) < yrmx(i) (rail)
+    %                                              or  y(i+1) > yrmx(i) (wheel)
+
+    keep2 = zeros(np1,1); keep2(i_mid1) = 1;
+    y = points1(:,1);
+    if (is_wheel), sgn = -1; else, sgn = 1; end
+
+    % rail: check right of mid-point (wheel: left of mid-point)
+    y_runmax = sgn*y(i_mid1);
+    for i = i_mid1+1 : np1
+     if (sgn*y(i) >= y_runmax+dy_thresh)
+      keep2(i) = 1;
+     end
+     y_runmax = max(y_runmax, sgn*y(i));
+    end
+
+    % rail: check left of mid-point (wheel: right)
+    y_runmin = sgn*y(i_mid1);
+    for i = i_mid1-1 : -1 : 1
+     if (sgn*y(i) <= y_runmin-dy_thresh)
+      keep2(i) = 1;
+     end
+     y_runmin = min(y_runmin, sgn*y(i));
+    end
+
+    idel = find(keep2==0);
+    if (isempty(idel))
+     points2 = points1; np2 = np1; ikeep2 = [1:np1];
+    else
+     ikeep2 = find(keep2);
+     points2 = points1(ikeep2,:); np2 = size(points2,1);
+     if (idebug>=1)
+      disp(sprintf('Identified %d points where profile folds back', length(idel)));
+     end
+    end
+
+    % get mask that combines keep1 and keep2
+
+    msk = zeros(np0,1);
+    msk( ikeep1(ikeep2) ) = 1;
+
+    if (delete_foldback<=1)
+     p_out.Mask             = msk;
+     p_out.ProfileY         = points0(:,1);
+     p_out.ProfileZ         = points0(:,2);
+     p_out.ProfileAngle     = points0(:,3);
+     p_out.ProfileCurvature = points0(:,4);
+    else
+     p_out.Mask             = ones(np2,1);
+     p_out.ProfileY         = points2(:,1);
+     p_out.ProfileZ         = points2(:,2);
+     p_out.ProfileAngle     = points2(:,3);
+     p_out.ProfileCurvature = points2(:,4);
+    end
+   end
+
+   % modification 6: scale y,z-coordinates
+
+   if (scale_yz~=1)
+    if (idebug>=1)
+     disp(sprintf('Scaling y,z-values with factor %3.1f to convert to mm...',scale_yz));
+    end
+    p_out.ProfileY     = scale_yz * p_out.ProfileY;
+    p_out.ProfileZ     = scale_yz * p_out.ProfileZ;
+    p_out.ProfileCurvature = p_out.ProfileCurvature / scale_yz;
+   end
+
+   % combine the columns into array ProfileData
+
+   p_out.ProfileData = [p_out.ProfileY, p_out.ProfileZ, p_out.ProfileAngle, p_out.ProfileCurvature];
+   p_out.XYPoints = size(p_out.ProfileData,1);
+
+   % plot the modified profile if requested
+
+   if (make_plot)
+    figure(make_plot); clf; hold on;
+    plot(p_out.OrigData(:,1), p_out.OrigData(:,2), '-*');
+    plot(p_out.ProfileY, p_out.ProfileZ, '-o');
+    % axis([-70 70 -5 30]);
+    grid on;
+    xlabel('y_{prf} [mm]'); ylabel('z_{prf} [mm]');
+    set(gca,'ydir','reverse');
+    % legend('Original data','Modified data','location','NorthWest');
+   end
+
+  end % modify_profile
+
 
   function [ p ] = read_simpack(fname, idebug, make_plot)
 
@@ -10912,7 +11357,7 @@ cntc : interface between SDT and CONTACT
    % resample all slices to the same number of points
 
    if (ierror==0)
-    [slcs, ierror] = resample_slices( slcs, dsmax_2d, idebug, show_fig, fig_ofs );
+    [slcs, ierror] = cntc.resample_slices( slcs, dsmax_2d, idebug, show_fig, fig_ofs );
    end
 
    % add 2d spline representation
@@ -10922,7 +11367,7 @@ cntc : interface between SDT and CONTACT
 
    if (ierror==0 & exist('make_2dspline'))
     use_approx = (slcs.u_intpol==2); use_insert = 1; use_cylindr = is_wheel; idebug = 0;
-    slcs.spl2d = make_2dspline(slcs.u, slcs.vj, [], slcs.ysurf, slcs.zsurf, slcs.mask_j, ...
+    slcs.spl2d = cntc.make_2dspline(slcs.u, slcs.vj, [], slcs.ysurf, slcs.zsurf, slcs.mask_j, ...
      use_approx, use_insert, use_cylindr, idebug);
    end
 
@@ -11309,7 +11754,7 @@ cntc : interface between SDT and CONTACT
 
    % read first line, should contain 'WHEELPROFILE' or 'RAILPROFILE'
 
-   [ s, iline ] = get_next_line(f, iline, idebug);
+   [ s, iline ] = cntc.get_next_line(f, iline, idebug);
    if (strcmp(s, 'WHEELPROFILE'))
     p.is_wheel = 1;
    elseif (strcmp(s, 'RAILPROFILE'))
@@ -11321,7 +11766,7 @@ cntc : interface between SDT and CONTACT
 
    % second line: 80-character title
 
-   [ s, iline ] = get_next_line(f, iline, idebug);
+   [ s, iline ] = cntc.get_next_line(f, iline, idebug);
    p.Title = s;
 
    % third line: tread datum (wheel) or gauge point (rail)
@@ -11330,7 +11775,7 @@ cntc : interface between SDT and CONTACT
 
     % third line, wheel: tread datum
 
-    [ s, iline ] = get_next_line(f, iline, idebug);
+    [ s, iline ] = cntc.get_next_line(f, iline, idebug);
     ix = length('TREADDATUM') + 1;
     p.TreadDatum = strtrim(s(ix:end));
 
@@ -11352,7 +11797,7 @@ cntc : interface between SDT and CONTACT
 
     % third line, rail: gauge point
 
-    [ s, iline ] = get_next_line(f, iline, idebug);
+    [ s, iline ] = cntc.get_next_line(f, iline, idebug);
     ix = length('GAUGEPOINT') + 1;
     p.GaugePoint = strtrim(s(ix:end));
 
@@ -11370,7 +11815,7 @@ cntc : interface between SDT and CONTACT
 
    % fourth line: flange back distance (wheel) or gauge (rail)
 
-   [ s, iline ] = get_next_line(f, iline, idebug);
+   [ s, iline ] = cntc.get_next_line(f, iline, idebug);
 
    if (p.is_wheel)
     ix = length('FLANGEBACK') + 1;
@@ -11384,7 +11829,7 @@ cntc : interface between SDT and CONTACT
 
     % get next line from input
 
-    [ s, iline ] = get_next_line(f, iline, idebug);
+    [ s, iline ] = cntc.get_next_line(f, iline, idebug);
 
     % remove comments, everything after ", !, or %
     ix = strfind(s, '"'); if (~isempty(ix)), s=s(1:ix-1); end
@@ -11462,7 +11907,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ s, iline ] = get_next_line(f, iline, idebug)
-  % #get_next_line -1
+  % #get_next_line -2
 
    s = deblank(fgets(f));
    iline = iline + 1;
@@ -11502,7 +11947,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #resample_slices -1
+   % #resample_slices -2
 
    if (nargin<3 | isempty(idebug))
     idebug   = 0;
@@ -11673,7 +12118,7 @@ cntc : interface between SDT and CONTACT
 
      lambda = 0; wgt = []; ikinks = []; iaccel = []; use_bspline = 1; ds_bspline = 0.5;
      if (length(slc.ProfileY)==7), ikinks = [2,3,4,5,6]; end    % hack for V-groove test-case
-     spl = make_spline( slc.ProfileS, slc.ProfileY, slc.ProfileZ, lambda, wgt, ikinks, iaccel, ...
+     spl = cntc.make_spline( slc.ProfileS, slc.ProfileY, slc.ProfileZ, lambda, wgt, ikinks, iaccel, ...
       use_bspline, ds_bspline);
      [~, yj, zj] = eval_spline(spl, sj(i0:i1));
      slcs.xsurf(is,i0:i1) = slcs.u(is);
@@ -11756,7 +12201,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #smooth_profile -1
+   % #smooth_profile -2
    
    if (nargin<2);l_filt = [];end
    if (nargin<3);lambda = [];end
@@ -11833,7 +12278,7 @@ cntc : interface between SDT and CONTACT
    % compute arc-lengths s if not provided in input profile
 
    if (isempty(s_in))
-    s_in = make_arclength(y_in, z_in);
+    s_in = cntc.make_arclength(y_in, z_in);
    end
 
    % estimate curvatures needed for adaptive weighting, using moving window [-sw,sw]
@@ -11892,7 +12337,7 @@ cntc : interface between SDT and CONTACT
 
    % create spline representation
 
-   spl = make_spline( s_in, y_in, z_in, lambda, wgt, ikinks, iaccel, use_bspline, ds_bspl, ...
+   spl = cntc.make_spline( s_in, y_in, z_in, lambda, wgt, ikinks, iaccel, use_bspline, ds_bspl, ...
     use_deriv, use_repl, idebug );
 
    % evaluate spline at output positions
@@ -11963,16 +12408,16 @@ cntc : interface between SDT and CONTACT
    if (jseg==-335), idebug = 5; end
 
    if (1==1)
-    [ u_out1, found ] = solve_cubic_cardano(ppcoef, useg, yev, idebug, iout, jout, jseg);
-    [ u_out2, found ] = solve_cubic_newton(ppcoef, useg, yev, idebug, iout, jout, jseg);
+    [ u_out1, found ] = cntc.solve_cubic_cardano(ppcoef, useg, yev, idebug, iout, jout, jseg);
+    [ u_out2, found ] = cntc.solve_cubic_newton(ppcoef, useg, yev, idebug, iout, jout, jseg);
     if (abs(u_out1-u_out2)>1e-6)
      disp(sprintf('  jseg = %d: different solutions u_newt = %8.4f, u_card = %8.4f, diff = %3.1e', ...
       jseg, u_out2, u_out1, abs(u_out2-u_out1)));
     end
     u_out = u_out1;
    else
-    [ u_out, found ] = solve_cubic_cardano(ppcoef, useg, yev, idebug, iout, jout, jseg);
-    % [ u_out, found ] = solve_cubic_newton(ppcoef, useg, yev, idebug, iout, jout, jseg);
+    [ u_out, found ] = cntc.solve_cubic_cardano(ppcoef, useg, yev, idebug, iout, jout, jseg);
+    % [ u_out, found ] = cntc.solve_cubic_newton(ppcoef, useg, yev, idebug, iout, jout, jseg);
    end
 
   end % solve_cubic_eq
@@ -12582,7 +13027,7 @@ cntc : interface between SDT and CONTACT
 
    for ifld = 1 : num_fields
 
-    my_field_name = check_field(known_fields, fields_p(ifld));
+    my_field_name = cntc.check_field(known_fields, fields_p(ifld));
 
     if (~isempty(my_field_name))
      % interpret numerical value
@@ -12710,14 +13155,13 @@ cntc : interface between SDT and CONTACT
 
   end % write_simpack
 
-
-  function [ ierror]=calculate(ire, icp, idebug)
    %------------------------------------------------------------------------------------------------------------
+
+   function [ ierror]=calculate(ire, icp, idebug)
    % [ ierror ] = cntc.calculate(ire, icp, idebug)
    %
    % perform actual CONTACT calculation for a contact problem
    % in:   integer    idebug       - show warnings (2), errors (1) or hide all messages (0)
-   %------------------------------------------------------------------------------------------------------------
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -12887,14 +13331,14 @@ cntc : interface between SDT and CONTACT
    end
   end
 
-
   %------------------------------------------------------------------------------------------------------------
+
   function [ tcpu, twall]=getcalculationtime(ire, icp)
    % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
    % return accumulated cpu-time and wall-clock-time used since last timer reset for a contact problem
    %  tcpu, twall   - cpu- and wall-clock times used [time]
-   %------------------------------------------------------------------------------------------------------------
+
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -12925,8 +13369,6 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
 
-
-  %------------------------------------------------------------------------------------------------------------
   function [fn,tx,ty,mz]=getcontactforces(ire, icp, LI)
    % [fn,tx,ty,mz] = cntc.getcontactforces(ire, icp)
    %
@@ -12935,7 +13377,7 @@ cntc : interface between SDT and CONTACT
    %  fn            - total normal force [force]
    %  tx, ty        - total tangential forces [force]
    %  mz            - total torsional moment [force.length]
-   %------------------------------------------------------------------------------------------------------------
+
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -12979,11 +13421,9 @@ cntc : interface between SDT and CONTACT
    end
   end % cntc.getcontactforces
 
-  %------------------------------------------------------------------------------------------------------------
 
 %% #get
 
-  %------------------------------------------------------------------------------------------------------------
   function [ rvalues]=getcontactlocation(ire, icp,LI)
    % [ rvalues ] = cntc.getcontactlocation(ire, icp)
    %
@@ -14647,448 +15087,6 @@ cntc : interface between SDT and CONTACT
   end % cntc.getwheelsetvelocity
 
   %------------------------------------------------------------------------------------------------------------
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  %% #Library initialization 
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=testlibrary()
-   [CNTC, ifcver, ierror] = cntc_initlibrary;
-  end
-  %------------------------------------------------------------------------------------------------------------
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=initializeflags()
-   % #initializeflags-2
-   if nargin==0
-    LI=cntc.call;
-    CNTC=evalin('caller','CNTC');%LI.CNTC=CNTC;
-    li=LI.global;
-    cntc.setglobalflags(CNTC.if_idebug, li.ire);
-    [ifcver, ierror] = cntc.initialize(li.ire,li.imodul);
-   else
-    disp('ERROR cntc.initializeflags : no parameter is needed');
-   end
-  end
-  %------------------------------------------------------------------------------------------------------------
-
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=setglobalflags(params, values)
-   % [ ] = cntc.setglobalflags(params, values)
-   %
-   % used for configuring flags that are the same for all contact problems
-   %
-   %  params - codes of the parameters to be communicated to CONTACT
-   %  values - values of the parameters to be communicated to CONTACT
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #setglobalflags -2
-
-
-
-   if (nargin<2 | isempty(params) | isempty(values))
-    disp('ERROR in cntc.setglobalflags: params and values are mandatory.');
-    return
-   end
-   if (length(params) ~= length(values))
-    disp('ERROR in cntc.setglobalflags: params and values must provide same number of items.');
-    return
-   end
-
-   cntc.call('cntc.setglobalflags', length(params), params, values);
-
-  end % cntc.setglobalflags
-
-  %------------------------------------------------------------------------------------------------------------
-
-
-  %------------------------------------------------------------------------------------------------------------
-  function [ ifcver, ierror]=initialize(ire, imodul, c_outdir, idebug)
-   % [ ifcver, ierror ] = cntc.initialize(ire, imodul, [outdir], [idebug])
-   %
-   % upon first call: initialize the addon internal data and initialize output channels,
-   %                  print version information;
-   % for each ire:   initialize and return the addon version number.
-   %
-   %  in:  integer    ire          - result element ID
-   %       integer    imodul       - module number 1=w/r contact, 3=basic contact
-   %       character  outdir(*)    - output folder
-   %       integer    idebug       - show (1) or hide (0) error messages
-   %  out: integer    ifcver       - version of the CONTACT add-on
-   %       integer    ierror       - error flag
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #initialize -2
-
-
-   cntc_err_allow = -12;
-
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-   if (nargin<2 | isempty(imodul))
-    disp(sprintf('cntc.initialize: please select module 1 or 3'));
-    return;
-   end
-   if (nargin<3 | isempty(c_outdir))
-    c_outdir = ' ';
-   end
-   if (nargin<4 | isempty(idebug))
-    idebug = 1;
-   end
-
-   p_ierr = libpointer('int32Ptr',-1);
-   p_ver  = libpointer('int32Ptr',-1);
-
-   p_ierr.value = 0;
-   cntc.call('cntc.initialize', ire, imodul, p_ver, p_ierr, c_outdir, length(c_outdir));
-   % disp(sprintf('test_caddon: obtained ver=%d, ierr=%d', p_ver.value, p_ierr.value));
-
-   ifcver = double(p_ver.value);
-   ierror = double(p_ierr.value);
-
-   if (idebug>=1 & ierror==cntc_err_allow)
-    disp(sprintf('cntc.initialize: no license found or license invalid, check output-file (%d).',ierror));
-   elseif (idebug>=1 & ierror<0)
-    disp(sprintf('cntc.initialize: an error occurred in the CONTACT library (%d).',ierror));
-   end
-
-  end % cntc.initialize
-
-  %------------------------------------------------------------------------------------------------------------
-
-  %------------------------------------------------------------------------------------------------------------
-  function [ CNTC, ifcver, ierror ] = initlibrary(c_wrkdir, c_outdir, c_expnam, idebug);
-   % [ CNTC, ifcver, ierror ] = cntc.initlibrary(wrkdir, outdir, expnam, idebug);
-   %
-   % load the library into Matlab, initialize its internal data and output channels
-   %
-   %  in:  character  wrkdir(*)    - [optional] effective working folder
-   %       character  outdir(*)    - [optional] output folder
-   %       character  expnam(*)    - [optional] experiment name, default 'contact_addon'
-   %       integer    idebug       - [optional] show (1) or hide (0) error messages
-   %  out: integer    CNTC         - struct with 'magic numbers' for configuring CONTACT
-   %       integer    ifcver       - version of the CONTACT add-on
-   %       integer    ierror       - error flag
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #initlibrary -2
-
-   % retrieve current directory, form library name
-   [pathstr, name, ext] = fileparts(which('cntc.initlibrary'));
-
-   if (isunix())
-    libname='contact_addon_linux64';
-    lib_ext='.so';
-   else
-    libname=['contact_addon_', computer('arch')];
-    lib_ext='.dll';
-   end
-
-   % unload the library if it was loaded before
-   if (1==1 & libisloaded(libname))
-    cntc.closelibrary;
-    % #xxxgae voir si ca marche-2
-    %evalin('base', 'clear LI');
-   end
-   if nargin>0
-    if isequal(c_wrkdir,'close');
-     for iwhe= 1:2
-      cntc.finalize(iwhe);
-     end
-     cntc.closelibrary;
-     return
-    end %
-   end
-   % load the library into Matlab
-   if (~libisloaded(libname))
-    pathstr = [deblank(pathstr) filesep '..' filesep 'bin'];
-    if ispref('SDT','CONTACT_Path')
-     pathstr=getpref('SDT','CONTACT_Path');
-    end
-    fullname = fullfile(pathstr, [libname lib_ext]);
-
-    if ~exist(fullname,'file')
-     disp(['ERROR: cant find library: ', fullname]);
-     return
-    else
-     loadlibrary(fullname, 'contact_addon.h');
-    end
-   end
-
-   % initialize the internal data of the library, open its output streams
-   if (nargin<1 | isempty(c_wrkdir))
-    c_wrkdir = ' ';
-   end
-   if (nargin<2 | isempty(c_outdir))
-    c_outdir = ' ';
-   end
-   if (nargin<3 | isempty(c_expnam))
-    c_expnam = ' ';
-   end
-   if (nargin<4 | isempty(idebug))
-    idebug = 1;
-   end
-   len_wrkdir = length(c_wrkdir);
-   len_outdir = length(c_outdir);
-   len_expnam = length(c_expnam);
-   ioutput = 0;
-
-   p_ierr = libpointer('int32Ptr',-1);
-   p_ver  = libpointer('int32Ptr',-1);
-
-   p_ierr.value = 0;
-   cntc.call(libname,'cntc.initializefirst_new', p_ver, p_ierr, ioutput, c_wrkdir, c_outdir, c_expnam, ...
-    len_wrkdir, len_outdir, len_expnam);
-   % disp(sprintf('test_caddon: obtained ver=%d, ierr=%d', p_ver.value, p_ierr.value));
-
-   ifcver = double(p_ver.value);
-   ierror = double(p_ierr.value);
-
-   % return a struct with 'magic numbers' for setting flags later on
-
-   CNTC = cntc.getmagicnumbers();
-
-   if (idebug>=1 & ierror==CNTC.err_allow)
-    % error('cntc.initlibrary: no license found or license invalid, check output-file (%d).',ierror);
-   elseif (idebug>=1 & ierror<0)
-    % error('cntc.initlibrary: an error occurred in the CONTACT library (%d).',ierror);
-   end
-
-  end % cntc.initlibrary
-
-  %------------------------------------------------------------------------------------------------------------
-
-
-  %------------------------------------------------------------------------------------------------------------
-  function [ ierror]=managelicense(lic_command, ints, string1, string2, string3)
-   % [ ierror ] = cntc.managelicense(lic_command, ints, string1, string2, string3)
-   %
-   % perform license management actions:
-   %  - 'activate' <license_id> <password>
-   %  - 'refresh'
-   %  - 'print'
-   %  - 'deactivate'
-   %
-   %  in:  character  lic_command(*) - desired action
-   %       integer    ints(*)        - 'activate': ints(1) == <license_id>
-   %       character  string1(*)     - 'activate': string1 == <password>
-   %       character  string2(*)     - reserved for future use
-   %       character  string3(*)     - reserved for future use
-   %  out: integer    ierror         - error flag
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #managelicense -2
-
-
-   if (isempty(libname) | ~libisloaded(libname))
-    % load library when needed, using default outpath and experiment name
-    [ CNTC, ifcver, ierror ] = cntc.initlibrary();
-   end
-
-   if (nargin<1 | isempty(lic_command))
-    lic_command = 'print';
-   end
-   disp('cntc.managelicense: output is printed to contact_addon.out.');
-
-   ierror = 0;
-   p_ierr = libpointer('int32Ptr',-1);
-
-   % command == 'activate':
-
-   if (strcmp(lic_command, 'activate'))
-    if (nargin<2 | isempty(ints))
-     disp('cntc.managelicense: activation needs the license id.');
-     ierror = -1;
-    else
-     license_id = ints(1);
-    end
-    if (nargin<3 | isempty(string1))
-     disp('cntc.managelicense: activation needs the license password.');
-     ierror = -2;
-    else
-     password = string1;
-    end
-
-    if (ierror==0)
-     p_ierr.value = 0;
-     cntc.call('cntc.managelicense', lic_command, 1, license_id, password, ' ', ' ', ...
-      length(lic_command), length(password), 1, 1, p_ierr);
-     ierror = double(p_ierr.value);
-    end
-
-    % command == 'refresh', 'print' or 'deactivate':
-
-   elseif (strcmp(lic_command, 'refresh') || strcmp(lic_command, 'print') || ...
-     strcmp(lic_command, 'deactivate'))
-
-    cntc.call('cntc.managelicense', lic_command, 0, 0, ' ', ' ', ' ', ...
-     length(lic_command), 1, 1, 1, p_ierr);
-    ierror = double(p_ierr.value);
-
-   end
-
-  end % cntc.managelicense
-
-  %------------------------------------------------------------------------------------------------------------
-
-
-  %------------------------------------------------------------------------------------------------------------
-  function [ ierror]=readinpfile(ire, inp_type, c_fname)
-   % [ ierror ] = cntc.readinpfile(ire, inp_type, fname)
-   %
-   % read settings from inp-file
-   %
-   %  in:  integer    ire          - result element ID
-   %       integer    inp_type     - type of inp-file: cntc.inp_spck, ...
-   %       character  fname(*)     - filename
-   %  out: integer    ierror       - error flag
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 2: m=1, wtd    - no icp needed
-   % #readinpfile -2
-
-
-   CNTC = cntc.getmagicnumbers();
-
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-   if (nargin<2)
-    inp_type = [];
-   end
-   if (~any(inp_type==[CNTC.inp_spck]))
-    disp('ERROR(readinpfile): inp_type must be CNTC.inp_spck');
-    return;
-   end
-   if (nargin<3 | isempty(c_fname))
-    disp('ERROR(readinpfile): fname is mandatory')
-    return;
-   end
-
-   p_ierr = libpointer('int32Ptr',-1);
-
-   p_ierr.value = 0;
-   cntc.call('cntc.readinpfile', ire, inp_type, c_fname, length(c_fname), p_ierr);
-
-   ierror = double(p_ierr.value);
-
-   if (ierror~=0)
-    disp(sprintf('cntc.readinpfile: an error occurred in the CONTACT library (%d).',ierror));
-   end
-
-  end % cntc.readinpfile
-
-  %------------------------------------------------------------------------------------------------------------
-
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=resetcalculationtime(ire, icp)
-   % [ ] = cntc.resetcalculationtime(ire, icp)
-   %
-   % reset the accumulated cpu-time and wall-clock-time used for a contact problem
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 6: m=*, cp     - require icp>0, default 1
-   % #resetcalculationtime -2
-
-
-
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-   if (nargin<2 | isempty(icp))
-    icp = 1;
-   end
-   if (icp<=0)
-    disp(sprintf('ERROR in cntc.resetcalculationtime: not available for icp=%d',icp));
-    return
-   end
-
-   cntc.call('cntc.resetcalculationtime', ire, icp);
-
-  end % cntc.resetcalculationtime
-  %------------------------------------------------------------------------------------------------------------
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=closelibrary();
-   %------------------------------------------------------------------------------------------------------------
-   % [ ] = cntc.closelibrary();
-   %
-   % clean-up, close files and unload the library from Matlab
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #closelibrary -2
-
-   LI=cntc.call;
-   cntc.call('cntc.finalizelast');
-   %dbstack;keyboard;
-   unloadlibrary(LI.libname);
-   LI.libname='';
-
-   %evalin('base','clear("LI")');
-  end % cntc.closelibrary
-  %------------------------------------------------------------------------------------------------------------
-
-  %------------------------------------------------------------------------------------------------------------
-  function []=finalize(ire)
-   %%------------------------------------------------------------------------------------------------------------
-   % [ ] = cntc.finalize(ire)
-   %
-   % Finalize calculations and clean-up for a result element
-   %------------------------------------------------------------------------------------------------------------
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % category 0: m=*, glob   - no icp needed
-   % #finalize -2
-
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-
-   cntc.call('cntc.finalize', ire);
-
-  end % cntc.finalize
-  %------------------------------------------------------------------------------------------------------------
 
   %------------------------------------------------------------------------------------------------------------
   function []=set(list)
@@ -15245,6 +15243,13 @@ cntc : interface between SDT and CONTACT
        end
 
       end
+     case 'getsol'
+      %% Get sol to understand plot3d
+      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+      else;iwhe=evt.iwhe;icase=evt.j1;  end
+
+      LI=cntc.call;
+      LI.sol{icase} = cntc_getcpresults(iwhe, 1);
 
      case 'mat'
       %% Set material property
