@@ -194,10 +194,10 @@ cntc : interface between SDT and CONTACT
    end
 
    % unload the library if it was loaded before
-   if (1==1 & libisloaded(libname))
+   %xxxgae cant unload the library when it crash and the library is still
+   %on
+   if libisloaded(libname)
     cntc.closelibrary;
-    % #xxxgae voir si ca marche-2
-    %evalin('base', 'clear LI');
    end
    if nargin>0
     if isequal(c_wrkdir,'close');
@@ -517,7 +517,7 @@ cntc : interface between SDT and CONTACT
      calllib(LI.libname,'cntc_finalizelast');
     end
    else
-    dbquicalllib(LI.libname,CAM,varargin{2:end});
+    calllib(LI.libname,CAM,varargin{2:end});
    end
    if nargout>0; out=LI;end
 
@@ -7874,7 +7874,9 @@ cntc : interface between SDT and CONTACT
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
     if (isfield(opt3, myopts{i}))
-     myopt = setfield(myopt, myopts{i}, cntc.mygetfield(opt3,myopts{i}));
+     r1= mygetfield(opt3,myopts{i});
+
+     myopt = setfield(myopt, myopts{i}, r1);
     end
    end
 
@@ -8016,7 +8018,9 @@ cntc : interface between SDT and CONTACT
      myopt.view=[180 90];
     elseif (strcmp(myopt.view,'default') & ~strcmp(myopt.rw_surfc,'none'))
      % default: 3D wheel-rail profile view
-     if (cntc.is_left_side(sol))
+     fprintf('here');
+     r1=cntc.is_left_side(sol);
+     if r1
       myopt.view=[115 30];
      else
       myopt.view=[65 30];
@@ -8454,6 +8458,7 @@ cntc : interface between SDT and CONTACT
    end
 
   end % plot3d
+
 
   function [ myopt ] = plot_2dspline( slcs, opt )
 
