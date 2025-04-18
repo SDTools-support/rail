@@ -498,7 +498,7 @@ cntc : interface between SDT and CONTACT
    CAM=varargin{1};
    if ~isprop(LI,'callLog');addprop(LI,'callLog');LI.callLog=vhandle.nmap;end
    if isa(LI.callLog,'vhandle.nmap')
-    r1.now=now;r1.dbstack=dbstack;
+    r1.now=now;r1.dbstack=dbstack; %#ok<TNOW1>
     LI.callLog(CAM)=r1; % Store calls to allow logging
     disp(CAM);sdtm.toString(r1)% xxx 
     diary off;f1='C:\Users\0021221S.COMMUN\xxx.log';
@@ -1114,7 +1114,7 @@ cntc : interface between SDT and CONTACT
 
      % store solution
 
-     if (~found),
+     if (~found)
       if (idebug>=2)
        disp(sprintf('No solution for (i,j)=(%d,%d), setting NaN', iout, jout));
       end
@@ -7813,16 +7813,13 @@ cntc : interface between SDT and CONTACT
     'colormap', 'parula', ...
     'addplot',    0  ... % clear plot (0) or add to exist.plot (1, experimental)
     );
-   if (old_graphics)
-    myopt.colormap = 'jet';
-   end
+   if (old_graphics); myopt.colormap = 'jet'; end
 
    % If the user has not supplied any arguments,
    %    return default options as first and only output argument
 
    if (nargin<1)
-    opts3 = myopt;
-    return
+    opts3 = myopt;return
    elseif (~isstruct(sol) | ~isfield(sol,'pn'))
     disp('ERROR(plot3d): argument sol should be a structure as obtained from loadcase.');
     return;
@@ -7830,25 +7827,20 @@ cntc : interface between SDT and CONTACT
 
    % If the user has not supplied an opt3-struct, use the default
 
-   if (nargin<2 | isempty(opt3))
-    opt3 = myopt;
+   if (nargin<2 | isempty(opt3));opt3 = myopt;
    elseif (~isstruct(opt3))
     disp('ERROR(plot3d): argument opt3 should be a structure as obtained from plot3d.');
     return;
    end
 
    if (nargin<3)
-    if (isfield(sol,'prr'))
-     prr = sol.prr;
-    else
-     prr = [];
+    if (isfield(sol,'prr'));prr = sol.prr;
+    else; prr = [];
     end
    end
    if (nargin<4)
-    if (isfield(sol,'prw'))
-     prw = sol.prw;
-    else
-     prw = [];
+    if (isfield(sol,'prw'));prw = sol.prw;
+    else;prw = [];
     end
    end
    if (nargin<5)
@@ -7874,7 +7866,7 @@ cntc : interface between SDT and CONTACT
    myopts = fieldnames(myopt);
    for i = 1:length(myopts)
     if (isfield(opt3, myopts{i}))
-     r1= mygetfield(opt3,myopts{i});
+     r1= cntc.mygetfield(opt3,myopts{i});
 
      myopt = setfield(myopt, myopts{i}, r1);
     end
@@ -8152,8 +8144,8 @@ cntc : interface between SDT and CONTACT
 
    % start by plotting the rail and/or wheel surfaces
 
-   cntc.show_slcs = (isfield(sol,'slcs') & any(strcmp(myopt.rw_surfc,{'prr','both'})));
-   cntc.show_slcw = (isfield(sol,'slcw') & any(strcmp(myopt.rw_surfc,{'prw','both'})));
+   show_slcs = (isfield(sol,'slcs') & any(strcmp(myopt.rw_surfc,{'prr','both'})));
+   show_slcw = (isfield(sol,'slcw') & any(strcmp(myopt.rw_surfc,{'prw','both'})));
 
    %% Show and plot the profile xxxgae P
    if (myopt.addplot<=0 & ~strcmp(myopt.rw_surfc,'none'))  % create new plot
