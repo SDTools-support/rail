@@ -7061,6 +7061,102 @@ cntc : interface between SDT and CONTACT
 
   end % cntc.to_rail_coords
 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    function [ xr, yr, zr, deltar]=to_rail_coords_test(sol, A);
+
+   % transform contact [xc,yc/s]-coordinates to rail [xr,yr,zr] coordinates
+   % #to_rail_coords_test -2
+   % xxxgae coord
+
+   if (nargin<3), yc = []; end
+   if (nargin<4), zc = []; end
+   sz = max( [ size(xc) ; size(yc) ; size(zc) ] );
+   if (isempty(xc)), xc = sol.meta.spinxo*ones(sz); end
+   if (isempty(yc)), yc = sol.meta.spinyo*ones(sz); end
+   if (isempty(zc)), zc = zeros(sz); end
+
+   % reshape inputs to row vectors
+
+   m = size(xc,1); n = size(xc,2);
+   xc = reshape(xc, 1, m*n);
+   yc = reshape(yc, 1, m*n);
+   zc = reshape(zc, 1, m*n);
+   coords = [xc - sol.meta.spinxo; yc - sol.meta.spinyo; zc];
+
+   % form transformation matrices and vectors
+
+   Rref = cntc.rotx(sol.meta.deltcp_r*180/pi);
+   if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
+    Rref = Rref * cntc.roty(sol.meta.roty*180/pi);
+   end
+
+   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
+
+   has_slcs = isfield(sol,'slcs');
+   if (has_slcs)
+    oref = [sol.meta.s_ws+sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+   else
+    oref = [              sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
+   end
+
+   if (sol.d_digit~=4)
+
+    % change coordinates from contact to rail coordinates
+
+    coords = oref*ones(1,m*n) + Rref * coords;
+
+   else
+
+    if (has_slcs), disp('Rail coords not supported for conformal on variable profile'); end
+
+    % mirror ProfileY for left-side w/r pairs
+
+    prf_s = sol.prr.ProfileS; prf_y = sol.prr.ProfileY; prf_z = sol.prr.ProfileZ;
+    if (cntc.is_left_side(sol))
+     prf_s = -flipud(prf_s); prf_y = -flipud(prf_y); prf_z =  flipud(prf_z);
+    end
+
+    % find oref in the rail profile
+
+    dst = sqrt( (prf_y-sol.meta.ycp_r).^2 + (prf_z-sol.meta.zcp_r).^2 );
+    [~,ix] = min(dst);
+    rg = [max(1,ix-5), min(length(prf_y),ix+5)];
+
+    sref = interp1(prf_y(rg), prf_s(rg), sol.meta.ycp_r);
+
+    % find grid points in the rail profile
+
+    sc = yc;
+    if (any(sol.kincns.t_digit==[1 2]))
+     sr =        sc;
+    else
+     sr = sref + sc;
+    end
+    yr_at_s = interp1(prf_s, prf_y, sr);
+    zr_at_s = interp1(prf_s, prf_z, sr);
+
+    % determine n-vectors on the rail profile
+
+    ds = 0.1;
+    dy = (interp1(prf_s, prf_y, sr+ds) - yr_at_s) / ds;
+    dz = (interp1(prf_s, prf_z, sr+ds) - zr_at_s) / ds;
+    nvec = [zeros(1,m*n); -dz; dy] ./ ([1;1;1] * sqrt(dy.^2+dz.^2));
+
+    coords = [xc; yr_at_s; zr_at_s] + nvec .* ([1;1;1] * zc);
+
+   end
+
+   % extract components & reshape to the original array sizes
+
+   xr = reshape(coords(1,:), m, n);
+   yr = reshape(coords(2,:), m, n);
+   zr = reshape(coords(3,:), m, n);
+   deltar = sol.meta.deltcp_r;
+
+  end % cntc.to_rail_coords_test
+
+
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ xw, yw, zw, deltaw]=to_wheel_coords(sol, xc, yc, zc);
@@ -8010,9 +8106,8 @@ cntc : interface between SDT and CONTACT
      myopt.view=[180 90];
     elseif (strcmp(myopt.view,'default') & ~strcmp(myopt.rw_surfc,'none'))
      % default: 3D wheel-rail profile view
-     fprintf('here');
-     r1=cntc.is_left_side(sol);
-     if r1
+     
+     if cntc.is_left_side(sol)
       myopt.view=[115 30];
      else
       myopt.view=[65 30];
@@ -9232,7 +9327,7 @@ cntc : interface between SDT and CONTACT
 
 
 
-  function [ h ] = cntc.plot_cm(O, r, veclen, theta, col, no_vec, no_head)
+  function [ h ] = plot_cm(O, r, veclen, theta, col, no_vec, no_head)
 
    % [ h ] = plot_cm(O, r, veclen, theta, col, no_vec, no_head)
    %
@@ -13468,7 +13563,7 @@ cntc : interface between SDT and CONTACT
 
     26,'YR_TR','y-position of rail profile marker in track coordinates'
     27,'ZR_TR','z-position of rail profile marker in track coordinates'
-    28,'ROLLR_TR','roll angle of rail profile marker in track coordinates' % #roll_tr
+    28,'ROLLR_TR','roll angle of rail profile marker in track coordinates' % #roll_tr -2
 
     31,'DY_DEFL','lateral rail shift according to massless rail deflection'
     32,'DZ_DEFL','vertical rail shift according to massless rail deflection'
