@@ -104,6 +104,7 @@ cinM.add={
 
 %% Global flags 
 %CNTC.un_cntc=1934;
+%Benchmark Manchester Flags
 nmap('BenchManchester_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
   'ic_config',0,'Configuration of the problem; 0 for left side, 1 for right side'
@@ -117,9 +118,25 @@ nmap('BenchManchester_flags')=vhandle.uo([],{ ...
   'ic_flow',2,['governs the extent of the flow trace to the screen and the ' ...
   'output-file; little progress output']
   });
+% WheelFlat Flags
+nmap('WheelFlat_flags')=vhandle.uo([],{ ...
+   'if_units',1934,['Unit system : Contact, SI, Simpack']
+   'ic_config',0,['Configuration of the problem; 0 for left side, 1 for right side']
+   'ic_tang',3,['Tangential problem to be solved, T=3: steady state rolling --> G=0 GauSei']
+   'ic_pvtime',2,['Relation of the current to the previous case or' ...
+   ' previous time instance; P=2: no previous time']
+   'ic_discns',2,['Type of contact area, D=2 planar contact surface']
+   'if_wrtinp',1,' 0: no .inp-file needed'
+   'ic_matfil',1,'subsurface stress input; A=0: no .mat-file needed'
+   'ic_output',3,'subsurface stress output; O=1: min. output to .out-file'
+   'ic_flow',2,['governs the extent of the flow trace to the screen and the ' ...
+   'output-file; little progress output']
+   });
 
 %% Trajectory 
 %Classic
+LI=cntc.call;
+
 C1=struct('X',{{[],{'y';'yaw';'roll';'vpitch';'vx'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
    [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
 C1.X{1}=(1:size(C1.Y,1))';
@@ -127,15 +144,24 @@ C1.Y(:,5)=2000; % set vx
 nmap('Classic_traj')=C1;
 
 %  Benchmark
-C1=struct('X',{{[],{'y';'yaw';'roll';'vpitch';'vx'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
+C1=struct('X',{{[],{'y';'yaw';'roll';'vpitch';'vx'}}},'Xlab',{{'Step','Comp'}},'Y', [ ... 
    [ 0 : 0.5 : 1.5];
    [ 0 : 0.0012 : 0.0036 ];
    [  0.00000000, -0.00002304, -0.00005049, -0.00008103];
    [ -4.34811810, -4.34741340, -4.34657520, -4.34624400]
    ]');
 C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(:,5)=2000; % set vx
+C1.Y(2:end,5)=2000; % set vx
 nmap('BenchManchester_Traj')=C1;
+
+%  Wheelflat
+C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
+  [-pi/180*[25 : 1 : 50]']); % attention angle en rad et distance en mm (pdf page 36)
+C1.X{1}=(1:size(C1.Y,1))';
+C1.Y(:,2)=2000; % set vx
+C1.Y(:,3)=-4.08190679; % set vpitch
+
+nmap('WheelFlat_Traj')=C1;
 
 %% #nmap.Cst : constants to be reused
 nmap('Ctc21')=struct('delta',20,'Fl',1e6,'Kc',-2.3e9);

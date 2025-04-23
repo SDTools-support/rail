@@ -501,7 +501,7 @@ cntc : interface between SDT and CONTACT
     r1.now=now;r1.dbstack=dbstack; %#ok<TNOW1>
     LI.callLog(CAM)=r1; % Store calls to allow logging
     disp(CAM);sdtm.toString(r1)% xxx 
-    diary off;f1='C:\Users\0021221S.COMMUN\xxx.log';
+    diary off;f1='C:\Users\0021221S.COMMUN\MATLAB\xxx.log';
     disp(f1);if exist(f1,'file');diary(f1);end
    end
 
@@ -14701,6 +14701,7 @@ cntc : interface between SDT and CONTACT
    values.spinxo = tmp(4);
    values.spinyo = tmp(5);
    values.tau_c0 = tmp(6);
+
    if nargin==3
     values=[values.veloc, values.chi, values.dq, values.spinxo, ... 
     values.spinyo, values.tau_c0];
@@ -14756,8 +14757,8 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [values]=getpotcontact(ire, icp, LI)
-   % [values] = cntc.getpotcontact(ire, icp)
+  function [ mx, my, xc1, yc1, dx, dy ]=getpotcontact(ire, icp, LI)
+   % [ mx, my, xc1, yc1, dx, dy ] = cntc.getpotcontact(ire, icp)
    %
    % get the parameters of the potential contact area for a contact problem
    %    3: first center + grid sizes,        params = [ mx, my, xc1, yc1, dx, dy ]
@@ -14774,7 +14775,7 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getpotcontact
 
-   l1={
+      l1={
     1, 'mx', 'number of elements in x-directions [-]'
     2, 'my', 'number of elements in y-directions [-]'
     3, 'xc1', 'position of first element center [length]'
@@ -14783,15 +14784,16 @@ cntc : interface between SDT and CONTACT
     6, 'dy', 'grid discretization step sizes [length]'
     };
 
+
    if (nargin<1 | isempty(ire))
-    ire = 1;
+      ire = 1;
    end
    if (nargin<2 | isempty(icp))
-    icp = 1;
+      icp = 1;
    end
    if (icp<=0)
-    disp(sprintf('ERROR in cntc.getpotcontact: not available for icp=%d',icp));
-    return
+      disp(sprintf('ERROR in cntc_getpotcontact: not available for icp=%d',icp));
+      return
    end
 
    lenarr = 6;
@@ -14800,13 +14802,22 @@ cntc : interface between SDT and CONTACT
    cntc.call('cntc.getpotcontact', ire, icp, lenarr, p_values);
 
    values = p_values.value;
+
+   mx  = round(values(1));
+   my  = round(values(2));
+   xc1 = values(3);
+   yc1 = values(4);
+   dx  = values(5);
+   dy  = values(6);
+
    if nargin==3
     i2=LI.Cmacro.rowM(l1(:,2));
     LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
 
-  end % cntc.getpotcontact
 
+  end % cntc_getpotcontact
+   
   %------------------------------------------------------------------------------------------------------------
 
   %------------------------------------------------------------------------------------------------------------
@@ -14907,18 +14918,17 @@ cntc : interface between SDT and CONTACT
 
      cntc.call('cntc.getprofilevalues_new', ire, itask, nints, iparam, nreals, rparam, ...
       lenarr, p_val);
-     val = p_val.value;
+     values = p_val.value;
 
      if (itask==1 | itask==2)
-      val = reshape(val, npnt, 2);
-      values=struct('ProfileY',val(:,1), 'ProfileZ',val(:,2));
+      values = reshape(values, npnt, 2);
      end
 
     end % (itask==0 | 1--5)
 
    else
 
-    values = [];
+    %values = [];
 
    end % if (itask==-1)
 
@@ -15341,7 +15351,9 @@ cntc : interface between SDT and CONTACT
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       LI=cntc.call;
-      LI.sol{icase} = cntc_getcpresults(iwhe, 1);
+      sol=cntc.getcpresults(iwhe, 1);
+      LI.sol{icase}=sol;
+
 
      case 'mat'
       %% Set material property
@@ -15370,24 +15382,29 @@ cntc : interface between SDT and CONTACT
      case 'traj'
       %% #set.traj set wheel position and velocity associated to a trajectory point -2
       % increment icase = j1 in fe_time
-      [~,RO]=sdtm.urnPar('{s,y,z,roll,yaw,pitch,vx,vy,vz,vroll,vyaw,vpitch}','{}{}');
-      ws_pos=zeros(6);
+      [~,RO]=sdtm.urnPar(['{s_ws,y_ws,z_ws,roll_ws,yaw_ws,pitch_ws,vs,vy,vz,vroll,' ...
+       'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
+       ' vrollw, vyaww, vpitchw,dxwhl2, dywhl2, dzwhl2, drollw2, dyaww2, dpitchw2, ' ...
+       'vxwhl2,vywhl2, vzwhl2, vrollw2, vyaww2, vpitchw2}'],'{}{}');
+
       if (~isfield(evt,'j1')&&~isfield(evt,'iwhe'));iwhe=1;icase=1;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
+
+      Ewheel=LI.wheelsetDim.Ewheel;
+
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
       pos=zeros(1,6);pos(i2(i1))=LI.Traj.Y(icase,i1);
-      ewheel = 2;
-      cntc.setwheelsetposition(iwhe, ewheel,pos); % set wheel set pos
+      cntc.setwheelsetposition(iwhe,Ewheel,pos); % set wheel set pos
 
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
       vel=zeros(1,6);vel(i2(i1))=LI.Traj.Y(icase,i1);
-      cntc.setwheelsetvelocity(iwhe, ewheel,vel);
+      cntc.setwheelsetvelocity(iwhe,Ewheel,vel);
       LI.cur=evt;
 
-      if (0==1 & iwhe==2)
-       ewheel = 4; % xxx flexibilty
-       cntc.setwheelsetflexibility(iwhe, ewheel, ws_flx);
-      end
+      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
+      flex=zeros(1,12);flex(i2(i1))=LI.Traj.Y(icase,i1);
+      cntc.setwheelsetflexibility(iwhe,Ewheel,flex);
+      
     end
    end
   end
@@ -15624,7 +15641,7 @@ cntc : interface between SDT and CONTACT
     end
     params=sdth.sfield('addselected',struct,LI.Friction,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setfrictionmethod(LI.global.ire, LI.global.icp, LI.Friction.FrcLaw, params);
+    cntc.setfrictionmethod(LI.global.ire, [], LI.Friction.FrcLaw, params);
     return
     % end SDT packaging
    end
@@ -15633,7 +15650,7 @@ cntc : interface between SDT and CONTACT
     ire = 1;
    end
    if (nargin<2 | isempty(icp))
-    icp = -1; % default: W/R contact, all patches
+    icp = -1; % default: W/R contact, all patches, doesn't support icp >0
    end
    if (nargin<4 | isempty(imeth) | isempty(params))
     disp('ERROR in cntc.setfrictionmethod: imeth, params are mandatory.');
@@ -16714,6 +16731,7 @@ cntc : interface between SDT and CONTACT
     DoOpt=['Design(0#vd{0,Maintain,1,NewDim,2,NewDevia,3,NewBoth}#"Track dimension and deviation options")' ...
      'gaught(#%g#"Height below the track plane at which the gauge width is measured.")' ...
      'gaugwd(#%g#"Distance between the inner faces of the two rails.")' ...
+     'gaugsq(#%g#"Reserved for selecting second or further gauge faces instead of the leftmost one")' ...
      'nomrad(#%g#"Nominal radius of the rollers")' ...
      'dyrail(#%g#"Offset Δyrail of the rail profile reference from the design")' ...
      'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design")' ...
@@ -16752,11 +16770,12 @@ cntc : interface between SDT and CONTACT
       gaught=sdth.sfield('addselected',struct,LI.Track,{'gaught'});
       gaught=struct2cell(gaught); gaught=gaught{:};
       if gaught>0
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught','gaugsq', 'gaugwd','cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
+       params=sdth.sfield('addselected',struct,LI.Track,{'gaught','gaugsq', ...
+        'gaugwd','cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
       else
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', 'railz0', 'cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
+       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
+        'railz0', 'cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
       end
-      %XXXGAE If F=3 ?
      otherwise
       error('Wrong parameter selected')
     end
@@ -16867,7 +16886,6 @@ cntc : interface between SDT and CONTACT
    %  ewheel         - control digit EWHEEL
    %  nparam         - number of parameters provided
    %  params(nparam) - depending on method that is used
-   %  E=0 : Maintain; E=1 : New position; E=2 : New position and velocity
    %
    %  E=1-2, 5-6: keep old wheelset dimensions, ignore params provided
    %  E=3-4, 7-8: new wheelset geometry   params = [fbdist, fbpos, nomrad]
@@ -16884,7 +16902,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Dim(0#vd{0,Maintain,1,NewDim}#"Wheelset dimension options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
+     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow")' ...
      'nomrad(#%g#"Nominal radius of the wheel")'];
@@ -16893,15 +16912,15 @@ cntc : interface between SDT and CONTACT
     LI=cntc.call;
     LI.wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetDim.Dim
-     case 0; params=[];    % 0 Maintain
-     case 1; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
+    switch LI.wheelsetDim.Ewheel
+     case {0,1,2,5,6}; params=[];    % 0 Maintain
+     case {3,4,7,8}; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
        {'fbdist','fbpos','nomrad'}); % 1 NewDim
      otherwise; error('Wrong parameter selected')
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetdimensions(Global.ire, LI.wheelsetDim.Dim, params);
+    cntc.setwheelsetdimensions(Global.ire, LI.wheelsetDim.Ewheel, params);
     return
     % end SDT packaging
 
@@ -16949,7 +16968,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Flex(0#vd{0,Maintain,1,NoFlex,2,NewFlex}#"Wheelset flexibility options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
+     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
      'dxwhl(#%g#"xxx")' ...
      'dywhl(#%g#"xxx")' ...
      'dzwhl(#%g#"xxx")' ...
@@ -16961,24 +16981,41 @@ cntc : interface between SDT and CONTACT
      'vzwhl(#%g#"xxx")' ...
      'vrollw(#%g#"xxx")' ...
      'vyaww(#%g#"xxx")' ...
-     'vpitchw(#%g#"xxx")'];
+     'vpitchw(#%g#"xxx")'...
+     'dxwhl2(#%g#"xxx")' ...
+     'dywhl2(#%g#"xxx")' ...
+     'dzwhl2(#%g#"xxx")' ...
+     'drollw2(#%g#"xxx")' ...
+     'dyaww2(#%g#"xxx")' ...
+     'dpitchw2(#%g#"xxx")'...
+     'vxwhl2(#%g#"xxx")' ...
+     'vywhl2(#%g#"xxx")' ...
+     'vzwhl2(#%g#"xxx")' ...
+     'vrollw2(#%g#"xxx")' ...
+     'vyaww2(#%g#"xxx")' ...
+     'vpitchw2(#%g#"xxx")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     LI.wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetFlex.Flex;
-     case 0; params=[];% 0 Maintain
-     case 1; params=zeros(1,12); % 1 NoFlex
-     case 2; params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
-       'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'}; % 1 NewFlex
+    switch LI.wheelsetFlex.Ewheel;
+     case 0; params=[];% Maintain
+     case {1:4}; params=zeros(1,12); % NoFlex
+     case {5,7}; % New flexibilities with symmetry
+      params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
+       'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'}; 
+     case {6,8}; % New flexibilities for each wheel (no symmetry)
+      params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl','vywhl', ...
+       'vzwhl', 'vrollw', 'vyaww', 'vpitchw','dxwhl2', 'dywhl2', 'dzwhl2', 'drollw2', ...
+       'dyaww2', 'dpitchw2', 'vxwhl2','vywhl2', 'vzwhl2', 'vrollw2', 'vyaww2', 'vpitchw2'};
      otherwise; error('Wrong parameter')
       %% xxxGAE
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=sdth.sfield('addselected',struct,LI.wheelsetFlex,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetflexibility(Global.ire, LI.wheelsetFlex.Flex, params);
+    cntc.setwheelsetflexibility(Global.ire, LI.wheelsetFlex.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17025,7 +17062,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Pos(0#vd{0,Maintain,1,NewPos}#"Wheelset position options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
+     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
      's_ws(#%g#"Wheelset position along the track center line")' ...
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.")' ...
      'z_ws(#%g#"Vertical position zws of the wheelset center")' ...
@@ -17036,14 +17074,11 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     LI.wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-
-    Pos=LI.wheelsetPos.Pos;
-    switch Pos
-     case 0
-      % 0 Maintain
+ 
+    switch LI.wheelsetPos.Ewheel
+     case 0 % Maintain
       params=[];
-     case 1
-      % 1 NewPos
+     case {1:8}; % 1 NewPos
       params=sdth.sfield('addselected',struct,LI.wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
        'roll', 'yaw', 'pitch'});
      otherwise
@@ -17052,7 +17087,7 @@ cntc : interface between SDT and CONTACT
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetposition(Global.ire, Pos, params);
+    cntc.setwheelsetposition(Global.ire, LI.wheelsetPos.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17086,11 +17121,11 @@ cntc : interface between SDT and CONTACT
    %  params(nparam) - depending on method that is used
    %
    %  E=0-1: no new wheelset velocity    params = [ ]
-   %  E=2-5:    new wheelset velocity    params = [ vx, vy, vz, vroll, vyaw, vpitch ]
+   %  E=2-5:    new wheelset velocity    params = [ vs, vy, vz, vroll, vyaw, vpitch ]
    %            for roller-rigs vx is replaced by rpitch (C1=4,5)
    %            position increments v * dt are used in transient shifts (T=1)
    %
-   %  dimensions:     vx, vy, vz    : [veloc]   vroll, vyaw, vpitch, rpitch  : [ang.veloc]
+   %  dimensions:     vs, vy, vz    : [veloc]   vroll, vyaw, vpitch, rpitch  : [ang.veloc]
    %                  shft_sws--zws : [length]  shft_rol, shft_yaw, shft_pit : [angle]
    %------------------------------------------------------------------------------------------------------------
 
@@ -17103,8 +17138,9 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Vel(0#vd{0,Maintain,1,NewVel}#"Wheelset velocity options")' ...
-     'vx(#%g#"Wheelset forward velocity")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
+     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
+     'vs(#%g#"Wheelset forward velocity")' ...
      'vy(#%g#"Wheelset lateral velocity")' ...
      'vz(#%g#"Wheelset vertical velocity")' ...
      'vroll(#%g#"Wheelset rate of roll")' ...
@@ -17122,14 +17158,11 @@ cntc : interface between SDT and CONTACT
     LI=cntc.call;
     LI.wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    Vel=LI.wheelsetVel.Vel;
-    switch Vel
-     case 0
-      % 0 Maintain
+    switch LI.wheelsetVel.Ewheel
+     case {0,1} % Maintain
       params=[];
-     case 1
-      % 1 NewVel xxxgae roller rigs ???
-      params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vx', 'vy', 'vz', ...
+     case {2:5} % New Velocity 
+      params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vs', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
       error('Wrong parameter')
@@ -17137,7 +17170,7 @@ cntc : interface between SDT and CONTACT
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetvelocity(Global.ire, Vel, params);
+    cntc.setwheelsetvelocity(Global.ire, LI.wheelsetVel.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17190,7 +17223,8 @@ cntc : interface between SDT and CONTACT
 
    % category 7: m=*, wtd or cp - default icp=-1
    % #subs_addblock
-
+   
+   % xxxgae WIP
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['BlockSpecif(0#vd{0,Maintain,1,NewVel}#"Wheelset velocity options")' ...
