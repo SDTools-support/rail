@@ -5403,6 +5403,65 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
+
+  function out=sol2curve()
+   %% #sol2curve Transform to SDT format
+
+   LI=cntc.call;
+   C1=struct('X',{{}},'XLab',{{'igy','igx','comp','xxx','iTime'}},'Y',[]);
+   C1.X{5}=(1:length(LI.sol))';C1.X{4}=1;
+
+   sol=LI.sol{1} ;
+   x=cellfun(@(x)x.x,LI.sol,'uni',0)';
+   i1=unique(round(horzcat(x{:})/sol.dx));C1.X{2}=i1;
+   x=cellfun(@(x)x.y,LI.sol,'uni',0)';
+   i1=unique(round(horzcat(x{:})/sol.dy));C1.X{1}=i1;
+
+   %% fields at gauss points 
+   st=fieldnames(sol);i1=[length(sol.y) length(sol.x)];
+   for j1=1:length(st)
+    if ~isequal(size(sol.(st{j1})),i1);continue;end
+    j3=size(C1.Y,3)+1;C1.X{3}(j3,1)=st(j1);
+    for j2=1:length(LI.sol)
+     [~,i2]=ismember(round(LI.sol{j2}.x/sol.dx),C1.X{2});
+     [~,i3]=ismember(round(LI.sol{j2}.y/sol.dy),C1.X{1});
+     C1.Y(i3,i2,j3,1,j2)=LI.sol{j2}.(st{j1});
+    end
+    sol=rmfield(sol,st{j1});
+   end
+   out.Cfield=C1;
+
+    %% profiles 
+   C1=struct('X',{{[],{'s';'y';'z'},(1:length(LI.sol))'}}, ...
+       'Xlab',{{'i','comp','iTime'}},'name','prr');
+   r2=cellfun(@(x)x.prr.ProfileS,LI.sol,'uni',0);
+   C1.Y=horzcat(r2{:});C1.Y=reshape(C1.Y,size(C1.Y,1),1,size(C1.Y,2));
+   r2=cellfun(@(x)x.prr.ProfileY,LI.sol,'uni',0);C1.Y(:,2,:)=horzcat(r2{:});
+   r2=cellfun(@(x)x.prr.ProfileZ,LI.sol,'uni',0);C1.Y(:,3,:)=horzcat(r2{:});
+   C1.X{1}=(1:size(C1.Y,1))';
+
+   C1.PlotInfo=ii_plp('PlotInfo2D -type "contour"',C1);
+   C1.DimPos=[1 3 2];
+   C1=sdsetprop(C1,'PlotInfo','ua.axProp',{'yscale','linear'});
+
+
+   out.prr=C1;
+
+   C1=struct('X',{{[],{'s';'y';'z'},(1:length(LI.sol))'}}, ...
+       'Xlab',{{'i','comp','iTime'}},'name','prw');
+   r2=cellfun(@(x)x.prw.ProfileS,LI.sol,'uni',0);
+   C1.Y=horzcat(r2{:});C1.Y=reshape(C1.Y,size(C1.Y,1),1,size(C1.Y,2));
+   r2=cellfun(@(x)x.prw.ProfileY,LI.sol,'uni',0);C1.Y(:,2,:)=horzcat(r2{:});
+   r2=cellfun(@(x)x.prw.ProfileZ,LI.sol,'uni',0);C1.Y(:,3,:)=horzcat(r2{:});
+   C1.X{1}=(1:size(C1.Y,1))';
+   out.prw=C1;
+
+   sol=sdtm.rmfield(sol,'x','y','prr','prw');
+   out.sol=sol;
+
+  end
+
+
   function [ ] = show_profiles(sol, opt)
    %
    % [ ] = show_profiles(sol, opt)
@@ -7803,7 +7862,7 @@ cntc : interface between SDT and CONTACT
   function scroll(obj,evt)
    %% #scroll / key channel changes
 
-   sdt=getappdata(obj,'sdt');
+   gf=ancestor(obj,'figure'); sdt=getappdata(gf,'sdt');
    ev1=sdt.cntc;LI=cntc.call;
 
    if isfield(evt,'Key')
@@ -7814,6 +7873,8 @@ cntc : interface between SDT and CONTACT
              ev1.ch=max(1,ev1.ch-1);
 
      end
+   elseif isfield(evt,'VerticalScrollCount')
+     ev1.ch=max(min(ev1.ch+evt.VerticalScrollCount,length(LI.sol)),1);
    end
    sdt.cntc=ev1;
    sol=LI.sol{ev1.ch};ev1.opt.ch=ev1.ch;
