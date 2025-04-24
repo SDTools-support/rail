@@ -7800,6 +7800,25 @@ cntc : interface between SDT and CONTACT
     opts2 = myopt;
    end
   end
+  function scroll(obj,evt)
+   %% #scroll / key channel changes
+
+   sdt=getappdata(obj,'sdt');
+   ev1=sdt.cntc;LI=cntc.call;
+
+   if isfield(evt,'Key')
+     switch evt.Key
+         case {'rightarrow'}
+             ev1.ch=min(ev1.ch+1,length(LI.sol));
+         case {'leftarrow'}
+             ev1.ch=max(1,ev1.ch-1);
+
+     end
+   end
+   sdt.cntc=ev1;
+   sol=LI.sol{ev1.ch};ev1.opt.ch=ev1.ch;
+   feval(ev1.do,sol,ev1.opt)
+  end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -7907,15 +7926,44 @@ cntc : interface between SDT and CONTACT
     'eldivcol',  [0 0 0.56; 0.5 0 0; 0.8 0.25 0.42], ...
     'eldivwid',  [], ...
     'colormap', 'parula', ...
-    'addplot',    0  ... % clear plot (0) or add to exist.plot (1, experimental)
+    'addplot',    0,  ... % clear plot (0) or add to exist.plot (1, experimental)
+    'ch',1 ... % current channel
     );
    if (old_graphics); myopt.colormap = 'jet'; end
 
    % If the user has not supplied any arguments,
    %    return default options as first and only output argument
 
-   if (nargin<1)
-    opts3 = myopt;return
+   if (nargin<1); opts3 = myopt;return
+   elseif isempty(sol);
+     %% #plot3d.ch automated multiple plots
+     LI=cntc.call;sol=LI.sol;
+     if ischar(opt3)
+      % cntc.plot3d([],'{typpplot=surf,field=px,rw_surfc=prw,ch4,gf10}')
+      [~,opt3]=sdtm.urnPar(opt3,'{}{ch%g,gf%g}');
+      opt3=sdth.sfield('addmissing',opt3,myopt);
+      r3=sdtm.findTok(opt3.Other,'([^=]*)=(.*)');
+      for j3=1:size(r3,1);opt3.(r3{j3}{1})=r3{j3}{2};end
+     end
+     if isfield(opt3,'ch')
+      if ~isfield(opt3,'gf');opt3.gf=0;
+      else;opt3.gf=opt3.gf(1)+opt3.ch;
+      end % Figure Offset
+      opt=sdtm.rmfield(opt3,'gf','Other');
+      for j1=1:length(opt3.ch)
+       gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
+       cntc.plot3d(LI.sol{opt.ch},opt)
+       % prepare interactivity
+       iimouse('interacturn',gf, ...
+           {'Key.leftarrow{cntc.scroll,"previous"}';
+            'Normal+Scroll.@ga{cntc.scroll,"change step"}'
+            'Key.rightarrow{cntc.scroll,"previous"}'})
+       sdt=getappdata(gf,'sdt');
+       sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
+
+      end
+      return
+     end
    elseif (~isstruct(sol) | ~isfield(sol,'pn'))
     disp('ERROR(plot3d): argument sol should be a structure as obtained from loadcase.');
     return;
@@ -7935,13 +7983,9 @@ cntc : interface between SDT and CONTACT
     end
    end
    if (nargin<4)
-    if (isfield(sol,'prw'));prw = sol.prw;
-    else;prw = [];
-    end
+    if (isfield(sol,'prw'));prw = sol.prw;else;prw = [];end
    end
-   if (nargin<5)
-    subs = [];
-   end
+   if (nargin<5);subs = [];end
 
    % Check whether user-supplied opt3-struct contains unknown options
 
@@ -7963,18 +8007,15 @@ cntc : interface between SDT and CONTACT
    for i = 1:length(myopts)
     if (isfield(opt3, myopts{i}))
      r1= cntc.mygetfield(opt3,myopts{i});
-
-     myopt = setfield(myopt, myopts{i}, r1);
+     myopt.(myopts{i})=r1;
     end
    end
 
    % Set default field
 
    if (strcmp(myopt.field, 'default'))
-    if (isempty(sol) | sol(1).kincns.t_digit<=0)
-     myopt.field = 'pn';
-    else
-     myopt.field = 'ptabs+vec';
+    if (isempty(sol) | sol(1).kincns.t_digit<=0); myopt.field = 'pn';
+    else;     myopt.field = 'ptabs+vec';
     end
    end
 
@@ -8255,11 +8296,12 @@ cntc : interface between SDT and CONTACT
    [ix_plot, iy_plot] = cntc.plot_ranges(sol, myopt);
 
    % make the plot, depending on the field that is requested
+   if isfield(myopt,'ch');stCh=sprintf('ch%i ',myopt.ch);else;stCh='';end
 
    if (strcmp(myopt.field,'h'))
 
     cntc.show_scalar_field(sol, 'h', myopt);
-    title ('Undeformed distance H');
+    title ([stCh 'Undeformed distance H']);
 
    end
    if (strcmp(myopt.field,'mu'))
@@ -8271,7 +8313,7 @@ cntc : interface between SDT and CONTACT
    if (strcmp(myopt.field,'pn'))
 
     cntc.show_scalar_field(sol, 'pn', myopt);
-    title ('Normal pressure P_n');
+    title ([stCh 'Normal pressure P_n']);
 
    end
    if (strcmp(myopt.field,'px'))
