@@ -488,6 +488,9 @@ cntc : interface between SDT and CONTACT
      LI.callLog=vhandle.nmap([],[],'calls and parameters');
     end
    end
+   if nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
+     LI=varargin{1};return
+   end
    r1=struct;
    for j1=1:nargin
     %% store inputs by name
@@ -1062,7 +1065,7 @@ cntc : interface between SDT and CONTACT
         plot(tmpt(2:end-1), tmpyh);
         plot(spl2d.vj([1,end]), y*[1 1], '--');
         plot(spl2d.vj, ytmp);
-        plot([1;1]*(tvj(jseg)+tvj(jseg+1))/2, [ylow(jseg);yhig(jseg)], 'color',matlab_color(3))
+        plot([1;1]*(tvj(jseg)+tvj(jseg+1))/2, [ylow(jseg);yhig(jseg)], 'color',cntc.matlab_color(3))
         plot(spl2d.tvj(nsplv+1), cj_y(end), '*');
         for jj = jseg
          text( (tvj(jj)+tvj(jj+1))/2, ylow(jj), sprintf('j=%d',jj), ...
@@ -3697,9 +3700,9 @@ cntc : interface between SDT and CONTACT
 
     for m = 1 : 4
      ik = find(mult_j>=m);
-     plot(ksi(ik), 0.1*m*ones(size(ik)), '*', 'color',matlab_color(2));
+     plot(ksi(ik), 0.1*m*ones(size(ik)), '*', 'color',cntc.matlab_color(2));
      ik = find(mult_r>=m);
-     plot(ksi(ik), 0.1*m*ones(size(ik)), 'o', 'color',matlab_color(4));
+     plot(ksi(ik), 0.1*m*ones(size(ik)), 'o', 'color',cntc.matlab_color(4));
     end
     v = axis; v(3:4) = [-0.2 1]; axis(v);
     grid on;
@@ -5521,7 +5524,7 @@ cntc : interface between SDT and CONTACT
     [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
      [], [], []);
 
-    plot(ycurv, zcurv, 'color',matlab_color(1));
+    plot(ycurv, zcurv, 'color',cntc.matlab_color(1));
     set(gca,'ydir','reverse');
     axis equal;
     hold on
@@ -5541,7 +5544,7 @@ cntc : interface between SDT and CONTACT
     [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
      [sval, sval], [], 1);
 
-    plot(xcurv, zcurv, 'color',matlab_color(1));
+    plot(xcurv, zcurv, 'color',cntc.matlab_color(1));
     set(gca,'ydir','reverse');
     axis equal;
     hold on
@@ -5613,7 +5616,7 @@ cntc : interface between SDT and CONTACT
     [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, [xval, xval], [], 1, ...
      [], [], []);
 
-    plot(ycurv, zcurv, 'color',matlab_color(3));
+    plot(ycurv, zcurv, 'color',cntc.matlab_color(3));
     set(gca,'ydir','reverse');
     axis equal;
     hold on
@@ -5632,7 +5635,7 @@ cntc : interface between SDT and CONTACT
     [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
      [sval, sval], [], 1);
 
-    plot(xcurv, zcurv, 'color',matlab_color(3));
+    plot(xcurv, zcurv, 'color',cntc.matlab_color(3));
     set(gca,'ydir','reverse');
     axis equal;
     hold on
@@ -6522,7 +6525,7 @@ cntc : interface between SDT and CONTACT
     [ ~, ypln, zpln ] =cntc.to_track_coords(sol, [], yc, zc);
    end
 
-   plot(ypln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
+   plot(ypln, zpln, '.-', 'markersize',12, 'color',cntc.matlab_color(5));
 
    % get field to be plotted, replace values in exterior elements
    if (ischar(field))
@@ -6555,7 +6558,7 @@ cntc : interface between SDT and CONTACT
     [ ~, yval, zval ] =cntc.to_track_coords(sol, [], yc, zc);
    end
 
-   col = matlab_color(6);
+   col = cntc.matlab_color(6);
    if (~isempty(opt.veccolor))
     col = opt.veccolor;
    end
@@ -6606,7 +6609,7 @@ cntc : interface between SDT and CONTACT
     [ xpln, ~, zpln ] =cntc.to_track_coords(sol, xc, [], zc);
    end
 
-   plot(xpln, zpln, '.-', 'markersize',12, 'color',matlab_color(5));
+   plot(xpln, zpln, '.-', 'markersize',12, 'color',cntc.matlab_color(5));
 
    % get field to be plotted, replace values in exterior elements
    if (ischar(field))
@@ -6640,7 +6643,7 @@ cntc : interface between SDT and CONTACT
     [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
    end
 
-   col = matlab_color(6);
+   col = cntc.matlab_color(6);
    if (~isempty(opt.veccolor))
     col = opt.veccolor;
    end
@@ -8380,13 +8383,13 @@ cntc : interface between SDT and CONTACT
    if (strcmp(myopt.field,'px'))
 
     cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'px'), myopt);
-    title ([pfxtit, 'Tangential traction P_x']);
+    title ([stCh pfxtit, 'Tangential traction P_x']);
 
    end
    if (strcmp(myopt.field,'py'))
 
     cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'py'), myopt);
-    title ([pfxtit, 'Tangential traction P_y']);
+    title ([stCh pfxtit, 'Tangential traction P_y']);
 
    end
    if (strcmp(myopt.field,'ptabs') | strcmp(myopt.field,'ptabs+vec'))
@@ -8887,7 +8890,7 @@ cntc : interface between SDT and CONTACT
      if (slcs.u(jslc)>=myopt.urange(1) & slcs.u(jslc)<=myopt.urange(end))
       icol = mod((i-1), ncol) + 1;
       col  = myopt.slc_color(icol,:);
-      if (isscalar(col) & isnumeric(col)), col = matlab_color(col); end
+      if (isscalar(col) & isnumeric(col)), col = cntc.matlab_color(col); end
       if (1==1)
        [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( slcs, myopt, slcs.u(jslc)*[1 1], [], 1, ...
         myopt.vrange, [], myopt.xysteps(2)/20);
@@ -8911,7 +8914,7 @@ cntc : interface between SDT and CONTACT
       myopt.urange, [], myopt.xysteps(1)/20, slcs.vj(jp)*[1 1], [], myopt.xysteps(2));
      jcol = mod((j-1), ncol) + 1;
      col  = myopt.feat_color(jcol,:);
-     if (isscalar(col) & isnumeric(col)), col = matlab_color(col); end
+     if (isscalar(col) & isnumeric(col)), col = cntc.matlab_color(col); end
      % plot3( slcs.xsurf(:,jp), slcs.ysurf(:,jp), slcs.zsurf(:,jp), 'color',col );
      plot3( xcurv, ycurv, zcurv, 'color',col, 'linewidth',1, 'Tag','feature');
     end
@@ -8979,7 +8982,7 @@ cntc : interface between SDT and CONTACT
    % if col is just a single value, it is interpreted as a color index
 
    if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
+    col = cntc.matlab_color(col);
    end
 
    % convert arguments into column vectors
@@ -9161,10 +9164,10 @@ cntc : interface between SDT and CONTACT
    th_txt =         fac_ang * th_txt;
 
    if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
+    col = cntc.matlab_color(col);
    end
    if (isnumeric(txtcol) & isscalar(txtcol))
-    txtcol = matlab_color(txtcol);
+    txtcol = cntc.matlab_color(txtcol);
    end
    if (no_head)
     scl_head = 0.001;
@@ -9348,10 +9351,10 @@ cntc : interface between SDT and CONTACT
    % convert color-spec to [r g b]
 
    if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
+    col = cntc.matlab_color(col);
    end
    if (isnumeric(txtcol) & isscalar(txtcol))
-    txtcol = matlab_color(txtcol);
+    txtcol = cntc.matlab_color(txtcol);
    end
 
    % set size of arrow head
@@ -9474,7 +9477,7 @@ cntc : interface between SDT and CONTACT
    end
 
    if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
+    col = cntc.matlab_color(col);
    end
    if (no_head)
     scl_head = 0.001;
@@ -9694,7 +9697,7 @@ cntc : interface between SDT and CONTACT
       if (fac*abs(dst_n(i))>0.01)
        j = j + 1;
        n(j) = plot(y1_int(i)+[0 fac*dst_n(i)*ny(i)], z1_int(i)+[0 fac*dst_n(i)*nz(i)], ...
-        'color',matlab_color(6), 'linewidth',1);
+        'color',cntc.matlab_color(6), 'linewidth',1);
       end
      end
     elseif (norm_dist==0)
@@ -9703,7 +9706,7 @@ cntc : interface between SDT and CONTACT
       if (fac*dst(i)>0.01)
        j = j + 1;
        n(j) = plot(y1_int(i)+[0 fac*dst_y(i)], z1_int(i)+[0 fac*dst_z(i)], ...
-        'color',matlab_color(4), 'linewidth',1);
+        'color',cntc.matlab_color(4), 'linewidth',1);
       end
      end
     else
@@ -9711,7 +9714,7 @@ cntc : interface between SDT and CONTACT
       if (fac*abs(dst_t(i))>0.01)
        j = j + 1;
        n(j) = plot(y1_int(i)+[0 fac*dst_t(i)*ny(i)], z1_int(i)+[0 fac*dst_t(i)*nz(i)], ...
-        'color',matlab_color(5), 'linewidth',1);
+        'color',cntc.matlab_color(5), 'linewidth',1);
       end
      end
     end
@@ -9740,7 +9743,7 @@ cntc : interface between SDT and CONTACT
        yi = y1_int(ix(j));
        zi = z1_int(ix(j));
        nvec = [-sin(alph(ix(j))), cos(alph(ix(j)))]; % inward normal
-       plot(yi+5*nvec(1)*[-1,1], zi+5*nvec(2)*[-1,1], '-','color',matlab_color(5),'linewidth',1);
+       plot(yi+5*nvec(1)*[-1,1], zi+5*nvec(2)*[-1,1], '-','color',cntc.matlab_color(5),'linewidth',1);
        text(yi-5*nvec(1), zi-5*nvec(2), sprintf('$%d^\\circ$',angl), 'interpreter','latex', ...
         'fontsize',10, 'horizontalalignment','center', 'verticalalignment','bottom');
       end
@@ -9996,7 +9999,9 @@ cntc : interface between SDT and CONTACT
     end
    end
 
-   function [ rgb ] = matlab_color( num )
+  end
+
+     function [ rgb ] = matlab_color( num )
 
     % [ rgb ] = matlab_color( num )
     %
@@ -10075,7 +10080,7 @@ cntc : interface between SDT and CONTACT
 
    % if col is just a single value, it is interpreted as a color index
    if (isnumeric(col) & isscalar(col))
-    col = matlab_color(col);
+    col = cntc.matlab_color(col);
    end
 
    if (size(pos_c,2)>1), pos_c=pos_c'; end % make column vectors
@@ -10132,7 +10137,6 @@ cntc : interface between SDT and CONTACT
     h(2) = plot(head(1,:), head(2,:), 'color',col);
    end
   end
-
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    function [ ] = show_2d_slice(sol, field, opt)
@@ -10334,7 +10338,6 @@ cntc : interface between SDT and CONTACT
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  end % plotstrs
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %% #Read
