@@ -5411,27 +5411,30 @@ cntc : interface between SDT and CONTACT
    %% #sol2curve Transform to SDT format -2
 
    LI=cntc.call;
-   C1=struct('X',{{}},'XLab',{{'igy','igx','comp','xxx','iTime'}},'Y',[]);
-   C1.X{5}=(1:length(LI.sol))';C1.X{4}=1;
+   C1=struct('X',{{}},'Xlab',{{'comp','igy','igx',{'ire';'iwe';'icp'},'iTime'}},'Y',[]);
+   C1.X{5}=(1:length(LI.sol))';C1.X{4}=[1 1 1];
 
    sol=LI.sol{1} ;
    x=cellfun(@(x)x.x,LI.sol,'uni',0)';
-   i1=unique(round(horzcat(x{:})/sol.dx));C1.X{2}=i1;
+   i1=unique(round(horzcat(x{:})/sol.dx));C1.X{3}=i1(:);
    x=cellfun(@(x)x.y,LI.sol,'uni',0)';
-   i1=unique(round(horzcat(x{:})/sol.dy));C1.X{1}=i1;
+   i1=unique(round(horzcat(x{:})/sol.dy));C1.X{2}=i1(:);
 
    %% fields at gauss points 
    st=fieldnames(sol);i1=[length(sol.y) length(sol.x)];
    for j1=1:length(st)
     if ~isequal(size(sol.(st{j1})),i1);continue;end
-    j3=size(C1.Y,3)+1;C1.X{3}(j3,1)=st(j1);
+    j3=size(C1.Y,1)+1;C1.X{1}(j3,1)=st(j1);
     for j2=1:length(LI.sol)
-     [~,i2]=ismember(round(LI.sol{j2}.x/sol.dx),C1.X{2});
-     [~,i3]=ismember(round(LI.sol{j2}.y/sol.dy),C1.X{1});
-     C1.Y(i3,i2,j3,1,j2)=LI.sol{j2}.(st{j1});
+     [~,i2]=ismember(round(LI.sol{j2}.x/sol.dx),C1.X{3});
+     [~,i3]=ismember(round(LI.sol{j2}.y/sol.dy),C1.X{2});
+     C1.Y(j3,i3,i2,1,j2)=LI.sol{j2}.(st{j1});
     end
     sol=rmfield(sol,st{j1});
    end
+   C1.PlotInfo=ii_plp('PlotInfo2D -type "contour"',C1);
+   C1.DimPos=[2 3 5 1 4];C1.name='field';
+   C1=sdsetprop(C1,'PlotInfo','ua.axProp',{'yscale','linear'});
    out.Cfield=C1;
 
     %% profiles 
