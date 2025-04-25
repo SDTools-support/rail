@@ -6935,7 +6935,7 @@ cntc : interface between SDT and CONTACT
    R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
    o_r  = [0; sol.meta.y_r; sol.meta.z_r];
 
-   if (sol.d_digit~=4)
+   if (sol.d_digit~=4) %if planar approach
 
     % change coordinates from contact to rail to track coordinates
 
@@ -13646,7 +13646,7 @@ cntc : interface between SDT and CONTACT
 
     31,'DY_DEFL','lateral rail shift according to massless rail deflection'
     32,'DZ_DEFL','vertical rail shift according to massless rail deflection'
-    };
+    };l1(:,2)=lower(l1(:,2));
    if nargin==0
        if nargout==0;disp(l1);else; rvalues=l1; end
        return
@@ -15463,14 +15463,13 @@ cntc : interface between SDT and CONTACT
       % increment icase = j1 in fe_time
       [~,RO]=sdtm.urnPar(['{s_ws,y_ws,z_ws,roll_ws,yaw_ws,pitch_ws,vs,vy,vz,vroll,' ...
        'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
-       ' vrollw, vyaww, vpitchw,dxwhl2, dywhl2, dzwhl2, drollw2, dyaww2, dpitchw2, ' ...
-       'vxwhl2,vywhl2, vzwhl2, vrollw2, vyaww2, vpitchw2}'],'{}{}');
+       ' vrollw, vyaww, vpitchw,}'],'{}{}');
 
       if (~isfield(evt,'j1')&&~isfield(evt,'iwhe'));iwhe=1;icase=1;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       Ewheel=LI.wheelsetDim.Ewheel;
-
+   
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
       pos=zeros(1,6);pos(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetposition(iwhe,Ewheel,pos); % set wheel set pos
@@ -15481,7 +15480,7 @@ cntc : interface between SDT and CONTACT
       LI.cur=evt;
 
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
-      flex=zeros(1,12);flex(i2(i1))=LI.Traj.Y(icase,i1);
+      flex=zeros(1,6);flex(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetflexibility(iwhe,Ewheel,flex);
       
     end
@@ -16966,8 +16965,8 @@ cntc : interface between SDT and CONTACT
    %  nparam         - number of parameters provided
    %  params(nparam) - depending on method that is used
    %
-   %  E=1-2, 5-6: keep old wheelset dimensions, ignore params provided
-   %  E=3-4, 7-8: new wheelset geometry   params = [fbdist, fbpos, nomrad]
+   %  E=1,2,4: keep old wheelset dimensions, ignore params provided
+   %  E=3,5, : new wheelset geometry   params = [fbdist, fbpos, nomrad]
    %
    %  dimensions:  fbdist, fbpos, nomrad [length]
    %------------------------------------------------------------------------------------------------------------
@@ -17029,10 +17028,9 @@ cntc : interface between SDT and CONTACT
    %    params(nparam) - depending on method that is used
    %
    %    E=0  : keep wheelset flexibility from previous specification, ignore params provided
-   %    E=1-4: no wheelset flexibility               params = []
-   %    E=5,7: new wheelset flexibility parameters   params = [dxwhl, dywhl, dzwhl, drollw, dyaww, dpitchw,
+   %    E=1-3: no wheelset flexibility               params = []
+   %    E=4,5: new wheelset flexibility parameters   params = [dxwhl, dywhl, dzwhl, drollw, dyaww, dpitchw,
    %                                                           vxwhl, vywhl, vzwhl, vrollw, vyaww, vpitchw],
-   %    E=6,8: same as 5,7, with separate values for both sides of the wheelset
    %
    %    dimensions:   dxwhl, dywhl, dzwhl [length],  drollw, dyaww, dpitchw [angle]
    %                  vxwhl, vywhl, vzwhl [veloc],   vrollw, vyaww, vpitchw [ang.veloc]
@@ -17060,19 +17058,7 @@ cntc : interface between SDT and CONTACT
      'vzwhl(#%g#"xxx")' ...
      'vrollw(#%g#"xxx")' ...
      'vyaww(#%g#"xxx")' ...
-     'vpitchw(#%g#"xxx")'...
-     'dxwhl2(#%g#"xxx")' ...
-     'dywhl2(#%g#"xxx")' ...
-     'dzwhl2(#%g#"xxx")' ...
-     'drollw2(#%g#"xxx")' ...
-     'dyaww2(#%g#"xxx")' ...
-     'dpitchw2(#%g#"xxx")'...
-     'vxwhl2(#%g#"xxx")' ...
-     'vywhl2(#%g#"xxx")' ...
-     'vzwhl2(#%g#"xxx")' ...
-     'vrollw2(#%g#"xxx")' ...
-     'vyaww2(#%g#"xxx")' ...
-     'vpitchw2(#%g#"xxx")'];
+     'vpitchw(#%g#"xxx")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
@@ -17080,14 +17066,10 @@ cntc : interface between SDT and CONTACT
 
     switch LI.wheelsetFlex.Ewheel;
      case 0; params=[];% Maintain
-     case {1:4}; params=zeros(1,12); % NoFlex
-     case {5,7}; % New flexibilities with symmetry
+     case {1:3}; params=zeros(1,12); % NoFlex
+     case {4,5}; % New flexibilities with symmetry
       params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
        'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'}; 
-     case {6,8}; % New flexibilities for each wheel (no symmetry)
-      params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl','vywhl', ...
-       'vzwhl', 'vrollw', 'vyaww', 'vpitchw','dxwhl2', 'dywhl2', 'dzwhl2', 'drollw2', ...
-       'dyaww2', 'dpitchw2', 'vxwhl2','vywhl2', 'vzwhl2', 'vrollw2', 'vyaww2', 'vpitchw2'};
      otherwise; error('Wrong parameter')
       %% xxxGAE
     end
@@ -17127,7 +17109,7 @@ cntc : interface between SDT and CONTACT
    %  params(nparam) - depending on method that is used
    %
    %  E=0  : keep wheelset position from previous specification, ignore params provided
-   %  E=1-8: new wheelset position   params = [s_ws, y_ws, z_ws, roll_ws, yaw_ws, pitch_ws]
+   %  E=1-5: new wheelset position   params = [s_ws, y_ws, z_ws, roll_ws, yaw_ws, pitch_ws]
    %
    %  dimensions:   s_ws, y_ws, z_ws [length],       roll, yaw, pitch [angle]
    %------------------------------------------------------------------------------------------------------------
@@ -17157,7 +17139,7 @@ cntc : interface between SDT and CONTACT
     switch LI.wheelsetPos.Ewheel
      case 0 % Maintain
       params=[];
-     case {1:8}; % 1 NewPos
+     case {1:5}; % 1 NewPos
       params=sdth.sfield('addselected',struct,LI.wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
        'roll', 'yaw', 'pitch'});
      otherwise
