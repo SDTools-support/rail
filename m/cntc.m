@@ -5408,7 +5408,7 @@ cntc : interface between SDT and CONTACT
   
 
   function out=sol2curve()
-   %% #sol2curve Transform to SDT format
+   %% #sol2curve Transform to SDT format -2
 
    LI=cntc.call;
    C1=struct('X',{{}},'XLab',{{'igy','igx','comp','xxx','iTime'}},'Y',[]);
@@ -5466,7 +5466,7 @@ cntc : interface between SDT and CONTACT
 
 
   function [ ] = show_profiles(sol, opt)
-   %
+
    % [ ] = show_profiles(sol, opt)
    %
    % create 3d surf plot of rail and/or wheel profiles
@@ -5479,24 +5479,19 @@ cntc : interface between SDT and CONTACT
 
    if (isempty(opt.xrange))
     if (any(strcmp(opt.rw_surfc,{'prr','both'})))
-
      xmax = max( abs(sol.meta.xcp_r) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
      if (isfield(sol,'slcs')), xmax = 3 * xmax; end
      if (isfield(sol,'slcw')), xmax = sol.meta.rnom_whl; end
-
     else
-
      xmax = max( abs(sol.meta.xcp_w) + 0.40 * sol.mx * sol.dx, 1.20 * sol.mx * sol.dx);
     end
-
     opt.xrange = [-xmax, xmax ];
    end
 
    % set target step-sizes for plotting
 
    if (isempty(opt.xysteps))
-    xlen = opt.xrange(2) - opt.xrange(1);
-    ylen = 0;
+    xlen = opt.xrange(2) - opt.xrange(1);  ylen = 0;
     if (any(strcmp(opt.rw_surfc,{'prr','both'})))
      ylen = max(ylen, max(sol.prr.ProfileY) - min(sol.prr.ProfileY));
     end
@@ -5505,15 +5500,12 @@ cntc : interface between SDT and CONTACT
     end
     opt.xysteps = max(xlen/4, ylen/15);
    end
-   if (isscalar(opt.xysteps))
-    opt.xysteps = [1 1] * opt.xysteps;
-   end
+   if (isscalar(opt.xysteps)); opt.xysteps = [1 1] * opt.xysteps;end
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    % if requested, show the rail profile
 
    want_rail = 1;
-
    if (any(strcmp(opt.rw_surfc,{'prr','both'})) & strcmp(opt.typplot,'rw_rear'))
 
     % 2d rear view of y-z-plane
@@ -5603,11 +5595,9 @@ cntc : interface between SDT and CONTACT
    % if requested, show the wheel profile
 
    want_rail = 0;
-
    if (any(strcmp(opt.rw_surfc,{'prw','both'})) & strcmp(opt.typplot,'rw_rear'))
 
     % 2d rear view of y-z-plane
-
     if (sol.meta.npatch>1)
      xval = 0;      % use principal profile; xcp_w can be much different between patches
     else
@@ -5646,7 +5636,7 @@ cntc : interface between SDT and CONTACT
 
     % form profile surface at given x, all s - fine sampling
 
-    [ xsurf, ysurf, zsurf ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1)/10, ...
+    [xsurf,ysurf,zsurf]= cntc.make_3d_surface(sol,opt,want_rail,opt.xrange,[],opt.xysteps(1)/10, ...
      [], [], []);
 
     % plot 90% transparent surface (alpha=0.1); color-value?
@@ -5720,7 +5710,7 @@ cntc : interface between SDT and CONTACT
    has_slcs   = ( want_rail & isfield(sol,'slcs'));
    has_slcw   = (~want_rail & isfield(sol,'slcw'));
 
-   % determine longitudinal positions xi (track coords) for evaluation of surface
+   %% determine longitudinal positions xi (track coords) for evaluation of surface
 
    if (~isempty(dx_true))
 
@@ -5735,29 +5725,21 @@ cntc : interface between SDT and CONTACT
 
     % if 'target' dx_appx is given,
     %    divide [xmin,xmax] in odd #intervals of size dx_true close to dx_appx
-
     nintv   = floor( (xrange(2) - xrange(1)) / dx_appx );
     if (mod(nintv,2)==1)  % prefer odd #lines for symmetric [-xmax, xmax]
      nintv = nintv + 1;
     end
     dx = (xrange(2) - xrange(1)) / max(1,nintv);
     xi = xrange(1) + [0:nintv] * dx;
-
    else
-
-    disp('Error: either dx_true or dx_appx must be given');
-    return
-
+    disp('Error: either dx_true or dx_appx must be given');return
    end
 
    % determine lateral positions sj for evaluation of surface
 
-   if (has_slcs)
-    profile_s = sol.slcs.vj;
-   elseif (has_slcw)
-    profile_s = sol.slcw.vj;
-   else
-    profile_s = prf.ProfileS;
+   if (has_slcs);    profile_s = sol.slcs.vj;
+   elseif (has_slcw);profile_s = sol.slcw.vj;
+   else ;            profile_s = prf.ProfileS;
    end
 
    if (isempty(srange))
@@ -5768,7 +5750,6 @@ cntc : interface between SDT and CONTACT
 
     % if 'final' ds_true is prescribed,
     %    set si = { j * ds_true } for appropriate j
-
     j0 = ceil( (srange(1)-profile_s(1)) / ds_true );
     j1 = floor( (srange(2)-profile_s(1)) / ds_true );
     sj = [j0 : j1] * ds_true;
@@ -5794,12 +5775,8 @@ cntc : interface between SDT and CONTACT
     sj = srange(1) + [0:nintv] * ds;
 
    else
-
     % if neither is given, use all profile points in range srange
-
-    j  = find( profile_s>=srange(1) & profile_s<=srange(2) );
-    sj = profile_s(j);
-
+    sj = profile_s(profile_s>=srange(1) & profile_s<=srange(2) );
    end
 
    % determine indices js closest to each sj
@@ -5858,7 +5835,7 @@ cntc : interface between SDT and CONTACT
    elseif (~want_rail & ~has_slcw)
 
     % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
-
+    % #Prw.Rev origin 
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
     r_y   =  nom_radius + prf.ProfileZ(js)';
@@ -5898,6 +5875,7 @@ cntc : interface between SDT and CONTACT
 
    if (want_rail & strcmp(opt.rw_surfc,'both'))
 
+    %xyzsurf=cat(3,xsurf,ysur,zsurf)
     [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
 
    elseif (strcmp(opt.rw_surfc,'both'))
@@ -5976,15 +5954,10 @@ cntc : interface between SDT and CONTACT
    % determine version information on the Matlab graphics system
    % #show_3d_field
 
-   old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
-   new_graphics = ~old_graphics;
-
    % get field to be plotted
 
-   if (ischar(field))
-    eval(['tmp = sol.',field,';']);
-   else
-    tmp = field;
+   if (ischar(field)); eval(['tmp = sol.',field,';']);
+   else; tmp = field;
    end
 
    % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
@@ -6090,17 +6063,17 @@ cntc : interface between SDT and CONTACT
    end
 
    % make plot, adjust colormap, z-range
-
+   prop={'tag',opt.field};
    if (strcmp(opt.colormap,'none') | strcmp(opt.colormap,'black'))
-    mesh( xcornr, ycornr, zcornr, tmp );
+    mesh( xcornr, ycornr, zcornr, tmp ,prop{:});
     view(opt.view);
     colormap([0 0 0]);
    else
     if (strcmp(opt.typplot,'contourf'))
-     contourf( xcornr, ycornr, tmp, 'ShowText','on' );
+     contourf( xcornr, ycornr, tmp, 'ShowText','on'  ,prop{:});
     else
      % surf( xcornr, ycornr, tmp );
-     surf( xcornr, ycornr, zcornr, tmp );
+     surf( xcornr, ycornr, zcornr, tmp  ,prop{:});
     end
     view(opt.view);
     if (strcmp(opt.rw_surfc,'none'))
@@ -7325,6 +7298,15 @@ cntc : interface between SDT and CONTACT
    % transform rail [xr,yr,zr]-coordinates to track [xtr,ytr,ztr] coordinates
    % #rail_to_track_coords -2
 
+   % form transformation matrices and vectors
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
+
+   if isfield(sol,'slcs');o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
+   else;                  o_r  = [          0   ; sol.meta.y_r; sol.meta.z_r];
+   end
+
+   if nargin==1; xtr=struct('o',o_r,'R',R_r,'name','c_tr_r');end
    % reshape inputs to row vectors
 
    m = size(xr,1); n = size(xr,2);
@@ -7332,21 +7314,6 @@ cntc : interface between SDT and CONTACT
    yr = reshape(yr, 1, m*n);
    zr = reshape(zr, 1, m*n);
    coords = [xr; yr; zr];
-
-   % form transformation matrices and vectors
-
-   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
-
-   % for variable rails, x_r-coordinates are defined by the slices-file rather than aligned with track x_tr
-
-   has_slcs = isfield(sol,'slcs');
-   if (has_slcs)
-    o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
-   else
-    o_r  = [          0   ; sol.meta.y_r; sol.meta.z_r];
-   end
-
-   % change coordinates from rail to track coordinates
 
    coords = o_r * ones(1,m*n) + R_r * coords;
 
@@ -7862,11 +7829,29 @@ cntc : interface between SDT and CONTACT
     opts2 = myopt;
    end
   end
+
+  function PlotEvt(obj,evt)
+   %% #PlotEvt cntc.PlotEvt(gcf,evt);
+   gf=ancestor(obj,'figure'); 
+   sdt=getappdata(gf,'sdt');
+   sdt.cntc=evt;
+   cntc.scroll(gf,struct);
+  end
+
   function scroll(obj,evt)
    %% #scroll / key channel changes
 
    gf=ancestor(obj,'figure'); sdt=getappdata(gf,'sdt');
-   ev1=sdt.cntc;LI=cntc.call;
+   LI=cntc.call;
+   if isfield(sdt,'cntc'); ev1=sdt.cntc;else;ev1=struct;end
+   if ~isfield(sdt,'Scroll')
+       % prepare interactivity
+       iimouse('interacturn',gf, ...
+           {'Key.leftarrow{cntc.scroll,"previous"}';
+            'Normal+Scroll.@ga{cntc.scroll,"change step"}'
+            'Key.rightarrow{cntc.scroll,"previous"}'})
+       sdt=getappdata(gf,'sdt');
+   end
 
    if isfield(evt,'Key')
      switch evt.Key
@@ -7879,9 +7864,18 @@ cntc : interface between SDT and CONTACT
    elseif isfield(evt,'VerticalScrollCount')
      ev1.ch=max(min(ev1.ch+evt.VerticalScrollCount,length(LI.sol)),1);
    end
-   sdt.cntc=ev1;
-   sol=LI.sol{ev1.ch};ev1.opt.ch=ev1.ch;
-   feval(ev1.do,sol,ev1.opt)
+
+   if isfield(ev1,'ch')
+    sdt.cntc=ev1;
+    sol=LI.sol{ev1.ch};ev1.opt.ch=ev1.ch;
+    if isfield(ev1,'doSol')
+      evt=ev1; 
+      delete(findobj(gf,evt.prop{1:2})); % do not overlay multiple
+      evt.doSol(sol);  title(eval(evt.LabFcn))
+    else
+     feval(ev1.do,sol,ev1.opt)
+    end
+   end
   end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8017,12 +8011,6 @@ cntc : interface between SDT and CONTACT
       for j1=1:length(opt3.ch)
        gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
        cntc.plot3d(LI.sol{opt.ch},opt)
-       % prepare interactivity
-       iimouse('interacturn',gf, ...
-           {'Key.leftarrow{cntc.scroll,"previous"}';
-            'Normal+Scroll.@ga{cntc.scroll,"change step"}'
-            'Key.rightarrow{cntc.scroll,"previous"}'})
-       sdt=getappdata(gf,'sdt');
        sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
 
       end
@@ -8356,41 +8344,29 @@ cntc : interface between SDT and CONTACT
    hold on;
 
    % set element numbers ix, iy to be plotted: interval of [1:mx(my)]
-
    [ix_plot, iy_plot] = cntc.plot_ranges(sol, myopt);
 
    % make the plot, depending on the field that is requested
+   evt=struct('ch',myopt.ch,'LabFcn','sprintf(''ch %i, %s'',evt.ch,evt.title)');
    if isfield(myopt,'ch');stCh=sprintf('ch%i ',myopt.ch);else;stCh='';end
 
-   if (strcmp(myopt.field,'h'))
-
-    cntc.show_scalar_field(sol, 'h', myopt);
-    title ([stCh 'Undeformed distance H']);
-
+   evt.doSol=@(sol)cntc.show_scalar_field(sol,myopt.field, myopt);
+   evt.prop={'tag',myopt.field};
+   switch myopt.field
+   case 'h';  evt.title='Undeformed distance H';
+   case 'mu'; evt.title='Actual local friction coefficient \mu(x)';
+   case 'pn'; evt.title='Normal pressure P_n';
+   case 'px'
+     evt.doSol=@(sol)cntc.show_scalar_field(sol, ...
+         cntc.derived_data(sol, myopt, 'px'), myopt);
+     evt.title=[pfxtit, 'Tangential traction P_x'];
+   case 'py'
+     evt.doSol=@(sol)cntc.show_scalar_field(sol, ...
+         cntc.derived_data(sol, myopt, 'py'), myopt);
+     evt.title=[pfxtit, 'Tangential traction P_y'];
    end
-   if (strcmp(myopt.field,'mu'))
-
-    cntc.show_scalar_field(sol, 'mu', myopt);
-    title ('Actual local friction coefficient \mu(x)');
-
-   end
-   if (strcmp(myopt.field,'pn'))
-
-    cntc.show_scalar_field(sol, 'pn', myopt);
-    title ([stCh 'Normal pressure P_n']);
-
-   end
-   if (strcmp(myopt.field,'px'))
-
-    cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'px'), myopt);
-    title ([stCh pfxtit, 'Tangential traction P_x']);
-
-   end
-   if (strcmp(myopt.field,'py'))
-
-    cntc.show_scalar_field(sol, cntc.derived_data(sol, myopt, 'py'), myopt);
-    title ([stCh pfxtit, 'Tangential traction P_y']);
-
+   if isfield(evt,'title')
+     evt.gf=gcf; cntc.PlotEvt(gcf,evt);  
    end
    if (strcmp(myopt.field,'ptabs') | strcmp(myopt.field,'ptabs+vec'))
 
@@ -9822,9 +9798,6 @@ cntc : interface between SDT and CONTACT
 
    % determine version information on the Matlab graphics system
    % #plotstrs
-
-   old_graphics = verLessThan('matlab', '8.4.0'); % 8.4 == R2014b
-   new_graphics = ~old_graphics;
 
    % construct a local struct "myopt" in which default values are filled in for all available options.
 
