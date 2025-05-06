@@ -5838,7 +5838,7 @@ cntc : interface between SDT and CONTACT
    elseif (~want_rail & ~has_slcw)
 
     % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
-    % #Prw.Rev origin 
+    % #Prw.Rev origin -2
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
     r_y   =  nom_radius + prf.ProfileZ(js)';
@@ -13792,7 +13792,8 @@ cntc : interface between SDT and CONTACT
 
    itask   = 1;
    iswheel = 0;
-   isampl  = 0;
+   %isampl  = 0; %Spline representation 
+   isampl = -1; %Original data
    iparam  = [iswheel, isampl];
    rparam  = [];
    val = cntc.getprofilevalues(ire, itask, iparam, rparam);
@@ -15271,7 +15272,20 @@ cntc : interface between SDT and CONTACT
   end % cntc.getwheelsetvelocity
 
   %------------------------------------------------------------------------------------------------------------
+  function []= TempLoop(list,LI)
+   %% #TempLoop
+   iwhe=evalin('caller','iwhe');
+   for j1 = 1:size(LI.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
+    st1=list;
+    if comstr(lower(list{1}),'traj');
+     st1{1}=struct('type','Traj','j1',j1,'iwhe',iwhe);
+    else 
+     error('Trajectory must be define first')
+    end
+    cntc.set(st1);
+   end % icase j1
 
+  end
   %------------------------------------------------------------------------------------------------------------
   function []=set(list)
    %% #SetSDT : SDT distribution to CNTC set commands -1
@@ -15318,6 +15332,11 @@ cntc : interface between SDT and CONTACT
        LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
        LI.Cmacro.X={[],[],[]};
       
+     case 'getbasis'
+      ire=1;
+      values = cntc.getwheelsetposition(ire);
+ 
+     
      case 'getout'
       %% #set.GetOut Get results -2
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
@@ -15466,15 +15485,17 @@ cntc : interface between SDT and CONTACT
       % increment icase = j1 in fe_time
       [~,RO]=sdtm.urnPar(['{s_ws,y_ws,z_ws,roll_ws,yaw_ws,pitch_ws,vs,vy,vz,vroll,' ...
        'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
-       ' vrollw, vyaww, vpitchw,}'],'{}{}');
+       ' vrollw, vyaww, vpitchw}'],'{}{}');
 
       if (~isfield(evt,'j1')&&~isfield(evt,'iwhe'));iwhe=1;icase=1;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       Ewheel=LI.wheelsetDim.Ewheel;
-   
+      
+      % xxxgae unl vnl
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
-      pos=zeros(1,6);pos(i2(i1))=LI.Traj.Y(icase,i1);
+      pos=zeros(1,6);
+      pos(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetposition(iwhe,Ewheel,pos); % set wheel set pos
 
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
@@ -16969,7 +16990,7 @@ cntc : interface between SDT and CONTACT
    %  params(nparam) - depending on method that is used
    %
    %  E=1,2,4: keep old wheelset dimensions, ignore params provided
-   %  E=3,5, : new wheelset geometry   params = [fbdist, fbpos, nomrad]
+   %  E=3,5 : new wheelset geometry   params = [fbdist, fbpos, nomrad]
    %
    %  dimensions:  fbdist, fbpos, nomrad [length]
    %------------------------------------------------------------------------------------------------------------
@@ -16983,8 +17004,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
-     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4' ...
+     ',NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow")' ...
      'nomrad(#%g#"Nominal radius of the wheel")'];
@@ -16994,13 +17015,13 @@ cntc : interface between SDT and CONTACT
     LI.wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
     switch LI.wheelsetDim.Ewheel
-     case {0,1,2,5,6}; params=[];    % 0 Maintain
-     case {3,4,7,8}; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
+     case {0,1,2,4}; params=[];    % 0 Maintain
+     case {3,5}; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
        {'fbdist','fbpos','nomrad'}); % 1 NewDim
+      params=struct2cell(params);params=horzcat(params{:});
      otherwise; error('Wrong parameter selected')
     end
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
-    params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetdimensions(Global.ire, LI.wheelsetDim.Ewheel, params);
     return
     % end SDT packaging
@@ -17048,8 +17069,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
-     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'dxwhl(#%g#"xxx")' ...
      'dywhl(#%g#"xxx")' ...
      'dzwhl(#%g#"xxx")' ...
@@ -17126,8 +17147,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
-     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
      's_ws(#%g#"Wheelset position along the track center line")' ...
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.")' ...
      'z_ws(#%g#"Vertical position zws of the wheelset center")' ...
@@ -17202,8 +17223,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimPosVel,4,jsp,5,' ...
-     'NewPosVel1Flex,6,NewPosVel2Flex,7,jsp2,8,jsp3}#"Wheelset options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'vs(#%g#"Wheelset forward velocity")' ...
      'vy(#%g#"Wheelset lateral velocity")' ...
      'vz(#%g#"Wheelset vertical velocity")' ...

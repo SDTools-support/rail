@@ -156,12 +156,35 @@ nmap('BenchManchester_Traj')=C1;
 
 %  Wheelflat
 C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
-  [-pi/180*[25 : 1 : 50]']); % attention angle en rad et distance en mm (pdf page 36)
+ [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(:,2)=2000; % set vx
-C1.Y(:,3)=-4.08190679; % set vpitch
-
+C1.Y(:,2)=2000; % set vx [mm/s]
+C1.Y(:,3)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
 nmap('WheelFlat_Traj')=C1;
+
+%  TestParam
+l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
+    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
+    'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
+    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[]); % rotation angle [rad] (pdf page 36)
+C1.Y=zeros(24,24*2);
+for i1=1:24
+ C1.Y(i1,(2*i1-1):(2*i1))=1;
+end
+nmap('TestParam_Traj1')=C1;
+
+%  TestParam
+l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
+    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
+    'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
+    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[]); % rotation angle [rad] (pdf page 36)
+C1.Y=0.1*ones(2,24);
+C1.Y(3,:)=0;
+nmap('TestParam_Traj2')=C1;
 
 %% #nmap.Cst : constants to be reused
 nmap('Ctc21')=struct('delta',20,'Fl',1e6,'Kc',-2.3e9);
