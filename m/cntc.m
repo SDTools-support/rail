@@ -7842,7 +7842,7 @@ cntc : interface between SDT and CONTACT
   end
 
   function scroll(obj,evt)
-   %% #scroll / key channel changes
+   %% #scroll / key channel changes -2
 
    gf=ancestor(obj,'figure'); sdt=getappdata(gf,'sdt');
    LI=cntc.call;
@@ -8015,7 +8015,6 @@ cntc : interface between SDT and CONTACT
        gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
        cntc.plot3d(LI.sol{opt.ch},opt)
        sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
-
       end
       return
      end
