@@ -22,10 +22,10 @@ classdef cntc
  end
 
  %% #idx.refresh{cntc.help(pdf),cntc.help(md)}
-%{
+ %{
 ```DocString  {module=rail,src=cntc.md} 
 cntc : interface between SDT and CONTACT
-%}
+ %}
 
  methods
   function ob = cntc(varargin)
@@ -36,7 +36,7 @@ cntc : interface between SDT and CONTACT
 
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #SDT/CONTACT initialization 
+ %% #SDT/CONTACT initialization
 
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -64,6 +64,20 @@ cntc : interface between SDT and CONTACT
   end
   %------------------------------------------------------------------------------------------------------------
 
+  %------------------------------------------------------------------------------------------------------------
+  function []=clearLI()
+   % #clearLI -2
+   LI=cntc.call;
+   if isfield(LI,'libname')
+    if ~isempty(LI.libname)||libisloaded(LI.libname)
+     cntc.closelibrary;
+    end
+    evalin('base','clear("LI")')
+   else
+    disp('Error : LI is already empty')
+   end
+  end
+  %------------------------------------------------------------------------------------------------------------
 
   %------------------------------------------------------------------------------------------------------------
   function []=setglobalflags(params, values)
@@ -489,7 +503,7 @@ cntc : interface between SDT and CONTACT
     end
    end
    if nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
-     LI=varargin{1};return
+    LI=varargin{1};return
    end
    r1=struct;
    for j1=1:nargin
@@ -503,9 +517,11 @@ cntc : interface between SDT and CONTACT
    if isa(LI.callLog,'vhandle.nmap')
     r1.now=now;r1.dbstack=dbstack; %#ok<TNOW1>
     LI.callLog(CAM)=r1; % Store calls to allow logging
-    disp(CAM);sdtm.toString(r1)% xxx 
     diary off;f1='C:\Users\0021221S.COMMUN\MATLAB\xxx.log';
-    disp(f1);if exist(f1,'file');diary(f1);end
+    if exist(f1,'file');diary(f1);end
+    % debug message
+    % disp(CAM);sdtm.toString(r1)
+    % disp(f1);
    end
 
    if strncmpi(CAM,'contact_addon',13)
@@ -559,17 +575,17 @@ cntc : interface between SDT and CONTACT
 
   end
 
-  % xxx should test if needed 
-%  end
-%  if nargin==0
-%  elseif strcmpi(CAM,'pdf')
-%    out=f1;
-%  elseif strcmpi(CAM,'md')
-%    out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));  
-%    if nargout==0; sdtu.idx.jup(out);clear out;end
-%  end
-% 
-% end
+  % xxx should test if needed
+  %  end
+  %  if nargin==0
+  %  elseif strcmpi(CAM,'pdf')
+  %    out=f1;
+  %  elseif strcmpi(CAM,'md')
+  %    out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));
+  %    if nargout==0; sdtu.idx.jup(out);clear out;end
+  %  end
+  %
+  % end
 
 
   function [LI,CNTC]=init
@@ -588,13 +604,13 @@ cntc : interface between SDT and CONTACT
    %   return
    %end
    cntc.help;
-   [ CNTC, ifcver, ierror ]=cntc.initlibrary; 
+   [ CNTC, ifcver, ierror ]=cntc.initlibrary;
    if nargout==0; assignin('caller','CNTC',CNTC);
    else; LI=cntc.call; LI.CNTC=CNTC;
    end
 
   end
- 
+
 
   function [ dif ] = diffcase(sol1, sol2)
 
@@ -769,11 +785,11 @@ cntc : interface between SDT and CONTACT
   end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   %% #Spline
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   function [ v_out, x_out, y_out, z_out ] = eval_2dspline( spl2d, u_in, v_in, y_in, idebug )
 
    % [ v_out, x_out, y_out, z_out ] = eval_2dspline( spl2d, u_in, v_in, y_in, idebug )
@@ -1583,7 +1599,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ s_out ] = spline_get_s_at_y(spl, yev, idebug)
-  % #spline_get_s_at_y -2
+   % #spline_get_s_at_y -2
    if (nargin<3 | isempty(idebug))
     idebug = 0;
    end
@@ -1691,7 +1707,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ iseg ] = locate_segment( np, vp, vi )
-  % #locate_segment -2
+   % #locate_segment -2
    ascending = (vp(end) >= vp(1));
 
    if (ascending)
@@ -1719,7 +1735,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ y ] = eval_1d_spline(xsp, a0, a1, a2, a3, xev, idebug)
-  % #eval_1d_spline -2
+   % #eval_1d_spline -2
    % evaluate plain (non-parametric) spline y=y(x)
 
    iev_debug = 1;
@@ -1803,7 +1819,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ dy, ddy ] = eval_1d_spline_deriv(xsp, a0, a1, a2, a3, xev)
-  % #eval_1d_spline_deriv -2
+   % #eval_1d_spline_deriv -2
    % evaluate plain (non-parametric) spline y=y(x)
 
    dy  = zeros(size(xev));
@@ -1995,7 +2011,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ sol ] = fill_struct(tmp, fname)
-  % #fill_struct -2
+   % #fill_struct -2
    % check the file format
 
    fmtmat = tmp(1,end);
@@ -3319,14 +3335,14 @@ cntc : interface between SDT and CONTACT
 
   end % make_spline
 
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, idebug )
    % [ tjx, a_out ] = insert_knot( tj, tnew, a_in, k, [idebug] )
    %
    % insert one new knot tnew into knot vector tj and compute B-spline coefficients a_out
 
-   % #insert_knot -2  
+   % #insert_knot -2
 
    if (nargin<5 | isempty(idebug))
     idebug = 0;
@@ -3371,7 +3387,7 @@ cntc : interface between SDT and CONTACT
    %
    % compute parametric cubic smoothing spline (y(s),z(s)) using least squares B-spline method with
    % penalty on 2nd or 3rd derivative
-   % #make_bspline 
+   % #make_bspline
 
    if (nargin<11 | isempty(idebug))
     idebug = 1;
@@ -4350,10 +4366,10 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %% #File
+  %% #File
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   function [npatch, ws_pos, tot_forc, cp_pos, cp_creep, cp_force] = parse_out1(fname, ire_out, idebug)
    %
    % [ sol ] = parse_out1(fname, [ire_out], [idebug])
@@ -4970,7 +4986,7 @@ cntc : interface between SDT and CONTACT
   end % parse_out1
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   function [ myfile ] = read_file(fname, idebug)
    % read_file: Helper function for reading entire file into memory
    % [ file_contents ] = read_line(fname, idebug)
@@ -5402,10 +5418,10 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% #show
+  %% #show
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
 
   function out=sol2curve()
    %% #sol2curve Transform to SDT format -2
@@ -5420,7 +5436,7 @@ cntc : interface between SDT and CONTACT
    x=cellfun(@(x)x.y,LI.sol,'uni',0)';
    i1=unique(round(horzcat(x{:})/sol.dy));C1.X{2}=i1(:);
 
-   %% fields at gauss points 
+   %% fields at gauss points
    st=fieldnames(sol);i1=[length(sol.y) length(sol.x)];
    for j1=1:length(st)
     if ~isequal(size(sol.(st{j1})),i1);continue;end
@@ -5437,9 +5453,9 @@ cntc : interface between SDT and CONTACT
    C1=sdsetprop(C1,'PlotInfo','ua.axProp',{'yscale','linear'});
    out.Cfield=C1;
 
-    %% profiles 
+   %% profiles
    C1=struct('X',{{[],{'s';'y';'z'},(1:length(LI.sol))'}}, ...
-       'Xlab',{{'i','comp','iTime'}},'name','prr');
+    'Xlab',{{'i','comp','iTime'}},'name','prr');
    r2=cellfun(@(x)x.prr.ProfileS,LI.sol,'uni',0);
    C1.Y=horzcat(r2{:});C1.Y=reshape(C1.Y,size(C1.Y,1),1,size(C1.Y,2));
    r2=cellfun(@(x)x.prr.ProfileY,LI.sol,'uni',0);C1.Y(:,2,:)=horzcat(r2{:});
@@ -5454,7 +5470,7 @@ cntc : interface between SDT and CONTACT
    out.prr=C1;
 
    C1=struct('X',{{[],{'s';'y';'z'},(1:length(LI.sol))'}}, ...
-       'Xlab',{{'i','comp','iTime'}},'name','prw');
+    'Xlab',{{'i','comp','iTime'}},'name','prw');
    r2=cellfun(@(x)x.prw.ProfileS,LI.sol,'uni',0);
    C1.Y=horzcat(r2{:});C1.Y=reshape(C1.Y,size(C1.Y,1),1,size(C1.Y,2));
    r2=cellfun(@(x)x.prw.ProfileY,LI.sol,'uni',0);C1.Y(:,2,:)=horzcat(r2{:});
@@ -6905,7 +6921,7 @@ cntc : interface between SDT and CONTACT
   end % get_profile_slice
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Coordinates
+  %% #Coordinates
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function [ xtr, ytr, ztr, delta_tr ] = to_track_coords(sol, xc, yc, zc);
 
@@ -7101,7 +7117,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    function [ xr, yr, zr, deltar]=to_rail_coords_test(sol, A);
+  function [ xr, yr, zr, deltar]=to_rail_coords_test(sol, A);
 
    % transform contact [xc,yc/s]-coordinates to rail [xr,yr,zr] coordinates
    % #to_rail_coords_test -2
@@ -7468,7 +7484,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %% #Plot
+  %% #Plot
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -7835,7 +7851,7 @@ cntc : interface between SDT and CONTACT
 
   function PlotEvt(obj,evt)
    %% #PlotEvt cntc.PlotEvt(gcf,evt);
-   gf=ancestor(obj,'figure'); 
+   gf=ancestor(obj,'figure');
    sdt=getappdata(gf,'sdt');
    sdt.cntc=evt;
    cntc.scroll(gf,struct);
@@ -7848,33 +7864,33 @@ cntc : interface between SDT and CONTACT
    LI=cntc.call;
    if isfield(sdt,'cntc'); ev1=sdt.cntc;else;ev1=struct;end
    if ~isfield(sdt,'Scroll')
-       % prepare interactivity
-       iimouse('interacturn',gf, ...
-           {'Key.leftarrow{cntc.scroll,"previous"}';
-            'Normal+Scroll.@ga{cntc.scroll,"change step"}'
-            'Key.rightarrow{cntc.scroll,"previous"}'})
-       sdt=getappdata(gf,'sdt');
+    % prepare interactivity
+    iimouse('interacturn',gf, ...
+     {'Key.leftarrow{cntc.scroll,"previous"}';
+     'Normal+Scroll.@ga{cntc.scroll,"change step"}'
+     'Key.rightarrow{cntc.scroll,"previous"}'})
+    sdt=getappdata(gf,'sdt');
    end
 
    if isfield(evt,'Key')
-     switch evt.Key
-         case {'rightarrow'}
-             ev1.ch=min(ev1.ch+1,length(LI.sol));
-         case {'leftarrow'}
-             ev1.ch=max(1,ev1.ch-1);
+    switch evt.Key
+     case {'rightarrow'}
+      ev1.ch=min(ev1.ch+1,length(LI.sol));
+     case {'leftarrow'}
+      ev1.ch=max(1,ev1.ch-1);
 
-     end
+    end
    elseif isfield(evt,'VerticalScrollCount')
-     ev1.ch=max(min(ev1.ch+evt.VerticalScrollCount,length(LI.sol)),1);
+    ev1.ch=max(min(ev1.ch+evt.VerticalScrollCount,length(LI.sol)),1);
    end
 
    if isfield(ev1,'ch')
     sdt.cntc=ev1;
     sol=LI.sol{ev1.ch};ev1.opt.ch=ev1.ch;
     if isfield(ev1,'doSol')
-      evt=ev1; 
-      delete(findobj(gf,evt.prop{1:2})); % do not overlay multiple
-      evt.doSol(sol);  title(eval(evt.LabFcn))
+     evt=ev1;
+     delete(findobj(gf,evt.prop{1:2})); % do not overlay multiple
+     evt.doSol(sol);  title(eval(evt.LabFcn))
     else
      feval(ev1.do,sol,ev1.opt)
     end
@@ -7997,27 +8013,27 @@ cntc : interface between SDT and CONTACT
 
    if (nargin<1); opts3 = myopt;return
    elseif isempty(sol);
-     %% #plot3d.ch automated multiple plots
-     LI=cntc.call;sol=LI.sol;
-     if ischar(opt3)
-      % cntc.plot3d([],'{typpplot=surf,field=px,rw_surfc=prw,ch4,gf10}')
-      [~,opt3]=sdtm.urnPar(opt3,'{}{ch%g,gf%g}');
-      opt3=sdth.sfield('addmissing',opt3,myopt);
-      r3=sdtm.findTok(opt3.Other,'([^=]*)=(.*)');
-      for j3=1:size(r3,1);opt3.(r3{j3}{1})=r3{j3}{2};end
+    %% #plot3d.ch automated multiple plots
+    LI=cntc.call;sol=LI.sol;
+    if ischar(opt3)
+     % cntc.plot3d([],'{typpplot=surf,field=px,rw_surfc=prw,ch4,gf10}')
+     [~,opt3]=sdtm.urnPar(opt3,'{}{ch%g,gf%g}');
+     opt3=sdth.sfield('addmissing',opt3,myopt);
+     r3=sdtm.findTok(opt3.Other,'([^=]*)=(.*)');
+     for j3=1:size(r3,1);opt3.(r3{j3}{1})=r3{j3}{2};end
+    end
+    if isfield(opt3,'ch')
+     if ~isfield(opt3,'gf');opt3.gf=0;
+     else;opt3.gf=opt3.gf(1)+opt3.ch;
+     end % Figure Offset
+     opt=sdtm.rmfield(opt3,'gf','Other');
+     for j1=1:length(opt3.ch)
+      gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
+      cntc.plot3d(LI.sol{opt.ch},opt)
+      sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
      end
-     if isfield(opt3,'ch')
-      if ~isfield(opt3,'gf');opt3.gf=0;
-      else;opt3.gf=opt3.gf(1)+opt3.ch;
-      end % Figure Offset
-      opt=sdtm.rmfield(opt3,'gf','Other');
-      for j1=1:length(opt3.ch)
-       gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
-       cntc.plot3d(LI.sol{opt.ch},opt)
-       sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
-      end
-      return
-     end
+     return
+    end
    elseif (~isstruct(sol) | ~isfield(sol,'pn'))
     disp('ERROR(plot3d): argument sol should be a structure as obtained from loadcase.');
     return;
@@ -8201,7 +8217,7 @@ cntc : interface between SDT and CONTACT
      myopt.view=[180 90];
     elseif (strcmp(myopt.view,'default') & ~strcmp(myopt.rw_surfc,'none'))
      % default: 3D wheel-rail profile view
-     
+
      if cntc.is_left_side(sol)
       myopt.view=[115 30];
      else
@@ -8355,20 +8371,20 @@ cntc : interface between SDT and CONTACT
    evt.doSol=@(sol)cntc.show_scalar_field(sol,myopt.field, myopt);
    evt.prop={'tag',myopt.field};
    switch myopt.field
-   case 'h';  evt.title='Undeformed distance H';
-   case 'mu'; evt.title='Actual local friction coefficient \mu(x)';
-   case 'pn'; evt.title='Normal pressure P_n';
-   case 'px'
+    case 'h';  evt.title='Undeformed distance H';
+    case 'mu'; evt.title='Actual local friction coefficient \mu(x)';
+    case 'pn'; evt.title='Normal pressure P_n';
+    case 'px'
      evt.doSol=@(sol)cntc.show_scalar_field(sol, ...
-         cntc.derived_data(sol, myopt, 'px'), myopt);
+      cntc.derived_data(sol, myopt, 'px'), myopt);
      evt.title=[pfxtit, 'Tangential traction P_x'];
-   case 'py'
+    case 'py'
      evt.doSol=@(sol)cntc.show_scalar_field(sol, ...
-         cntc.derived_data(sol, myopt, 'py'), myopt);
+      cntc.derived_data(sol, myopt, 'py'), myopt);
      evt.title=[pfxtit, 'Tangential traction P_y'];
    end
    if isfield(evt,'title')
-     evt.gf=gcf; cntc.PlotEvt(gcf,evt);  
+    evt.gf=gcf; cntc.PlotEvt(gcf,evt);
    end
    if (strcmp(myopt.field,'ptabs') | strcmp(myopt.field,'ptabs+vec'))
 
@@ -8922,11 +8938,11 @@ cntc : interface between SDT and CONTACT
   end % refine_intv
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   %% #plot
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  
+
   function [ h ] = plot_arrow( pos0, vec, col, scale, width, pln )
    %
    % [ h ] = plot_arrow( pos0, vec, col, scale, width, [pln] )
@@ -9976,45 +9992,45 @@ cntc : interface between SDT and CONTACT
 
   end
 
-     function [ rgb ] = matlab_color( num )
+  function [ rgb ] = matlab_color( num )
 
-    % [ rgb ] = matlab_color( num )
-    %
-    % return the rgb-triplet for color order index num
+   % [ rgb ] = matlab_color( num )
+   %
+   % return the rgb-triplet for color order index num
 
-    % Copyright 2008-2023 by Vtech CMCC.
-    %
-    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-    % #matlab_color( num ) -3
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+   % #matlab_color( num ) -3
 
-    matlab_colors = [
-     0    0.4470    0.7410
-     0.8500    0.3250    0.0980
-     0.9290    0.6940    0.1250
-     0.4940    0.1840    0.5560
-     0.4660    0.6740    0.1880
-     0.3010    0.7450    0.9330
-     0.6350    0.0780    0.1840
-     ];
-    num_colors = size(matlab_colors,1);
+   matlab_colors = [
+    0    0.4470    0.7410
+    0.8500    0.3250    0.0980
+    0.9290    0.6940    0.1250
+    0.4940    0.1840    0.5560
+    0.4660    0.6740    0.1880
+    0.3010    0.7450    0.9330
+    0.6350    0.0780    0.1840
+    ];
+   num_colors = size(matlab_colors,1);
 
-    if (nargin<1 | isempty(num) | ~isnumeric(num))
-     num = 1;
-    end
-
-    % reshape to column vector
-    num = reshape(num, prod(size(num)), 1);
-
-    % clip
-    num = mod(num-1, num_colors) + 1;
-
-    % get rows
-    rgb = matlab_colors(num, :);
+   if (nargin<1 | isempty(num) | ~isnumeric(num))
+    num = 1;
    end
 
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   
-    function [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, rot )
+   % reshape to column vector
+   num = reshape(num, prod(size(num)), 1);
+
+   % clip
+   num = mod(num-1, num_colors) + 1;
+
+   % get rows
+   rgb = matlab_colors(num, :);
+  end
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, rot )
    % [ h ] = circ_arrow( pos_c, r, th0, th1, col, scale, width, [rot] )
    %
    % pos_c = position of arrow center of rotation, 2-vector or 3-vector
@@ -10112,210 +10128,210 @@ cntc : interface between SDT and CONTACT
     h(2) = plot(head(1,:), head(2,:), 'color',col);
    end
   end
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   function [ ] = show_2d_slice(sol, field, opt)
-    %
-    % [ ] = show_2d_slice(sol, field, opt)
-    %
-    % generic routine for a 2d contour plot of 3d data
-    %   sol     - structure with subsurface results as returned by loadstrs
-    %   field   - the actual array to be plotted, or a field name within sol
-    %   opt     - structure with options as defined by plotstrs.
-    %
-    % #show_2d_slice -2
+  function [ ] = show_2d_slice(sol, field, opt)
+   %
+   % [ ] = show_2d_slice(sol, field, opt)
+   %
+   % generic routine for a 2d contour plot of 3d data
+   %   sol     - structure with subsurface results as returned by loadstrs
+   %   field   - the actual array to be plotted, or a field name within sol
+   %   opt     - structure with options as defined by plotstrs.
+   %
+   % #show_2d_slice -2
 
-    % get field to be plotted
+   % get field to be plotted
 
-    nx  = sol.nx;
-    ny  = sol.ny;
-    nz  = sol.nz;
+   nx  = sol.nx;
+   ny  = sol.ny;
+   nz  = sol.nz;
 
-    if (ischar(field))
-     eval(['tmp = sol.',field,';']);
+   if (ischar(field))
+    eval(['tmp = sol.',field,';']);
+   else
+    tmp = field;
+   end
+
+   % get the data depending on the viewing direction
+
+   if (strcmp(opt.dir,'x'))
+    slc = opt.xslc; c0 = sol.x;
+    dir1 = 'y'; n1 = ny; c1 = sol.y;  % to be plotted on 1-x-axis of graph
+    dir2 = 'z'; n2 = nz; c2 = sol.z;  % to be plotted on 2-y-axis of graph
+   elseif (strcmp(opt.dir,'y'))
+    slc = opt.yslc; c0 = sol.y;
+    dir1 = 'x'; n1 = nx; c1 = sol.x;
+    dir2 = 'z'; n2 = nz; c2 = sol.z;
+   elseif (strcmp(opt.dir,'z'))
+    slc = opt.zslc; c0 = sol.z;
+    dir1 = 'x'; n1 = nx; c1 = sol.x;
+    dir2 = 'y'; n2 = ny; c2 = sol.y;
+   else
+    disp(sprintf('ERROR: illegal value for opt.dir=%s',opt.dir));
+    return;
+   end
+
+   % check size for requested coordinate direction
+   if ((n1==1 | n2==1) & ...
+     (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
+    disp(sprintf('ERROR: the block has %d x %d points per %c-slice;', n1, n2, opt.dir));
+    disp(sprintf('       %s-plot not available for %c-slices.', opt.typplot, opt.dir));
+    return
+   end
+
+   % determine requested slice number
+   if (isempty(slc))
+    disp(sprintf('ERROR: no %c-coordinate provided for %c%c-slice',opt.dir,dir1,dir2));
+    return;
+   end
+   if (ischar(slc))
+    if (strcmp(lower(slc),'max'))
+     islc = -1;
     else
-     tmp = field;
+     disp(sprintf('ERROR: unknown option slc=''%c''',slc));
+     return;
     end
+   else
+    [mn, islc] = min(abs(c0-slc));
+    if (abs(c0-slc)>1e-4);
+     disp(sprintf('Showing results for %c=%5.3f, nearest to %cslc=%5.3f',...
+      opt.dir, c0(islc), opt.dir, slc));
+    end
+   end
 
-    % get the data depending on the viewing direction
-
+   % get the data for the slice
+   if (islc<=0)
+    idir = double(lower(opt.dir)) - double('x') + 1;
+    dta = squeeze( max(abs(tmp), [], idir ));
+   else
     if (strcmp(opt.dir,'x'))
-     slc = opt.xslc; c0 = sol.x;
-     dir1 = 'y'; n1 = ny; c1 = sol.y;  % to be plotted on 1-x-axis of graph
-     dir2 = 'z'; n2 = nz; c2 = sol.z;  % to be plotted on 2-y-axis of graph
+     dta = reshape( tmp(islc,:,:), n1,n2);
     elseif (strcmp(opt.dir,'y'))
-     slc = opt.yslc; c0 = sol.y;
-     dir1 = 'x'; n1 = nx; c1 = sol.x;
-     dir2 = 'z'; n2 = nz; c2 = sol.z;
+     dta = reshape( tmp(:,islc,:), n1,n2);
     elseif (strcmp(opt.dir,'z'))
-     slc = opt.zslc; c0 = sol.z;
-     dir1 = 'x'; n1 = nx; c1 = sol.x;
-     dir2 = 'y'; n2 = ny; c2 = sol.y;
-    else
-     disp(sprintf('ERROR: illegal value for opt.dir=%s',opt.dir));
-     return;
+     dta = reshape( tmp(:,:,islc), n1,n2);
     end
+   end
 
-    % check size for requested coordinate direction
-    if ((n1==1 | n2==1) & ...
-      (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
-     disp(sprintf('ERROR: the block has %d x %d points per %c-slice;', n1, n2, opt.dir));
-     disp(sprintf('       %s-plot not available for %c-slices.', opt.typplot, opt.dir));
-     return
-    end
+   if (~isempty(opt.cntrlvl) && ~strcmp(opt.cntrlvl,'auto'))
+    cntrlvl = opt.cntrlvl;
+   end
 
-    % determine requested slice number
-    if (isempty(slc))
-     disp(sprintf('ERROR: no %c-coordinate provided for %c%c-slice',opt.dir,dir1,dir2));
-     return;
-    end
-    if (ischar(slc))
-     if (strcmp(lower(slc),'max'))
-      islc = -1;
-     else
-      disp(sprintf('ERROR: unknown option slc=''%c''',slc));
-      return;
-     end
-    else
-     [mn, islc] = min(abs(c0-slc));
-     if (abs(c0-slc)>1e-4);
-      disp(sprintf('Showing results for %c=%5.3f, nearest to %cslc=%5.3f',...
-       opt.dir, c0(islc), opt.dir, slc));
-     end
-    end
-
-    % get the data for the slice
-    if (islc<=0)
-     idir = double(lower(opt.dir)) - double('x') + 1;
-     dta = squeeze( max(abs(tmp), [], idir ));
-    else
-     if (strcmp(opt.dir,'x'))
-      dta = reshape( tmp(islc,:,:), n1,n2);
-     elseif (strcmp(opt.dir,'y'))
-      dta = reshape( tmp(:,islc,:), n1,n2);
-     elseif (strcmp(opt.dir,'z'))
-      dta = reshape( tmp(:,:,islc), n1,n2);
-     end
-    end
-
+   % prepare for logarithmic color scale
+   if (strcmp(opt.scale,'log'))
+    dta     = log10(abs(dta));
     if (~isempty(opt.cntrlvl) && ~strcmp(opt.cntrlvl,'auto'))
-     cntrlvl = opt.cntrlvl;
+     ix      = find(cntrlvl>0);
+     cntrlvl = log10(cntrlvl(ix));
     end
+   end
 
-    % prepare for logarithmic color scale
-    if (strcmp(opt.scale,'log'))
-     dta     = log10(abs(dta));
-     if (~isempty(opt.cntrlvl) && ~strcmp(opt.cntrlvl,'auto'))
-      ix      = find(cntrlvl>0);
-      cntrlvl = log10(cntrlvl(ix));
-     end
-    end
+   % for surf-plot: add one column and row to the data
+   dta = [dta, dta(:,end)];
+   dta = [dta; dta(end,:)];
 
-    % for surf-plot: add one column and row to the data
-    dta = [dta, dta(:,end)];
-    dta = [dta; dta(end,:)];
+   % avoid constant data
+   if (max(max(dta))-min(min(dta))<1e-20)
+    dta(1,1) = dta(1,1)+1e-20;
+   end
 
-    % avoid constant data
-    if (max(max(dta))-min(min(dta))<1e-20)
-     dta(1,1) = dta(1,1)+1e-20;
-    end
+   % interpret c1, c2 as cell-centers, compute corners of the cells for surf-plot
+   if (isscalar(c1))
+    d1 = (c2(end)-c2(1))/n2;
+    cornr1 = [ c1(1)-d1(1)/2; c1(end)+d1(end)/2];
+   else
+    d1 = c1(2:end) - c1(1:end-1); % step size
+    cornr1 = [ c1(1)-d1(1)/2; c1(1:end-1)+d1(1:end)/2; c1(end)+d1(end)/2];
+   end
+   if (isscalar(c2))
+    d2 = (c1(end)-c1(1))/n1;
+    cornr2 = [ c2(1)-d2(1)/2; c2(end)+d2(end)/2];
+   else
+    d2 = c2(2:end) - c2(1:end-1); % step size
+    cornr2 = [ c2(1)-d2(1)/2; c2(1:end-1)+d2(1:end)/2; c2(end)+d2(end)/2];
+   end
+   % do not extend with half a cell-size at z=0:
+   if (strcmp(dir2,'z') & abs(c2(1))<1e-5), cornr2(1) = 0; end;
+   if (strcmp(dir2,'z') & length(c2)>1 & abs(c2(end))<1e-5), cornr2(end) = 0; end;
 
-    % interpret c1, c2 as cell-centers, compute corners of the cells for surf-plot
-    if (isscalar(c1))
-     d1 = (c2(end)-c2(1))/n2;
-     cornr1 = [ c1(1)-d1(1)/2; c1(end)+d1(end)/2];
+   % plot contours or surf plot
+   if (strcmp(opt.typplot,'contour'))
+    if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
+     [C, h] = contour(c1, c2, dta(1:end-1,1:end-1)');
     else
-     d1 = c1(2:end) - c1(1:end-1); % step size
-     cornr1 = [ c1(1)-d1(1)/2; c1(1:end-1)+d1(1:end)/2; c1(end)+d1(end)/2];
+     [C, h] = contour(c1, c2, dta(1:end-1,1:end-1)', cntrlvl);
     end
-    if (isscalar(c2))
-     d2 = (c1(end)-c1(1))/n1;
-     cornr2 = [ c2(1)-d2(1)/2; c2(end)+d2(end)/2];
+   elseif (strcmp(opt.typplot,'contourf'))
+    if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
+     [C, h] = contourf(c1, c2, dta(1:end-1,1:end-1)');
     else
-     d2 = c2(2:end) - c2(1:end-1); % step size
-     cornr2 = [ c2(1)-d2(1)/2; c2(1:end-1)+d2(1:end)/2; c2(end)+d2(end)/2];
+     [C, h] = contourf(c1, c2, dta(1:end-1,1:end-1)', cntrlvl);
     end
-    % do not extend with half a cell-size at z=0:
-    if (strcmp(dir2,'z') & abs(c2(1))<1e-5), cornr2(1) = 0; end;
-    if (strcmp(dir2,'z') & length(c2)>1 & abs(c2(end))<1e-5), cornr2(end) = 0; end;
+   else
+    % size(cornr1), size(cornr2), size(dta)
+    l1 = surf(cornr1, cornr2, dta');
+    % shading faceted
+    % set(l1,'linestyle','--');
+    % l2=mesh(c1,c2,10*ones(size(dta)-1));
+    % set(l2,'facecolor','none');
+    % set(l2,'edgecolor','k');
+    view([0 90]);
+    axis([min(cornr1), max(cornr1), min(cornr2), max(cornr2)]);
+   end
 
-    % plot contours or surf plot
-    if (strcmp(opt.typplot,'contour'))
-     if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
-      [C, h] = contour(c1, c2, dta(1:end-1,1:end-1)');
-     else
-      [C, h] = contour(c1, c2, dta(1:end-1,1:end-1)', cntrlvl);
-     end
-    elseif (strcmp(opt.typplot,'contourf'))
-     if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
-      [C, h] = contourf(c1, c2, dta(1:end-1,1:end-1)');
-     else
-      [C, h] = contourf(c1, c2, dta(1:end-1,1:end-1)', cntrlvl);
-     end
+   if (isnumeric(opt.clabel) & (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
+    clabel(C, h, opt.clabel);
+   elseif (strcmp(opt.clabel,'on') & (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
+    clabel(C, h);
+   end
+
+   if (~isempty(opt.colormap))
+    colormap(opt.colormap);
+   end
+
+   xlabel(sprintf('%c_c [mm]',dir1));
+   ylabel(sprintf('%c_c [mm]',dir2));
+   % xlabel(sprintf('%c-coordinate [mm]',dir1));
+   % ylabel(sprintf('%c-coordinate [mm]',dir2));
+   if (islc>=1)
+    title(sprintf(' at %c=%5.3f', opt.dir, c0(islc)));
+   else
+    title(sprintf(', max in %c', opt.dir));
+   end
+
+   % optionally adjust ticks
+
+   % set(gca,'xtick', xcentr, 'xticklabel', num2str(xcentr', '%5.3f'));
+   % set(gca,'ytick', ycentr, 'yticklabel', num2str(ycentr', '%5.3f'));
+
+  end % show_2d_slice
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ ] = log_colorbar(hc, opt)
+   %
+   % [ ] = log_colorbar(hc, opt)
+   %
+   % change colorbar to logarithmic scale when necessary
+   % #log_colorbar -2
+
+   if (strcmp(opt.scale,'log'))
+    if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
+     yt=get(hc,'ytick');
     else
-     % size(cornr1), size(cornr2), size(dta)
-     l1 = surf(cornr1, cornr2, dta');
-     % shading faceted
-     % set(l1,'linestyle','--');
-     % l2=mesh(c1,c2,10*ones(size(dta)-1));
-     % set(l2,'facecolor','none');
-     % set(l2,'edgecolor','k');
-     view([0 90]);
-     axis([min(cornr1), max(cornr1), min(cornr2), max(cornr2)]);
+     ix = find(opt.cntrlvl>0);
+     yt = log10(opt.cntrlvl(ix));
     end
+    set(hc,'ytick',yt,'yticklabel',10.^yt);
+   end
+  end % log_colorbar
 
-    if (isnumeric(opt.clabel) & (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
-     clabel(C, h, opt.clabel);
-    elseif (strcmp(opt.clabel,'on') & (strcmp(opt.typplot,'contour') | strcmp(opt.typplot,'contourf')))
-     clabel(C, h);
-    end
-
-    if (~isempty(opt.colormap))
-     colormap(opt.colormap);
-    end
-
-    xlabel(sprintf('%c_c [mm]',dir1));
-    ylabel(sprintf('%c_c [mm]',dir2));
-    % xlabel(sprintf('%c-coordinate [mm]',dir1));
-    % ylabel(sprintf('%c-coordinate [mm]',dir2));
-    if (islc>=1)
-     title(sprintf(' at %c=%5.3f', opt.dir, c0(islc)));
-    else
-     title(sprintf(', max in %c', opt.dir));
-    end
-
-    % optionally adjust ticks
-
-    % set(gca,'xtick', xcentr, 'xticklabel', num2str(xcentr', '%5.3f'));
-    % set(gca,'ytick', ycentr, 'yticklabel', num2str(ycentr', '%5.3f'));
-
-   end % show_2d_slice
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-   function [ ] = log_colorbar(hc, opt)
-    %
-    % [ ] = log_colorbar(hc, opt)
-    %
-    % change colorbar to logarithmic scale when necessary
-    % #log_colorbar -2
-
-    if (strcmp(opt.scale,'log'))
-     if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
-      yt=get(hc,'ytick');
-     else
-      ix = find(opt.cntrlvl>0);
-      yt = log10(opt.cntrlvl(ix));
-     end
-     set(hc,'ytick',yt,'yticklabel',10.^yt);
-    end
-   end % log_colorbar
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Read
+  %% #Read
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ p ] = read_miniprof(fname, idebug, make_plot)
@@ -10707,7 +10723,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #read_profile 
+   % #read_profile
 
    % parameters
    if nargin<3&&ischar(fname)
@@ -10746,7 +10762,7 @@ cntc : interface between SDT and CONTACT
    % end SDT packaging
 
    %% read_profile(fname, is_wheel, mirror_y, mirror_z, scale_yz, rgt_side, idebug, make_plot)
-   LI=evalin('base','LI');
+   LI=cntc.call;
    if ~exist(fname,'file'); fname=fullfile(LI.ProjectWd,fname);end
    fname=sdtu.f.safe(fname);
 
@@ -11641,7 +11657,7 @@ cntc : interface between SDT and CONTACT
    % [ slcs, iline, nerror ] = read_slices_fnames(slcs, nam_udir, f, iline, [idebug])
    %
    % Lower-level routine for reading filenames from slcs-file
-   % #read_slices_fnames 
+   % #read_slices_fnames
 
    nslc   = 0; % #slices_read_from file -3
    nerror = 0;
@@ -12080,7 +12096,7 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ s, iline ] = get_next_line(f, iline, idebug)
-  % #get_next_line -2
+   % #get_next_line -2
 
    s = deblank(fgets(f));
    iline = iline + 1;
@@ -12375,7 +12391,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
    % #smooth_profile -2
-   
+
    if (nargin<2);l_filt = [];end
    if (nargin<3);lambda = [];end
    if (nargin<4);ds_sampl = [];end
@@ -12556,7 +12572,7 @@ cntc : interface between SDT and CONTACT
   end % smooth_profile
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Solve
+  %% #Solve
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function [ u_out, found ] = solve_cubic_eq(ppcoef, useg, yev, idebug, iout, jout, jseg)
 
@@ -13328,9 +13344,9 @@ cntc : interface between SDT and CONTACT
 
   end % write_simpack
 
-   %------------------------------------------------------------------------------------------------------------
+  %------------------------------------------------------------------------------------------------------------
 
-   function [ ierror]=calculate(ire, icp, idebug)
+  function [ ierror]=calculate(ire, icp, idebug)
    % [ ierror ] = cntc.calculate(ire, icp, idebug)
    %
    % perform actual CONTACT calculation for a contact problem
@@ -13401,7 +13417,7 @@ cntc : interface between SDT and CONTACT
    %
    % [contains] = myisfield(STRUC,fieldname)
    %
-   % myisfield extension of isfield, for which the fieldname may contain '.' 
+   % myisfield extension of isfield, for which the fieldname may contain '.'
    % Example:
    %    STRUC.substruc.field = [0 1];
    %    myisfield(STRUC,'substruc.field')   returns 1
@@ -13415,7 +13431,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
    % #myisfield -2
-   
+
    % Initialize: assume that the field is in te struct.
 
    contains   = 1;
@@ -13595,7 +13611,7 @@ cntc : interface between SDT and CONTACT
   end % cntc.getcontactforces
 
 
-%% #get
+  %% #get
 
   function [ rvalues]=getcontactlocation(ire, icp,LI)
    % [ rvalues ] = cntc.getcontactlocation(ire, icp)
@@ -13650,8 +13666,8 @@ cntc : interface between SDT and CONTACT
     32,'DZ_DEFL','vertical rail shift according to massless rail deflection'
     };l1(:,2)=lower(l1(:,2));
    if nargin==0
-       if nargout==0;disp(l1);else; rvalues=l1; end
-       return
+    if nargout==0;disp(l1);else; rvalues=l1; end
+    return
    end
 
    % category 3: m=1, cp     - require icp>0, default 1
@@ -13667,7 +13683,7 @@ cntc : interface between SDT and CONTACT
    p_values = libpointer('doublePtr',zeros(lenarr,1));
 
    cntc.call('cntc.getcontactlocation', ire, icp, lenarr, p_values);
-   
+
    rvalues = p_values.value;
    if nargin==3
     i2=LI.Cmacro.rowM(l1(:,2));
@@ -13791,7 +13807,7 @@ cntc : interface between SDT and CONTACT
 
    itask   = 1;
    iswheel = 0;
-   %isampl  = 0; %Spline representation 
+   %isampl  = 0; %Spline representation
    isampl = -1; %Original data
    iparam  = [iswheel, isampl];
    rparam  = [];
@@ -13883,7 +13899,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function [vx, vy, phi]=getcreepages(ire, icp, LI)
-   % [vx, vy, phi] = cntc.getcreepages(ire, icp) 
+   % [vx, vy, phi] = cntc.getcreepages(ire, icp)
    %
    % get the kinematic constants (creepages) for a contact problem
    %
@@ -14697,7 +14713,7 @@ cntc : interface between SDT and CONTACT
    %
    %  mx, my        - number of discretization elements in long/lat dirs
    %------------------------------------------------------------------------------------------------------------
-   
+
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
@@ -14785,8 +14801,8 @@ cntc : interface between SDT and CONTACT
    values.tau_c0 = tmp(6);
 
    if nargin==3
-    values=[values.veloc, values.chi, values.dq, values.spinxo, ... 
-    values.spinyo, values.tau_c0];
+    values=[values.veloc, values.chi, values.dq, values.spinxo, ...
+     values.spinyo, values.tau_c0];
     i2=LI.Cmacro.rowM(l1(:,2));
     LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
@@ -14857,7 +14873,7 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getpotcontact
 
-      l1={
+   l1={
     1, 'mx', 'number of elements in x-directions [-]'
     2, 'my', 'number of elements in y-directions [-]'
     3, 'xc1', 'position of first element center [length]'
@@ -14868,14 +14884,14 @@ cntc : interface between SDT and CONTACT
 
 
    if (nargin<1 | isempty(ire))
-      ire = 1;
+    ire = 1;
    end
    if (nargin<2 | isempty(icp))
-      icp = 1;
+    icp = 1;
    end
    if (icp<=0)
-      disp(sprintf('ERROR in cntc_getpotcontact: not available for icp=%d',icp));
-      return
+    disp(sprintf('ERROR in cntc_getpotcontact: not available for icp=%d',icp));
+    return
    end
 
    lenarr = 6;
@@ -14899,7 +14915,7 @@ cntc : interface between SDT and CONTACT
 
 
   end % cntc_getpotcontact
-   
+
   %------------------------------------------------------------------------------------------------------------
 
   %------------------------------------------------------------------------------------------------------------
@@ -15049,10 +15065,10 @@ cntc : interface between SDT and CONTACT
    end
 
    p_veloc = libpointer('doublePtr',-1);
-   
+
    cntc.call('cntc.getreferencevelocity', ire, icp, p_veloc);
    veloc=p_veloc.value;
-   
+
    if nargin==3 % 'LI'
     i2=LI.Cmacro.rowM(l1(:,2));
     LI.Cmacro.Y(i2,ire,LI.cur.j1)=veloc;
@@ -15278,7 +15294,7 @@ cntc : interface between SDT and CONTACT
     st1=list;
     if comstr(lower(list{1}),'traj');
      st1{1}=struct('type','Traj','j1',j1,'iwhe',iwhe);
-    else 
+    else
      error('Trajectory must be define first')
     end
     cntc.set(st1);
@@ -15317,31 +15333,33 @@ cntc : interface between SDT and CONTACT
       %% #set.initOut Initialize the output -2
       % Fields stored
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
-       else;iwhe=evt.iwhe;icase=evt.j1;  end
-      
-       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
-       % Fields SDT Storage
-       Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
-        'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}});
-       LI.Cfield=Cfield;
+      else;iwhe=evt.iwhe;icase=evt.j1;  end
+
+      l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
+      % Fields SDT Storage
+      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
+       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}});
+      LI.Cfield=Cfield;
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-       LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
-       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
-       LI.Cmacro.X={[],[],[]};
-      
+      % LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
+      LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
+      LI.Cmacro.X={[],[],[]};
+
      case 'getbasis'
       ire=1;
       values = cntc.getwheelsetposition(ire);
- 
-     
+
      case 'getout'
       %% #set.GetOut Get results -2
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
       else;iwhe=evt.iwhe;icase=evt.j1;  end
-      
-      if icase==1; cntc.set('initout{}'); end
+
+      % Initialize the loop
+      if icase==1
+       cntc.set('initout{}'); LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
+      end
 
       if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
       else      % Need to extend contact dimension
@@ -15354,7 +15372,7 @@ cntc : interface between SDT and CONTACT
       for jre=1:size(ind,1); % icp = 1 : LI.results{iwhe}.npatch(icase)
        ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
 
-       % get contact reference location
+       %% get macro parameters
        cntc.getglobalforces(ire,icp,LI);
        cntc.getcontactlocation(ire,icp, LI);
        cntc.getreferencevelocity(ire,icp, LI);
@@ -15366,29 +15384,28 @@ cntc : interface between SDT and CONTACT
        cntc.getpotcontact(ire, icp,LI);
        cntc.getnumelements(ire,icp,LI);
 
-       % retrieve wheel and rail profile data
-       itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
-       RailProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
-       itask   = 4;
-       RProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);
 
-       itask   = 1;iswheel = 1; iparam  = [iswheel, isampl];
-       WheelProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
-       itask   = 4;
-       WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder 
+       % itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
+       % RailProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
+       % itask   = 4;
+       % RProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);
+       %
+       % itask   = 1;iswheel = 1; iparam  = [iswheel, isampl];
+       % WheelProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
+       % itask   = 4;
+       % WProfileS = cntc.getprofilevalues(ire, itask, iparam, rparam);% a regarder
 
-       if icase==1; LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name; end
 
-       %Mise en place 
+       %% get micro parameters
        C1=LI.Cfield;
        C1.X{1}=[C1.X{1} LI.Cmacro.Y(72,1,icase)];
        C1.X{2}=[C1.X{2} LI.Cmacro.Y(73,1,icase)];
        % Cfield.Y=zeros(cellfun(@(x)size(x,1),Cfield.X));
 
        % get grid-data
-       r1=cntc.getelementdivision(ire, icp); 
+       r1=cntc.getelementdivision(ire, icp);
        C1.Y(1:size(r1,1),1:size(r1,2),1,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h); 
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h);
        C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
        r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
        C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
@@ -15398,15 +15415,15 @@ cntc : interface between SDT and CONTACT
        C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
        r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
        C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un); 
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un);
        C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux); 
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux);
        C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
        r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
        C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx); 
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx);
        C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy); 
+       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy);
        C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
        LI.Cfield=C1;
 
@@ -15490,7 +15507,7 @@ cntc : interface between SDT and CONTACT
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       Ewheel=LI.wheelsetDim.Ewheel;
-      
+
       % xxxgae unl vnl
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
       pos=zeros(1,6);
@@ -15505,12 +15522,12 @@ cntc : interface between SDT and CONTACT
       [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
       flex=zeros(1,6);flex(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetflexibility(iwhe,Ewheel,flex);
-      
+
     end
    end
   end
   %------------------------------------------------------------------------------------------------------------
-  
+
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   %% #Set : CONTACT functions Set -1
@@ -15624,7 +15641,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 5: m=*, wtd    - default icp=-1
-   % #setflags(pdfsection.2.3)  configure flags for a contact problem 
+   % #setflags(pdfsection.2.3)  configure flags for a contact problem
 
    if nargin==0
     LI=cntc.call;
@@ -15652,7 +15669,7 @@ cntc : interface between SDT and CONTACT
     disp('ERROR in cntc.setflags: inconsistent length of params and values.');
     return
    end
-   
+
    cntc.call('cntc.setflags', ire, icp, length(params), params, values);
 
   end % cntc.setflags
@@ -16100,7 +16117,7 @@ cntc : interface between SDT and CONTACT
     switch LI.Bound.Cond;
      case 0;  params={'fz'}; % 0 Force
      case 1;  params={'pen'}; % 1 Penetration
-     otherwise; error('Wrong parameter selected') 
+     otherwise; error('Wrong parameter selected')
     end
     params=sdth.sfield('addselected',struct,LI.Bound,params);
     Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
@@ -16253,7 +16270,7 @@ cntc : interface between SDT and CONTACT
      case 2; params={'mx', 'my', 'x1', 'y1', 'xh', 'yh'};               % 2 LL_UR
      case 3; params={'mx', 'my', 'xc1', 'yc1', 'dx', 'dy'};             % 3 CentGrid
      case 4; params={'mx', 'my', 'xc1', 'yc1', 'xcm', 'ycm'};           % 4 2Cent
-     otherwise; error('Wrong parameter selected'); 
+     otherwise; error('Wrong parameter selected');
     end
 
     params=sdth.sfield('addselected',struct,LI.PotCntc,params);
@@ -17092,7 +17109,7 @@ cntc : interface between SDT and CONTACT
      case {1:3}; params=zeros(1,12); % NoFlex
      case {4,5}; % New flexibilities with symmetry
       params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
-       'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'}; 
+       'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'};
      otherwise; error('Wrong parameter')
       %% xxxGAE
     end
@@ -17158,7 +17175,7 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     LI.wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
- 
+
     switch LI.wheelsetPos.Ewheel
      case 0 % Maintain
       params=[];
@@ -17245,7 +17262,7 @@ cntc : interface between SDT and CONTACT
     switch LI.wheelsetVel.Ewheel
      case {0,1} % Maintain
       params=[];
-     case {2:5} % New Velocity 
+     case {2:5} % New Velocity
       params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vs', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
@@ -17278,7 +17295,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% #Subs
+  %% #Subs
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function [ ] = subs_addblock(ire, icp, iblk, isubs, xparam, yparam, zparam)
    %------------------------------------------------------------------------------------------------------------
@@ -17307,7 +17324,7 @@ cntc : interface between SDT and CONTACT
 
    % category 7: m=*, wtd or cp - default icp=-1
    % #subs_addblock
-   
+
    % xxxgae WIP
    if nargin==0||ischar(ire)
     % package SDT options
