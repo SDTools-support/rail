@@ -15343,7 +15343,7 @@ cntc : interface between SDT and CONTACT
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-      % LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
+      LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});%dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
       LI.Cmacro.X={[],[],LI.Traj.X{1}};
 
@@ -15359,6 +15359,10 @@ cntc : interface between SDT and CONTACT
       % Initialize the loop
       if icase==1
        cntc.set('initout{}'); 
+       LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
+      end
+
+      if icase==LI.Traj.X{1}(end)
        LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
       end
 
