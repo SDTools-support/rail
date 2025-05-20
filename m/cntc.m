@@ -14206,7 +14206,7 @@ cntc : interface between SDT and CONTACT
     22,'MX_W_W','total moment on output body about wheel profile marker, component in wheel x-direction'
     23,'MY_W_W','total moment on output body about wheel profile marker, component in wheel y-direction'
     24,'MZ_W_W','total moment on output body about wheel profile marker, component in wheel z-direction'
-    };
+    }; l1(:,2)=lower(l1(:,2));
 
    LI=cntc.call;
 
@@ -15226,7 +15226,7 @@ cntc : interface between SDT and CONTACT
     4, 'ROLL_WS', 'wheelset roll angle with respect to the track plane'
     5, 'YAW_WS', 'wheelset yaw angle with respect to the track center line x_tr'
     6, 'PITCH_WS', 'wheelset pitch angle, i.e. rotation about the wheelset axle'
-    };
+    };l1(:,2)=lower(l1(:,2));
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -15361,9 +15361,9 @@ cntc : interface between SDT and CONTACT
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-      % LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});
+      LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});%dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
-      LI.Cmacro.X={[],[],[]};
+      LI.Cmacro.X={[],[],LI.Traj.X{1}};
 
      case 'getbasis'
       ire=1;
@@ -15376,7 +15376,12 @@ cntc : interface between SDT and CONTACT
 
       % Initialize the loop
       if icase==1
-       cntc.set('initout{}'); LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
+       cntc.set('initout{}'); 
+       LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
+      end
+
+      if icase==LI.Traj.X{1}(end)
+       LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
       end
 
       if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
