@@ -8298,7 +8298,7 @@ cntc : interface between SDT and CONTACT
    if (any(strcmp(myopt.rw_surfc, {'prw','both'})))
     if (isfield(prw,'nslc')) % variable profile
      sol.slcw = prw;
-     sol.prw = cntc.get_profile_slice(sol.slcw, -sol.meta.th_ws+sol.meta.xcp_w/sol.meta.rnom_whl);
+     sol.prw = cntc.get_profile_slice(sol.slcw, -sol.meta.th_ws+sol.meta.xcp_w/sol.meta.rnom_whl,1);
     else
      sol.prw = prw;
     end
@@ -15361,7 +15361,7 @@ cntc : interface between SDT and CONTACT
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-      LI.Cmacro.rowM=sdtu.ivec('ColList',{'XCP_TR'});%dDQ
+      LI.Cmacro.rowM=sdtu.ivec('ColList', {}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
       LI.Cmacro.X={[],[],LI.Traj.X{1}};
 
@@ -15377,7 +15377,6 @@ cntc : interface between SDT and CONTACT
       % Initialize the loop
       if icase==1
        cntc.set('initout{}'); 
-       LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
       end
 
       if icase==LI.Traj.X{1}(end)

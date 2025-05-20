@@ -180,8 +180,10 @@ C1.Y(2:end,6)=3; %set penetration
 nmap('TestPen_Traj')=C1;
 
 %  Wheelflat
+% C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
+%  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
 C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
- [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
+ [-pi/180*[27 : 0.5 : 47]']); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,2)=2000; % set vs [mm/s]
 C1.Y(:,3)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
