@@ -7862,14 +7862,16 @@ cntc : interface between SDT and CONTACT
 
    gf=ancestor(obj,'figure'); sdt=getappdata(gf,'sdt');
    LI=cntc.call;
-   if isfield(sdt,'cntc'); ev1=sdt.cntc;else;ev1=struct;end
    if ~isfield(sdt,'Scroll')
-    % prepare interactivity
+    %% prepare interactivity (defines the sdt appdata)
     iimouse('interacturn',gf, ...
      {'Key.leftarrow{cntc.scroll,"previous"}';
      'Normal+Scroll.@ga{cntc.scroll,"change step"}'
      'Key.rightarrow{cntc.scroll,"previous"}'})
     sdt=getappdata(gf,'sdt');
+   end
+   if isfield(sdt,'cntc'); ev1=sdt.cntc;
+   else;ev1=struct('ch',1);
    end
 
    if isfield(evt,'Key')
@@ -15301,7 +15303,23 @@ cntc : interface between SDT and CONTACT
    end % icase j1
 
   end
-  %------------------------------------------------------------------------------------------------------------
+  %% #SDTUI user interface ---------------------------------------------------
+  function []=tab()
+   % #tab 
+   r1={'Name','level';
+       'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
+    'Experiment Definition',1;'flags',2;'global',2;'wheels',2;'Material parameter', ...
+    1;'Bound' ,2; 'Friction',2 ;'Mat',2 ;'Solver Definition',1;'PotCntc',2 ; ...
+    'Rolling',2 ; 'Solver',2;'Geometry Definition',1;'Track',2 ; 'prr' ,2; ...
+    'prw',2 ; 'wheelsetDim' ,2; 'RailProfile',2 ; 'WheelProfile',2;'Loop parameter'...
+    ,1;'cur' ,2; 'Traj',2;'Output',1;'Cfield',2 ; 'Cmacro',2 ; 'sol',2};
+   LI=cntc.call;
+   r2=vhandle.tab(r1,LI);r2.name='CNTC';
+   asTab(r2)
+   %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
+
+  
+  end
   function []=set(list)
    %% #SetSDT : SDT distribution to CNTC set commands -1
    if ~iscell(list);list={list};end
