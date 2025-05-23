@@ -21,9 +21,15 @@ classdef cntc
   libname
  end
 
- %% #idx.refresh{cntc.help(pdf),cntc.help(md)}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ %% #SDT/CONTACT initialization
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ %% #idx.refresh{cntc.help(pdf),cntc.help(md)} -2
  %{
-```DocString  {module=rail,src=cntc.md} 
+```DocString  {module=rail,src=cntc.md} -2
 cntc : interface between SDT and CONTACT
  %}
 
@@ -33,12 +39,6 @@ cntc : interface between SDT and CONTACT
   end
 
  end % methods
-
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
- %% #SDT/CONTACT initialization
-
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
  % #Static / generic methods  -------------------------------------------- -2
  methods (Static)
@@ -611,178 +611,6 @@ cntc : interface between SDT and CONTACT
 
   end
 
-
-  function [ dif ] = diffcase(sol1, sol2)
-
-   %
-   % [ dif ] = diffcase(sol1, sol2)
-   %
-   % Compute the difference of the results for two calculations sol1 and sol2.
-   %
-   % dif         - output struct "sol1 - sol2"
-   % sol1, sol2  - structs with surface tractions as defined by loadcase.
-   %
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % #diffcase
-   dif = [];
-
-   % Check equality of the structures w.r.t. grids used
-
-   if (sol1.mx ~= sol2.mx || sol1.my ~= sol2.my)
-    disp(sprintf('The two structs concern different grids: %dx%d, %dx%d',...
-     sol1.mx, sol1.my, sol2.mx, sol2.my)); %#ok<*DSPSP>
-    return
-   end
-
-   grd1 = [sol1.xl, sol1.yl, sol1.dx, sol1.dy];
-   grd2 = [sol2.xl, sol2.yl, sol2.dx, sol2.dy];
-   tol  = 0.01 * max(sol1.dx,sol1.dy);
-   if (any( abs(grd1-grd2) > tol ))
-    disp(sprintf(['The two structs concern different grids:\n',...
-     '     grid 1: (xl,yl)=(%6.3f,%6.3f), (dx,dy)=(%6.3f,%6.3f)\n', ...
-     '     grid 2: (xl,yl)=(%6.3f,%6.3f), (dx,dy)=(%6.3f,%6.3f)\n'], ...
-     grd1, grd2));
-    return
-   end
-
-   % Copy the administration from sol1
-
-   dif.d_digit = sol1.d_digit;
-   dif.mx      = sol1.mx;
-   dif.my      = sol1.my;
-   dif.xl      = sol1.xl;
-   dif.yl      = sol1.yl;
-   dif.dx      = sol1.dx;
-   dif.dy      = sol1.dy;
-   dif.x       = sol1.x;
-   dif.y       = sol1.y;
-
-   dif.kincns.t_digit = sol1.kincns.t_digit;
-   dif.kincns.chi     = sol1.kincns.chi;
-   dif.kincns.dq      = sol1.kincns.dq;
-   dif.kincns.veloc   = sol1.kincns.veloc;
-
-   dif.config  = sol1.config;
-   dif.h_digit = sol1.h_digit;
-   dif.mater   = sol1.mater;
-   dif.fric    = sol1.fric;
-
-   dif.x_offset  = sol1.x_offset;
-   dif.y_offset  = sol1.y_offset;
-
-   % copy element division from sol1 and encode the difference
-
-   dif.eldiv = sol1.eldiv + 10*(sol1.eldiv-sol2.eldiv);
-
-   % determine differences of solution variables
-
-   dif.h      = sol1.h      - sol2.h;
-   sol.mu     = sol1.mu     - sol2.mu;
-   dif.pn     = sol1.pn     - sol2.pn;
-   dif.px     = sol1.px     - sol2.px;
-   dif.py     = sol1.py     - sol2.py;
-   dif.un     = sol1.un     - sol2.un;
-   dif.ux     = sol1.ux     - sol2.ux;
-   dif.uy     = sol1.uy     - sol2.uy;
-   dif.srel   = sol1.srel   - sol2.srel;
-   dif.shft   = sol1.shft   - sol2.shft;
-   dif.trcbnd = sol1.trcbnd - sol2.trcbnd;
-   if (isfield(sol1,'taucrt') && isfield(sol2,'taucrt'))
-    dif.taucrt = sol1.taucrt - sol2.taucrt;
-    dif.uplsx  = sol1.uplsx  - sol2.uplsx;
-    dif.uplsy  = sol1.uplsy  - sol2.uplsy;
-   end
-   if (isfield(sol1,'temp1') && isfield(sol2,'temp1'))
-    dif.temp1 = sol1.temp1 - sol2.temp1;
-    dif.temp2 = sol1.temp2 - sol2.temp2;
-   end
-
-   % determine the difference in magnitude pt
-
-   dif.pt     = sqrt(sol1.px.^2 + sol1.py.^2) - sqrt(sol2.px.^2 + sol2.py.^2);
-  end
-
-  function [ dif ] = diffstrs(sol1, sol2)
-
-   %
-   % [ dif ] = diffstrs(sol1, sol2)
-   %
-   % Compute the difference of the results for two subsurface stress
-   % calculations sol1 and sol2.
-   %
-   % dif         - output struct "sol1 - sol2"
-   % sol1, sol2  - structs with subsurface stresses as defined by loadstrs.
-   %
-
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-
-   % #diffstrs
-   dif = [];
-
-   % Check equality of the grids w.r.t. subsurface points used
-
-   if (sol1.nx~=sol2.nx)
-    disp(sprintf('The two structs concern different subsurface points (nx).'));
-    return
-   end
-   if (sol1.ny~=sol2.ny)
-    disp(sprintf('The two structs concern different subsurface points (ny).'));
-    return
-   end
-   if (sol1.nz~=sol2.nz)
-    disp(sprintf('The two structs concern different subsurface points (nz).'));
-    return
-   end
-
-   %  check x,y,z-coordinates of block
-
-   difc = max(abs(sol1.x-sol2.x));
-   if (difc>1e-10)
-    disp(sprintf('Warning: the x-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
-   end
-   difc = max(abs(sol1.y-sol2.y));
-   if (difc>1e-10)
-    disp(sprintf('Warning: the y-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
-   end
-   difc = max(abs(sol1.z-sol2.z));
-   if (difc>1e-10)
-    disp(sprintf('Warning: the z-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
-   end
-
-   %  copy administration from sol1
-
-   dif.nx      = sol1.nx;
-   dif.ny      = sol1.ny;
-   dif.nz      = sol1.nz;
-   dif.npoints = sol1.npoints;
-   dif.x       = sol1.x;
-   dif.y       = sol1.y;
-   dif.z       = sol1.z;
-
-   %  compute differences of displacements and stress invariants
-
-   dif.ux = sol1.ux - sol2.ux;
-   dif.uy = sol1.uy - sol2.uy;
-   dif.uz = sol1.uz - sol2.uz;
-
-   dif.sighyd = sol1.sighyd - sol2.sighyd;
-   dif.sigvm  = sqrt(sol1.sigvm.^2 - sol2.sigvm.^2);
-
-   if (isfield(sol1,'sigxx') && isfield(sol2,'sigxx'))
-    dif.sigxx = sol1.sigxx - sol2.sigxx;
-    dif.sigxy = sol1.sigxy - sol2.sigxy;
-    dif.sigxz = sol1.sigxz - sol2.sigxz;
-    dif.sigyy = sol1.sigyy - sol2.sigyy;
-    dif.sigyz = sol1.sigyz - sol2.sigyz;
-    dif.sigzz = sol1.sigzz - sol2.sigzz;
-   end
-  end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -6858,69 +6686,6 @@ cntc : interface between SDT and CONTACT
   end % get_vecscale
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ is_left ] = is_left_side(sol)
-   % #is_left_side
-
-   if (length(sol)>1)
-    is_left = (sol(1).config==0 | sol(1).config==4);
-   else
-    is_left = (sol.config==0 | sol.config==4);
-   end
-
-  end % is_left_side
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
-   % #get_profile_slice
-
-   if (nargin<3)
-    make_plot = 0;
-   end
-   i0 = find(slcs.u <  u_i, 1, 'last');
-   i1 = find(slcs.u >= u_i, 1, 'first');
-   % disp([u_i, i0, i1])
-   if (i0 >= slcs.nslc)
-    yi = slcs.ysurf(end,:); zi = slcs.zsurf(end,:);
-    % disp(sprintf('u_i = %5.1f > u(end) = %5.1f, using slice %d', u_i, slcs.u(end), i1));
-   elseif (i1 <= 1)
-    yi = slcs.ysurf(1,:); zi = slcs.zsurf(1,:);
-    % disp(sprintf('u_i = %5.1f < u(1) = %5.1f, using slice %d', u_i, slcs.u(1), i0));
-   else
-    fac0 = (slcs.u(i1) - u_i) / (slcs.u(i1) - slcs.u(i0));
-    fac1 = (u_i - slcs.u(i0)) / (slcs.u(i1) - slcs.u(i0));
-    if (fac0>0.99 & nnz(slcs.mask_j(i0,:))>nnz(slcs.mask_j(i1,:)))
-     % disp(sprintf('Using longer slice i0=%d', i0));
-     yi = slcs.ysurf(i0,:); zi = slcs.zsurf(i0,:);
-    elseif (fac1>0.99 & nnz(slcs.mask_j(i1,:))>nnz(slcs.mask_j(i0,:)))
-     % disp(sprintf('Using longer slice i1=%d', i1));
-     yi = slcs.ysurf(i1,:); zi = slcs.zsurf(i1,:);
-    else
-     % disp(sprintf('Using %5.3f * slice %d + %5.3f * slice %d',fac0, i0, fac1, i1));
-     yi = fac0 * slcs.ysurf(i0,:) + fac1 * slcs.ysurf(i1,:);
-     zi = fac0 * slcs.zsurf(i0,:) + fac1 * slcs.zsurf(i1,:);
-    end
-
-    if (make_plot)
-     tmpfig = gcf;
-     figure(make_plot); clf; hold on;
-     plot([slcs.ysurf([i0:i1],:);yi]', [slcs.zsurf([i0:i1],:);zi]');
-     set(gca,'ydir','reverse'); grid on; axis equal;
-     legend(sprintf('slice %d, u=%6.2f',i0,slcs.u(i0)), sprintf('slice %d, u=%6.2f',i1,slcs.u(i1)), ...
-      sprintf('interpolated, u=%6.2f',u_i), 'location','southeast')
-     figure(tmpfig);
-    end
-   end
-
-   % set arc-length s, accounting for NaN's in 'missing parts'
-   % s  = slcs.vj; ix = find(isnan(yi)); s(ix) = NaN;
-
-   prr = struct('ProfileY',yi', 'ProfileZ',zi', 'ProfileS',slcs.vj);
-
-  end % get_profile_slice
-
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   %% #Coordinates
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function [ xtr, ytr, ztr, delta_tr ] = to_track_coords(sol, xc, yc, zc);
@@ -7481,6 +7246,18 @@ cntc : interface between SDT and CONTACT
 
   end % rotz
 
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  function [ is_left ] = is_left_side(sol)
+   % #is_left_side -2
+
+   if (length(sol)>1)
+    is_left = (sol(1).config==0 | sol(1).config==4);
+   else
+    is_left = (sol.config==0 | sol.config==4);
+   end
+
+  end % is_left_side
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -10332,6 +10109,178 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+  function [ dif ] = diffcase(sol1, sol2)
+
+   %
+   % [ dif ] = diffcase(sol1, sol2)
+   %
+   % Compute the difference of the results for two calculations sol1 and sol2.
+   %
+   % dif         - output struct "sol1 - sol2"
+   % sol1, sol2  - structs with surface tractions as defined by loadcase.
+   %
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % #diffcase -2
+   dif = [];
+
+   % Check equality of the structures w.r.t. grids used
+
+   if (sol1.mx ~= sol2.mx || sol1.my ~= sol2.my)
+    disp(sprintf('The two structs concern different grids: %dx%d, %dx%d',...
+     sol1.mx, sol1.my, sol2.mx, sol2.my)); %#ok<*DSPSP>
+    return
+   end
+
+   grd1 = [sol1.xl, sol1.yl, sol1.dx, sol1.dy];
+   grd2 = [sol2.xl, sol2.yl, sol2.dx, sol2.dy];
+   tol  = 0.01 * max(sol1.dx,sol1.dy);
+   if (any( abs(grd1-grd2) > tol ))
+    disp(sprintf(['The two structs concern different grids:\n',...
+     '     grid 1: (xl,yl)=(%6.3f,%6.3f), (dx,dy)=(%6.3f,%6.3f)\n', ...
+     '     grid 2: (xl,yl)=(%6.3f,%6.3f), (dx,dy)=(%6.3f,%6.3f)\n'], ...
+     grd1, grd2));
+    return
+   end
+
+   % Copy the administration from sol1
+
+   dif.d_digit = sol1.d_digit;
+   dif.mx      = sol1.mx;
+   dif.my      = sol1.my;
+   dif.xl      = sol1.xl;
+   dif.yl      = sol1.yl;
+   dif.dx      = sol1.dx;
+   dif.dy      = sol1.dy;
+   dif.x       = sol1.x;
+   dif.y       = sol1.y;
+
+   dif.kincns.t_digit = sol1.kincns.t_digit;
+   dif.kincns.chi     = sol1.kincns.chi;
+   dif.kincns.dq      = sol1.kincns.dq;
+   dif.kincns.veloc   = sol1.kincns.veloc;
+
+   dif.config  = sol1.config;
+   dif.h_digit = sol1.h_digit;
+   dif.mater   = sol1.mater;
+   dif.fric    = sol1.fric;
+
+   dif.x_offset  = sol1.x_offset;
+   dif.y_offset  = sol1.y_offset;
+
+   % copy element division from sol1 and encode the difference
+
+   dif.eldiv = sol1.eldiv + 10*(sol1.eldiv-sol2.eldiv);
+
+   % determine differences of solution variables
+
+   dif.h      = sol1.h      - sol2.h;
+   sol.mu     = sol1.mu     - sol2.mu;
+   dif.pn     = sol1.pn     - sol2.pn;
+   dif.px     = sol1.px     - sol2.px;
+   dif.py     = sol1.py     - sol2.py;
+   dif.un     = sol1.un     - sol2.un;
+   dif.ux     = sol1.ux     - sol2.ux;
+   dif.uy     = sol1.uy     - sol2.uy;
+   dif.srel   = sol1.srel   - sol2.srel;
+   dif.shft   = sol1.shft   - sol2.shft;
+   dif.trcbnd = sol1.trcbnd - sol2.trcbnd;
+   if (isfield(sol1,'taucrt') && isfield(sol2,'taucrt'))
+    dif.taucrt = sol1.taucrt - sol2.taucrt;
+    dif.uplsx  = sol1.uplsx  - sol2.uplsx;
+    dif.uplsy  = sol1.uplsy  - sol2.uplsy;
+   end
+   if (isfield(sol1,'temp1') && isfield(sol2,'temp1'))
+    dif.temp1 = sol1.temp1 - sol2.temp1;
+    dif.temp2 = sol1.temp2 - sol2.temp2;
+   end
+
+   % determine the difference in magnitude pt
+
+   dif.pt     = sqrt(sol1.px.^2 + sol1.py.^2) - sqrt(sol2.px.^2 + sol2.py.^2);
+  end
+
+  function [ dif ] = diffstrs(sol1, sol2)
+
+   %
+   % [ dif ] = diffstrs(sol1, sol2)
+   %
+   % Compute the difference of the results for two subsurface stress
+   % calculations sol1 and sol2.
+   %
+   % dif         - output struct "sol1 - sol2"
+   % sol1, sol2  - structs with subsurface stresses as defined by loadstrs.
+   %
+
+   % Copyright 2008-2023 by Vtech CMCC.
+   %
+   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+   % #diffstrs -2
+   dif = [];
+
+   % Check equality of the grids w.r.t. subsurface points used
+
+   if (sol1.nx~=sol2.nx)
+    disp(sprintf('The two structs concern different subsurface points (nx).'));
+    return
+   end
+   if (sol1.ny~=sol2.ny)
+    disp(sprintf('The two structs concern different subsurface points (ny).'));
+    return
+   end
+   if (sol1.nz~=sol2.nz)
+    disp(sprintf('The two structs concern different subsurface points (nz).'));
+    return
+   end
+
+   %  check x,y,z-coordinates of block
+
+   difc = max(abs(sol1.x-sol2.x));
+   if (difc>1e-10)
+    disp(sprintf('Warning: the x-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
+   end
+   difc = max(abs(sol1.y-sol2.y));
+   if (difc>1e-10)
+    disp(sprintf('Warning: the y-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
+   end
+   difc = max(abs(sol1.z-sol2.z));
+   if (difc>1e-10)
+    disp(sprintf('Warning: the z-coordinates differ by at most %f;\n         continuing with coords of first case', difc));
+   end
+
+   %  copy administration from sol1
+
+   dif.nx      = sol1.nx;
+   dif.ny      = sol1.ny;
+   dif.nz      = sol1.nz;
+   dif.npoints = sol1.npoints;
+   dif.x       = sol1.x;
+   dif.y       = sol1.y;
+   dif.z       = sol1.z;
+
+   %  compute differences of displacements and stress invariants
+
+   dif.ux = sol1.ux - sol2.ux;
+   dif.uy = sol1.uy - sol2.uy;
+   dif.uz = sol1.uz - sol2.uz;
+
+   dif.sighyd = sol1.sighyd - sol2.sighyd;
+   dif.sigvm  = sqrt(sol1.sigvm.^2 - sol2.sigvm.^2);
+
+   if (isfield(sol1,'sigxx') && isfield(sol2,'sigxx'))
+    dif.sigxx = sol1.sigxx - sol2.sigxx;
+    dif.sigxy = sol1.sigxy - sol2.sigxy;
+    dif.sigxz = sol1.sigxz - sol2.sigxz;
+    dif.sigyy = sol1.sigyy - sol2.sigyy;
+    dif.sigyz = sol1.sigyz - sol2.sigyz;
+    dif.sigzz = sol1.sigzz - sol2.sigzz;
+   end
+  end
+
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   %% #Read
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -12372,6 +12321,55 @@ cntc : interface between SDT and CONTACT
 
   end % resample_slices
 
+  function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
+   % #get_profile_slice
+
+   if (nargin<3)
+    make_plot = 0;
+   end
+   i0 = find(slcs.u <  u_i, 1, 'last');
+   i1 = find(slcs.u >= u_i, 1, 'first');
+   % disp([u_i, i0, i1])
+   if (i0 >= slcs.nslc)
+    yi = slcs.ysurf(end,:); zi = slcs.zsurf(end,:);
+    % disp(sprintf('u_i = %5.1f > u(end) = %5.1f, using slice %d', u_i, slcs.u(end), i1));
+   elseif (i1 <= 1)
+    yi = slcs.ysurf(1,:); zi = slcs.zsurf(1,:);
+    % disp(sprintf('u_i = %5.1f < u(1) = %5.1f, using slice %d', u_i, slcs.u(1), i0));
+   else
+    fac0 = (slcs.u(i1) - u_i) / (slcs.u(i1) - slcs.u(i0));
+    fac1 = (u_i - slcs.u(i0)) / (slcs.u(i1) - slcs.u(i0));
+    if (fac0>0.99 & nnz(slcs.mask_j(i0,:))>nnz(slcs.mask_j(i1,:)))
+     % disp(sprintf('Using longer slice i0=%d', i0));
+     yi = slcs.ysurf(i0,:); zi = slcs.zsurf(i0,:);
+    elseif (fac1>0.99 & nnz(slcs.mask_j(i1,:))>nnz(slcs.mask_j(i0,:)))
+     % disp(sprintf('Using longer slice i1=%d', i1));
+     yi = slcs.ysurf(i1,:); zi = slcs.zsurf(i1,:);
+    else
+     % disp(sprintf('Using %5.3f * slice %d + %5.3f * slice %d',fac0, i0, fac1, i1));
+     yi = fac0 * slcs.ysurf(i0,:) + fac1 * slcs.ysurf(i1,:);
+     zi = fac0 * slcs.zsurf(i0,:) + fac1 * slcs.zsurf(i1,:);
+    end
+
+    if (make_plot)
+     tmpfig = gcf;
+     figure(make_plot); clf; hold on;
+     plot([slcs.ysurf([i0:i1],:);yi]', [slcs.zsurf([i0:i1],:);zi]');
+     set(gca,'ydir','reverse'); grid on; axis equal;
+     legend(sprintf('slice %d, u=%6.2f',i0,slcs.u(i0)), sprintf('slice %d, u=%6.2f',i1,slcs.u(i1)), ...
+      sprintf('interpolated, u=%6.2f',u_i), 'location','southeast')
+     figure(tmpfig);
+    end
+   end
+
+   % set arc-length s, accounting for NaN's in 'missing parts'
+   % s  = slcs.vj; ix = find(isnan(yi)); s(ix) = NaN;
+
+   prr = struct('ProfileY',yi', 'ProfileZ',zi', 'ProfileS',slcs.vj);
+
+  end % get_profile_slice
+
+
   function [ p_out, spl ] = smooth_profile( p_in, l_filt, lambda, ds_sampl, ikinks, iaccel, use_wgt, use_bspline, ds_bspl, idebug );
 
    % [ p_out, spl ] = smooth_profile( p_in, [l_filt], [lambda], [ds_sampl], [ikinks], [iaccel],
@@ -13524,6 +13522,8 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
 
+  %% #get
+  
   function [ tcpu, twall]=getcalculationtime(ire, icp)
    % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
@@ -13536,6 +13536,8 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
+
+   % #getcalculationtime
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13611,9 +13613,6 @@ cntc : interface between SDT and CONTACT
     LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
    end
   end % cntc.getcontactforces
-
-
-  %% #get
 
   function [ rvalues]=getcontactlocation(ire, icp,LI)
    % [ rvalues ] = cntc.getcontactlocation(ire, icp)
@@ -15289,37 +15288,6 @@ cntc : interface between SDT and CONTACT
   end % cntc.getwheelsetvelocity
 
   %------------------------------------------------------------------------------------------------------------
-  function []= TempLoop(list,LI)
-   %% #TempLoop
-   iwhe=evalin('caller','iwhe');
-   for j1 = 1:size(LI.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
-    st1=list;
-    if comstr(lower(list{1}),'traj');
-     st1{1}=struct('type','Traj','j1',j1,'iwhe',iwhe);
-    else
-     error('Trajectory must be define first')
-    end
-    cntc.set(st1);
-   end % icase j1
-
-  end
-  %% #SDTUI user interface ---------------------------------------------------
-  function []=tab()
-   % #tab 
-   r1={'Name','level';
-       'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
-    'Experiment Definition',1;'flags',2;'global',2;'wheels',2;'Material parameter', ...
-    1;'Bound' ,2; 'Friction',2 ;'Mat',2 ;'Solver Definition',1;'PotCntc',2 ; ...
-    'Rolling',2 ; 'Solver',2;'Geometry Definition',1;'Track',2 ; 'prr' ,2; ...
-    'prw',2 ; 'wheelsetDim' ,2; 'RailProfile',2 ; 'WheelProfile',2;'Loop parameter'...
-    ,1;'cur' ,2; 'Traj',2;'Output',1;'Cfield',2 ; 'Cmacro',2 ; 'sol',2};
-   LI=cntc.call;
-   r2=vhandle.tab(r1,LI);r2.name='CNTC';
-   asTab(r2)
-   %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
-
-  
-  end
   function []=set(list)
    %% #SetSDT : SDT distribution to CNTC set commands -1
    if ~iscell(list);list={list};end
@@ -15548,6 +15516,39 @@ cntc : interface between SDT and CONTACT
     end
    end
   end
+
+    function []= TempLoop(list,LI)
+   %% #TempLoop -2
+   iwhe=evalin('caller','iwhe');
+   for j1 = 1:size(LI.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
+    st1=list;
+    if comstr(lower(list{1}),'traj');
+     st1{1}=struct('type','Traj','j1',j1,'iwhe',iwhe);
+    else
+     error('Trajectory must be define first')
+    end
+    cntc.set(st1);
+   end % icase j1
+
+  end
+  %% #SDTUI user interface  ----------------------------------------------- -2
+  function []=tab()
+   % #tab -3
+   r1={'Name','level';
+       'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
+    'Experiment Definition',1;'flags',2;'global',2;'wheels',2;'Material parameter', ...
+    1;'Bound' ,2; 'Friction',2 ;'Mat',2 ;'Solver Definition',1;'PotCntc',2 ; ...
+    'Rolling',2 ; 'Solver',2;'Geometry Definition',1;'Track',2 ; 'prr' ,2; ...
+    'prw',2 ; 'wheelsetDim' ,2; 'RailProfile',2 ; 'WheelProfile',2;'Loop parameter'...
+    ,1;'cur' ,2; 'Traj',2;'Output',1;'Cfield',2 ; 'Cmacro',2 ; 'sol',2};
+   LI=cntc.call;
+   r2=vhandle.tab(r1,LI);r2.name='CNTC';
+   asTab(r2)
+   %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
+
+  
+  end
+
   %------------------------------------------------------------------------------------------------------------
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
