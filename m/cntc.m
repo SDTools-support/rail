@@ -54,7 +54,8 @@ cntc : interface between SDT and CONTACT
    % #initializeflags-2
    if nargin==0
     LI=cntc.call;
-    CNTC=evalin('caller','CNTC');%LI.CNTC=CNTC;
+    if ~isfield(LI,'CNTC');cntc.init;end
+    CNTC=LI.CNTC;
     li=LI.global;
     cntc.setglobalflags(CNTC.if_idebug, li.ire);
     [ifcver, ierror] = cntc.initialize(li.ire,li.imodul);
@@ -211,6 +212,7 @@ cntc : interface between SDT and CONTACT
    %xxxgae cant unload the library when it crash and the library is still
    %on
    if libisloaded(libname)
+    LI=cntc.call;LI.libname=libname;
     cntc.closelibrary;
    end
    if nargin>0
@@ -529,7 +531,10 @@ cntc : interface between SDT and CONTACT
    end
    CAM=strrep(CAM,'cntc.','cntc_');
    if ~isprop(LI,'libname')||isempty(LI.libname);
-    error('Library not initialized');
+    if strcmpi(CAM,'cntc_finalizelast');return
+    else
+     error('Library not initialized');
+    end
    end
    if strcmp(CAM,'finalizelast') % already loaded
     try
@@ -546,13 +551,15 @@ cntc : interface between SDT and CONTACT
 
   function out=help(CAM)
    %% #help : configure help -2
+   wd0=pwd;
    if ispref('SDT','CONTACT_Path');wd=getpref('SDT','CONTACT_Path');
    else
-    wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin', ...
-     'C:\Program Files\Vtech CMCC\contact_v24.1\bin' });
+    wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
+     'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
+     '/o/APP/contact_v24.1/bin'});
     setpref('SDT','CONTACT_Path',wd);
    end
-
+   cd(wd0);
    f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
    if exist(f1,'file')
     RO=sdtu.f.ppath(struct,{'sdtu.idx.tagI'});
@@ -567,6 +574,8 @@ cntc : interface between SDT and CONTACT
     % xxx should test if needed
    end
    if nargin==0
+   elseif strcmpi(CAM,'@examples')
+     out=sdtu.f.cffile(fullfile(wd),'../examples');
    elseif strcmpi(CAM,'pdf')
     out=f1;
    elseif strcmpi(CAM,'md')
@@ -588,7 +597,7 @@ cntc : interface between SDT and CONTACT
   % end
 
 
-  function [LI,CNTC]=init
+  function LI=init
    %% #init -2
 
    % if (~exist('cntc_initlibrary.m','file'))
@@ -605,12 +614,12 @@ cntc : interface between SDT and CONTACT
    %end
    cntc.help;
    [ CNTC, ifcver, ierror ]=cntc.initlibrary;
-   if nargout==0; assignin('caller','CNTC',CNTC);
-   else; LI=cntc.call; LI.CNTC=CNTC;
-   end
+   LI=cntc.call; LI.CNTC=CNTC;
 
   end
-
+  function out=cvs(obj); % #cvs -2
+   out=sdtcheck('revision','$Revision: b515365 $  $Date: 2025-05-23 15:38:11 +0200 $');
+  end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -15453,11 +15462,10 @@ cntc : interface between SDT and CONTACT
 
       end
      case 'getsol'
-      %% Get sol to understand plot3d
+      %% Get sol to understand plot3d (need to disappear for store in SDT directly)
       if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
-      LI=cntc.call;
       sol=cntc.getcpresults(iwhe, 1);
       LI.sol{icase}=sol;
 
@@ -15667,8 +15675,7 @@ cntc : interface between SDT and CONTACT
    % #setflags(pdfsection.2.3)  configure flags for a contact problem
 
    if nargin==0
-    LI=cntc.call;
-    CNTC=evalin('caller','CNTC');;LI.CNTC=CNTC;
+    LI=cntc.call; CNTC=LI.CNTC;
     flagM=vhandle.nmap([fieldnames(CNTC) struct2cell(CNTC)]);
     li=cell(LI.flags);
     flags=flagM(li(:,1));flags=vertcat(flags{:});% skip iwhe given first always
