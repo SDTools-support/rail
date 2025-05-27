@@ -594,7 +594,7 @@ cntc : interface between SDT and CONTACT
   % end
 
 
-  function LI=init
+  function [LI,CNTC]=init
    %% #init -2
 
    % if (~exist('cntc_initlibrary.m','file'))
@@ -15324,7 +15324,7 @@ cntc : interface between SDT and CONTACT
      case 'initout'
       %% #set.initOut Initialize the output -2
       % Fields stored
-      if isempty(evt);st1=evalin('caller','st1');icase=st1{1}.j1;iwhe=st1{1}.iwhe;
+      if isempty(evt);icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
@@ -15346,8 +15346,7 @@ cntc : interface between SDT and CONTACT
      case 'getout'
       %% #set.GetOut Get results -2
       if isempty(evt);
-       st1=evalin('caller','RT.LoopParam');
-       icase=st1{1}.j1;iwhe=st1{1}.iwhe;
+       icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       % Initialize the loop
@@ -15463,8 +15462,7 @@ cntc : interface between SDT and CONTACT
      case 'getsol'
       %% Get sol to understand plot3d (need to disappear for store in SDT directly)
       if isempty(evt);
-       st1=evalin('caller','RT.LoopParam');
-       icase=st1{1}.j1;iwhe=st1{1}.iwhe;
+       icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       sol=cntc.getcpresults(iwhe, 1);
@@ -15502,22 +15500,22 @@ cntc : interface between SDT and CONTACT
        'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
        ' vrollw, vyaww, vpitchw}'],'{}{}');
       
-      RT=evalin('caller','RT');
-      icase=RT.LoopParam{1}.j1;iwhe=RT.LoopParam{1}.iwhe;
+      if isempty(evt);
+       icase=LI.cur.j1;iwhe=LI.cur.iwhe;
+      else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       % xxxgae unl vnl
-      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(1:6));
+      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
       pos=zeros(1,6);
-      pos(i2(i1))=RT.Traj.Y(icase,i1);
+      pos(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
 
-      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(7:12));
-      vel=zeros(1,6);vel(i2(i1))=RT.Traj.Y(icase,i1);
+      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
+      vel=zeros(1,6);vel(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
-      LI.cur=evt;
 
-      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(12:end));
-      flex=zeros(1,6);flex(i2(i1))=RT.Traj.Y(icase,i1);
+      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
+      flex=zeros(1,6);flex(i2(i1))=LI.Traj.Y(icase,i1);
       cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
 
     end
@@ -15526,21 +15524,27 @@ cntc : interface between SDT and CONTACT
 
     function []= TempLoop(RT)
    %% #TempLoop -2
+   [LI,RT.CNTC]=cntc.init;
+
+   LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
+   LI.Traj=RT.Traj;LI.flags=RT.flags;  
+
    cntc.initializeflags;
    cntc.setflags;
    cntc.set(RT.Model);
-   
    st1=RT.LoopParam;
-   for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase 
-    if comstr(lower(st1{1}),'traj');
-     RT.LoopParam{1}=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-    else
-     error('Trajectory must be define first')
-    end
-    cntc.set(st1);
-   end % icase j1
 
-  end
+   if comstr(lower(st1{1}),'traj');
+    for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
+     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
+     LI.cur=st2; st1{1}=st2;
+     cntc.set(st1);
+    end % icase j1
+   else
+    error('Trajectory must be define first')
+   end
+
+    end
   %% #SDTUI user interface  ----------------------------------------------- -2
   function []=tab()
    % #tab -3
@@ -15791,7 +15795,7 @@ cntc : interface between SDT and CONTACT
     end
     params=sdth.sfield('addselected',struct,LI.Friction,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setfrictionmethod(LI.global.ire, [], LI.Friction.FrcLaw, params);
+    cntc.setfrictionmethod(LI.flags.ire, [], LI.Friction.FrcLaw, params);
     return
     % end SDT packaging
    end
@@ -15983,7 +15987,7 @@ cntc : interface between SDT and CONTACT
     end
     params=sdth.sfield('addselected',struct,LI.Mat,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setmaterialparameters(LI.global.ire, [], LI.Mat.Mater1, params);
+    cntc.setmaterialparameters(LI.flags.ire, [], LI.Mat.Mater1, params);
     return
     % end SDT packaging
 
@@ -16152,7 +16156,7 @@ cntc : interface between SDT and CONTACT
      otherwise; error('Wrong parameter selected')
     end
     params=sdth.sfield('addselected',struct,LI.Bound,params);
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     %selection of the boundary condition
     if LI.Bound.Cond==0; cntc.setverticalforce(Global.ire,params);
@@ -16307,7 +16311,7 @@ cntc : interface between SDT and CONTACT
 
     params=sdth.sfield('addselected',struct,LI.PotCntc,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setpotcontact(LI.global.ire, -1, LI.PotCntc.PosGrid, params);%XXXGAE icp =-1 bizarre
+    cntc.setpotcontact(LI.flags.ire, -1, LI.PotCntc.PosGrid, params);%XXXGAE icp =-1 bizarre
     return
     % end SDT packaging
    end
@@ -16406,7 +16410,7 @@ cntc : interface between SDT and CONTACT
     iparams.notuse=0;iparams=struct2cell(iparams);iparams=horzcat(iparams{:});
     rparams=struct2cell(rparams);rparams=horzcat(rparams{:});
     fname=struct2cell(fname);fname=fname{1};
-    cntc.setprofileinputfname(LI.global.ire, fname, iparams, rparams);
+    cntc.setprofileinputfname(LI.flags.ire, fname, iparams, rparams);
     return
 
    end
@@ -16599,7 +16603,7 @@ cntc : interface between SDT and CONTACT
      otherwise
       error('Wrong parameter selected')
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if isstruct(chi); chi=struct2cell(chi); end
     val=struct2cell(val);val=val{:};
     cntc.setrollingstepsize(Global.ire, LI.Rolling.StepSize, chi, val);
@@ -16688,7 +16692,7 @@ cntc : interface between SDT and CONTACT
      otherwise; error('Wrong parameter selected')
     end
 
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     iparam=sdth.sfield('addselected',struct,LI.Solver,iparam);
     iparam=struct2cell(iparam);iparam=horzcat(iparam{:});
     rparam=sdth.sfield('addselected',struct,LI.Solver,rparam);
@@ -16931,7 +16935,7 @@ cntc : interface between SDT and CONTACT
      otherwise
       error('Wrong parameter selected')
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.settrackdimensions(Global.ire, LI.Track.Design, params); % config solver Gauss-Seidel
     return
@@ -17071,7 +17075,7 @@ cntc : interface between SDT and CONTACT
       params=struct2cell(params);params=horzcat(params{:});
      otherwise; error('Wrong parameter selected')
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     cntc.setwheelsetdimensions(Global.ire, LI.wheelsetDim.Ewheel, params);
     return
     % end SDT packaging
@@ -17147,7 +17151,7 @@ cntc : interface between SDT and CONTACT
      otherwise; error('Wrong parameter')
       %% xxxGAE
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=sdth.sfield('addselected',struct,LI.wheelsetFlex,params);
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetflexibility(Global.ire, LI.wheelsetFlex.Ewheel, params);
@@ -17220,7 +17224,7 @@ cntc : interface between SDT and CONTACT
       error('Wrong parameter')
       %% xxxGAE
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetposition(Global.ire, LI.wheelsetPos.Ewheel, params);
     return
@@ -17303,7 +17307,7 @@ cntc : interface between SDT and CONTACT
       error('Wrong parameter')
       %% xxxGAE
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetvelocity(Global.ire, LI.wheelsetVel.Ewheel, params);
     return
@@ -17394,7 +17398,7 @@ cntc : interface between SDT and CONTACT
       error('Wrong parameter')
       %% xxxGAE
     end
-    Global=LI.global; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
+    Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetvelocity(Global.ire, Vel, params);
     return
