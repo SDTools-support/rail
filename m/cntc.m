@@ -549,13 +549,10 @@ cntc : interface between SDT and CONTACT
   function out=help(CAM)
    %% #help : configure help -2
    wd0=pwd;
-   if ispref('SDT','CONTACT_Path');wd=getpref('SDT','CONTACT_Path');
-   else
     wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
      'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
      '/o/APP/contact_v24.1/bin'});
-    setpref('SDT','CONTACT_Path',wd);
-   end
+    wd=sdtdef('Contact_Path-safe',wd);
    cd(wd0);
    f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
    if exist(f1,'file')
@@ -7267,9 +7264,154 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #Plot
+  function plot(varargin)
+  %% #Plot select from standard plots
+
+  [CAM,Cam]=comstr(varargin{1},1);carg=2;
+
+  if comstr(Cam,'sol');[CAM,Cam]=comstr(CAM,4);
+   %{
+```DocString {module=rail,src@onedrive/*/SNC*/doc/R25_SNCF_Guillet.docx} -3
+ CNTCPlotSol : adaptation of plot commands
+   %}
+   LI=cntc.call;
+   if isempty(LI)||~isfield(LI,'sol')
+    wd=sdtu.f.safe('@onedrive/*/SNC*/exchange');cd(wd);
+    load('LI.mat'); cntc.call(LI);
+   end
+
+   if comstr(Cam,'1');[CAM,Cam]=comstr(CAM,2);
+    % #CNTCPlotSol1 : px -3
+
+    cntc.plot3d([],'{typplot=surf,field=px,rw_surfc=prw,ch1,gf10}')
+
+    if 1==2 % Low level tests for EB
+     x=cellfun(@(x)x.x,LI.sol,'uni',0)';x=unique(horzcat(x{:}));
+     figure(1);plot(sort(horzcat(ans{:})))
+     a=LI.Cmacro.rowM;a.prop.name
+     a=cntc.sol2curve;
+     C1=a.Cfield;iicom('curveinit',C1)
+
+     iicom('curveinit',a.prr)
+     figure(1);clf
+     xyz=a.prr.Y-a.prr.Y(:,:,1);
+     surface(squeeze(a.prr.Y(:,1,:)),squeeze(a.prr.Y(:,2,:)),squeeze(a.prr.Y(:,3,:)))
+     set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile');view(3);
+     figure(12);clf
+     surface(squeeze(a.prw.Y(:,1,:)),squeeze(a.prw.Y(:,2,:)),squeeze(a.prw.Y(:,3,:)))
+     set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile')
+    end
+   end
+  elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
+   %% #cntc.Plot.Wheel wheel profile or 3D wheel model -3
+   LI=cntc.call;
+   if contains(Cam,'prw') % cntc.plot('Wheel{prw}')
+    gf=findobj(0,'tag','prw','type','figure');if isempty(gf);gf=figure('tag','prw');end
+    %gf=sdth.urn('figure(nameprw)');
+    go=surf(LI.prw.xsurf,LI.prw.ysurf,LI.prw.zsurf);
+    xlabel('x [rad]');ylabel('y_w [mm]');zlabel('z_w [mm]');
+    set(go,'edgecolor','none');
+    set(gca,'DataAspectRatio',[.1 1 1]);
+    'xxx interact'
+   elseif contains(Cam,'stick') 
+    %% Wheel.SurfStick number of slices hence variable 
+    % cntc.plot('Wheel{Stick}')
+    gf=findobj(0,'tag','wstick','type','figure');if isempty(gf);gf=figure('tag','wstick');end
+
+    % LI.Traj('pitch_ws')
+    if 1==2
+      cdm.urnVec(LI.Traj,'{y,#pitch_ws}{cdm}') % xxx rad 
+      %  cdm.urnVec(LI.Traj,'{x,#pitch_ws}')
+    end
+    X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
+    Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
+    clf(gf);ga=axes(gf);
+    go=surf(X,LI.prw.ysurf,Z,'parent',ga); % 
+    %
+    color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
+    set(go,'edgecolor','none');
+    set(gca,'DataAspectRatio',[1 1 1]);
+    set(go,'CData',color);
+
+    LI.flags.iwhe
+    'xxx animate'
+    'position the Contact line'
+
+   else
+    gf=2;figure(gf); plot(LI.prw.ProfileY,LI.prw.ProfileZ,'.');
+    theta= pi/180*[0:360];
+    % X=(500+LI.prw.ProfileZ).*cos(theta);
+    % Y=(500+LI.prw.ProfileZ).*sin(theta);
+    % gf=3; 
+   end
+
+  elseif comstr(Cam,'rail');[CAM,Cam]=comstr(CAM,10);
+   %% #CNTCPlotRail, plot rail profil or 3D rail model -3
+
+   LI=cntc.call;
+   if isfield(LI.prr,'nslc')
+    figure; go=surf(LI.prr.xsurf,LI.prr.ysurf,LI.prr.zsurf);
+    set(go,'edgecolor','none');
+    set(gca,'DataAspectRatio',[1 1 1]);
+
+    X=(500+LI.prr.zsurf).*cos(LI.prr.xsurf);
+    Y=(500+LI.prr.zsurf).*sin(LI.prr.xsurf);
+    figure();go=surf(X,Y,LI.prr.ysurf);
+    color=LI.prr.zsurf-(mean(LI.prr.zsurf,1).*ones(size(LI.prr.zsurf,1),1));
+    set(go,'edgecolor','none');
+    set(gca,'DataAspectRatio',[1 1 1]);
+    set(go,'CData',color);
+
+   else
+    gf=2;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.');
+    [~,i]=min(LI.prr.ProfileZ);
+    xline(LI.prr.ProfileY(i));
+   end
+
+
+  elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
+   %% #CNTCPlotCmacro, plot time variation of Cmacor variable -3
+   [~,RO]=sdtm.urnPar(CAM,'{sel%s}{}');
+   LI=cntc.call;
+   LI.Cmacro.DimPos=[3,1,2];
+   %ci=iiplot(2);
+   %iicom(ci,'curveinit','Efforts',LI.Cmacro);
+   cdm.urnVec(LI.Cmacro,sprintf('{x,iTime}{y,"#%s"}{gf100}',RO.sel))
+if 1==2
+   %iicom(ci,'curveinit','Cmacro',LI.Cmacro);
+   % Plot the forces in different basis
+   C1=fe_def('subchcurve',LI.Cmacro,{'comp', [1:24]});
+   iicom(ci,'curveinit','Efforts',C1);
+   iicom(ci,'ch',{'comp',{'fx_tr','fx_ws','fx_r','fx_w'}})
+
+   % Plot the forces in different basis
+   C2=fe_def('subchcurve',LI.Cmacro,{'comp', [25:39]});
+   ci=iiplot(3);
+   iicom(ci,'curveinit','Efforts2',C2);
+   iicom(ci,'ch',{'comp',{'xcp_tr','xcp_r','xcp_w'}})
+
+   % Plot the forces in different basis
+   C3=fe_def('subchcurve',LI.Cmacro,{'comp',[40:77]});
+   ci=iiplot(4);
+   iicom(ci,'curveinit','Efforts3',C3);
+end
+
+
+  end
+  end
+
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  function checkXXlab
+    LI=cntc.call;  
+    C1=LI.Cmacro;
+    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^f[xyz]'),2)={'N'};
+    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^m[xyz]'),2)={'N/mm'};
+    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^[xyz]'),2)={'mm'};
+    C1.X{1}(:,3)={[]};
+    LI.Cmacro=C1; 
+
+  end
 
   function [ opts2 ] = plot2d(sol, opt2)
 
@@ -7632,8 +7774,9 @@ cntc : interface between SDT and CONTACT
    end
   end
 
+  %% #Interact SDT interactivity -2
   function PlotEvt(obj,evt)
-   %% #PlotEvt cntc.PlotEvt(gcf,evt);
+   %% #PlotEvt cntc.PlotEvt(gcf,evt); -3
    gf=ancestor(obj,'figure');
    sdt=getappdata(gf,'sdt');
    sdt.cntc=evt;
@@ -7641,7 +7784,7 @@ cntc : interface between SDT and CONTACT
   end
 
   function scroll(obj,evt)
-   %% #scroll / key channel changes -2
+   %% #scroll / key channel changes -3
 
    gf=ancestor(obj,'figure'); sdt=getappdata(gf,'sdt');
    LI=cntc.call;
@@ -7676,7 +7819,7 @@ cntc : interface between SDT and CONTACT
      evt=ev1;
      delete(findobj(gf,evt.prop{1:2})); % do not overlay multiple
      evt.doSol(sol);  title(eval(evt.LabFcn))
-    else
+    elseif isfield(ev1,'do')
      feval(ev1.do,sol,ev1.opt)
     end
    end
@@ -7798,7 +7941,7 @@ cntc : interface between SDT and CONTACT
 
    if (nargin<1); opts3 = myopt;return
    elseif isempty(sol);
-    %% #plot3d.ch automated multiple plots
+    %% #plot3d.ch automated multiple plots -3
     LI=cntc.call;sol=LI.sol;
     if ischar(opt3)
      % cntc.plot3d([],'{typpplot=surf,field=px,rw_surfc=prw,ch4,gf10}')
@@ -8724,7 +8867,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #plot
+  %% #plot_low_level_methods 
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -8743,7 +8886,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_arrow
+   % #plot_arrow -3
 
    if (nargin<3 | isempty(col))
     col = 'b';
@@ -8861,7 +9004,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_axes
+   % #plot_axes -3
 
    if (nargin<1 | isempty(O))
     O = [0; 0];
@@ -9065,7 +9208,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_axes3
+   % #plot_axes3 -3
 
    if (nargin<1 | isempty(O))
     O = [0; 0];
@@ -9228,7 +9371,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_cm
+   % #plot_cm colormap -3
 
    if (nargin<1 | isempty(O))
     O = [0; 0];
@@ -9319,7 +9462,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_update
+   % #plot_update show difference of two profiles at magnification -3
 
    if (nargin<3 | isempty(fac))
     fac       = -1;
@@ -9833,7 +9976,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   % #circ_arrow -2
+   % #circ_arrow -3
 
    if (nargin<5 | isempty(col))
     col = 1;
@@ -9924,7 +10067,7 @@ cntc : interface between SDT and CONTACT
    %   field   - the actual array to be plotted, or a field name within sol
    %   opt     - structure with options as defined by plotstrs.
    %
-   % #show_2d_slice -2
+   % #show_2d_slice -3
 
    % get field to be plotted
 
@@ -10099,7 +10242,7 @@ cntc : interface between SDT and CONTACT
    % [ ] = log_colorbar(hc, opt)
    %
    % change colorbar to logarithmic scale when necessary
-   % #log_colorbar -2
+   % #log_colorbar -3
 
    if (strcmp(opt.scale,'log'))
     if (isempty(opt.cntrlvl) || strcmp(opt.cntrlvl,'auto'))
@@ -10117,7 +10260,6 @@ cntc : interface between SDT and CONTACT
 
   function [ dif ] = diffcase(sol1, sol2)
 
-   %
    % [ dif ] = diffcase(sol1, sol2)
    %
    % Compute the difference of the results for two calculations sol1 and sol2.
@@ -13585,10 +13727,11 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % # getcontactforces
 
-   l1={1,'fn','N','total normal force'
+   l1=struct('ColumnName',{{'cntcpos','name','unit','ToolTip'}}, ...
+        'table',{{1,'fn','N','total normal force'
     2,'tx','N','total tangential forces'
     3,'ty','N','total tangential forces'
-    4,'mz','N.mm','total torsional moment'};
+    4,'mz','N.mm','total torsional moment'}});
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13615,8 +13758,8 @@ cntc : interface between SDT and CONTACT
 
    if nargin ==3
     values=[fn,tx,ty,mz];
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
+    i2=LI.Cmacro.rowM(l1.table(:,2));
+    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1.table{:,1}));
    end
   end % cntc.getcontactforces
 
@@ -15330,7 +15473,7 @@ cntc : interface between SDT and CONTACT
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage
       Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
-       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}});
+       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}},'DimPos',[3 1 2]);
       LI.Cfield=Cfield;
 
       % get detailed results per contact patch, if there is more than one
@@ -15338,6 +15481,7 @@ cntc : interface between SDT and CONTACT
       LI.Cmacro.rowM=sdtu.ivec('ColList', {}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
       LI.Cmacro.X={[],[],LI.Traj.X{1}};
+      LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
 
      case 'getbasis'
       ire=1;
