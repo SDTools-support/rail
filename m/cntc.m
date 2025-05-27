@@ -53,12 +53,9 @@ cntc : interface between SDT and CONTACT
   function []=initializeflags()
    % #initializeflags-2
    if nargin==0
-    LI=cntc.call;
-    if ~isfield(LI,'CNTC');cntc.init;end
-    CNTC=LI.CNTC;
-    li=LI.global;
-    cntc.setglobalflags(CNTC.if_idebug, li.ire);
-    [ifcver, ierror] = cntc.initialize(li.ire,li.imodul);
+    RT=evalin('caller','RT'); % LI.CNTC=CNTC;
+    cntc.setglobalflags(RT.CNTC.if_idebug, RT.flags.ire);
+    [ifcver, ierror] = cntc.initialize(RT.flags.ire,RT.flags.imodul);
    else
     disp('ERROR cntc.initializeflags : no parameter is needed');
    end
@@ -73,7 +70,7 @@ cntc : interface between SDT and CONTACT
     if ~isempty(LI.libname)||libisloaded(LI.libname)
      cntc.closelibrary;
     end
-    evalin('base','clear("LI")')
+    evalin('base','LI=[]')
    else
     disp('Error : LI is already empty')
    end
@@ -15327,7 +15324,7 @@ cntc : interface between SDT and CONTACT
      case 'initout'
       %% #set.initOut Initialize the output -2
       % Fields stored
-      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+      if isempty(evt);st1=evalin('caller','st1');icase=st1{1}.j1;iwhe=st1{1}.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
@@ -15348,7 +15345,9 @@ cntc : interface between SDT and CONTACT
 
      case 'getout'
       %% #set.GetOut Get results -2
-      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+      if isempty(evt);
+       st1=evalin('caller','RT.LoopParam');
+       icase=st1{1}.j1;iwhe=st1{1}.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       % Initialize the loop
@@ -15463,7 +15462,9 @@ cntc : interface between SDT and CONTACT
       end
      case 'getsol'
       %% Get sol to understand plot3d (need to disappear for store in SDT directly)
-      if isempty(evt);iwhe=evalin('caller','iwhe');icase=evalin('caller','j1');
+      if isempty(evt);
+       st1=evalin('caller','RT.LoopParam');
+       icase=st1{1}.j1;iwhe=st1{1}.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
       sol=cntc.getcpresults(iwhe, 1);
@@ -15500,38 +15501,39 @@ cntc : interface between SDT and CONTACT
       [~,RO]=sdtm.urnPar(['{s_ws,y_ws,z_ws,roll_ws,yaw_ws,pitch_ws,vs,vy,vz,vroll,' ...
        'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
        ' vrollw, vyaww, vpitchw}'],'{}{}');
-
-      if (~isfield(evt,'j1')&&~isfield(evt,'iwhe'));iwhe=1;icase=1;
-      else;iwhe=evt.iwhe;icase=evt.j1;  end
-
-      Ewheel=LI.wheelsetDim.Ewheel;
+      
+      RT=evalin('caller','RT');
+      icase=RT.LoopParam{1}.j1;iwhe=RT.LoopParam{1}.iwhe;
 
       % xxxgae unl vnl
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
+      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(1:6));
       pos=zeros(1,6);
-      pos(i2(i1))=LI.Traj.Y(icase,i1);
-      cntc.setwheelsetposition(iwhe,Ewheel,pos); % set wheel set pos
+      pos(i2(i1))=RT.Traj.Y(icase,i1);
+      cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
 
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
-      vel=zeros(1,6);vel(i2(i1))=LI.Traj.Y(icase,i1);
-      cntc.setwheelsetvelocity(iwhe,Ewheel,vel);
+      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(7:12));
+      vel=zeros(1,6);vel(i2(i1))=RT.Traj.Y(icase,i1);
+      cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
       LI.cur=evt;
 
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
-      flex=zeros(1,6);flex(i2(i1))=LI.Traj.Y(icase,i1);
-      cntc.setwheelsetflexibility(iwhe,Ewheel,flex);
+      [i1,i2]=ismember(RT.Traj.X{2},RO.Other(12:end));
+      flex=zeros(1,6);flex(i2(i1))=RT.Traj.Y(icase,i1);
+      cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
 
     end
    end
   end
 
-    function []= TempLoop(list,LI)
+    function []= TempLoop(RT)
    %% #TempLoop -2
-   iwhe=evalin('caller','iwhe');
-   for j1 = 1:size(LI.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
-    st1=list;
-    if comstr(lower(list{1}),'traj');
-     st1{1}=struct('type','Traj','j1',j1,'iwhe',iwhe);
+   cntc.initializeflags;
+   cntc.setflags;
+   cntc.set(RT.Model);
+   
+   st1=RT.LoopParam;
+   for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase 
+    if comstr(lower(st1{1}),'traj');
+     RT.LoopParam{1}=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
     else
      error('Trajectory must be define first')
     end
@@ -15675,13 +15677,13 @@ cntc : interface between SDT and CONTACT
    % #setflags(pdfsection.2.3)  configure flags for a contact problem
 
    if nargin==0
-    LI=cntc.call; CNTC=LI.CNTC;
-    flagM=vhandle.nmap([fieldnames(CNTC) struct2cell(CNTC)]);
-    li=cell(LI.flags);
+    RT=evalin('caller','RT');
+    flagM=vhandle.nmap([fieldnames(RT.CNTC) struct2cell(RT.CNTC)]);
+    li=cell(RT.flags);li(ismember(li(:,1),{'iwhe','imodul','ire'}),:)=[];
     flags=flagM(li(:,1));flags=vertcat(flags{:});% skip iwhe given first always
     % xxx check if scalar value for each row
     values = vertcat(li{:,2});
-    cntc.setflags(LI.global.ire, [], flags, values); %config
+    cntc.setflags(RT.flags.ire, [], flags, values); %config
     return
    end
 
@@ -16392,8 +16394,10 @@ cntc : interface between SDT and CONTACT
     ProfileFname=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     if ProfileFname.iswheel == 1
      LI.WheelProfile=ProfileFname;
+     LI.prw = cntc.read_profile(LI.WheelProfile.fname, 1, 0);
     else
      LI.RailProfile=ProfileFname;
+     LI.prr = cntc.read_profile(LI.RailProfile.fname, 0, 0);
     end
     fname=sdth.sfield('addselected',struct,ProfileFname,{'fname'});
     iparams=sdth.sfield('addselected',struct,ProfileFname,{'iswheel','notuse','mirrory','mirrorz','errhndl','ismooth'});

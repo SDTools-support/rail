@@ -104,8 +104,8 @@ cinM.add={
 
 %% Global flags 
 %CNTC.un_cntc=1934;
-%Benchmark Manchester Flags
-nmap('BenchManchester_flags')=vhandle.uo([],{ ...
+% Global Flags
+nmap('Global_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
   'ic_config',0,'Configuration of the problem; 0 for left side, 1 for right side'
   'ic_tang',3,'Tangential problem to be solved, T=3: steady state rolling --> G=0 GauSei'
@@ -117,21 +117,10 @@ nmap('BenchManchester_flags')=vhandle.uo([],{ ...
   'ic_output',3,'subsurface stress output; O=1: min. output to .out-file'
   'ic_flow',2,['governs the extent of the flow trace to the screen and the ' ...
   'output-file; little progress output']
-  });
-% WheelFlat Flags
-nmap('WheelFlat_flags')=vhandle.uo([],{ ...
-   'if_units',1934,['Unit system : Contact, SI, Simpack']
-   'ic_config',0,['Configuration of the problem; 0 for left side, 1 for right side']
-   'ic_tang',3,['Tangential problem to be solved, T=3: steady state rolling --> G=0 GauSei']
-   'ic_pvtime',2,['Relation of the current to the previous case or' ...
-   ' previous time instance; P=2: no previous time']
-   'ic_discns',2,['Type of contact area, D=2 planar contact surface']
-   'if_wrtinp',1,' 0: no .inp-file needed'
-   'ic_matfil',0,'subsurface stress input; A=0: no .mat-file needed'
-   'ic_output',3,'subsurface stress output; O=1: min. output to .out-file'
-   'ic_flow',2,['governs the extent of the flow trace to the screen and the ' ...
-   'output-file; little progress output']
-   });
+  'idebug',1,'1: just a bit of information from the library'
+  'imodul', 1,'w/r contact'
+  'ire', 1, 'experiment called iwhe in the example'
+   'iwhe',1, 'Left/right wheel'});
 
 %% Trajectory 
 %Classic
