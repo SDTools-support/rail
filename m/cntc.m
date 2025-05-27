@@ -13585,10 +13585,10 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % # getcontactforces
 
-   l1={1,'fn','total normal force'
-    2,'tx','total tangential forces'
-    3,'ty','total tangential forces'
-    4,'mz','total torsional moment'};
+   l1={1,'fn','N','total normal force'
+    2,'tx','N','total tangential forces'
+    3,'ty','N','total tangential forces'
+    4,'mz','N.mm','total torsional moment'};
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -13639,38 +13639,38 @@ cntc : interface between SDT and CONTACT
    % #getcontactlocation
 
    l1={
-    1,'XCP_TR','x-position of the contact reference point in track coordinates'
-    2,'YCP_TR','y-position of the contact reference point in track coordinates'
-    3,'ZCP_TR','z-position of the contact reference point in track coordinates'
-    4,'DELTCP_TR','contact reference angle: rotation about track x-axis from the track positive z-axis to the contact positive n-axis, with sign according the right-hand rule'
+    1,'XCP_TR','mm','x-position of the contact reference point in track coordinates'
+    2,'YCP_TR','mm','y-position of the contact reference point in track coordinates'
+    3,'ZCP_TR','mm','z-position of the contact reference point in track coordinates'
+    4,'DELTCP_TR','rad','contact reference angle: rotation about track x-axis from the track positive z-axis to the contact positive n-axis, with sign according the right-hand rule'
     %
-    5,'XCP_R','x-position of the contact reference point in rail profile coordinates'
-    6,'YCP_R','y-position of the contact reference point in rail profile coordinates'
-    7,'ZCP_R','z-position of the contact reference point in rail profile coordinates'
-    8,'SCP_R','s-parameter of the contact reference point, measured along the rail profile'
-    9,'DELTCP_R','rotation about rail x-axis from rail positive z-axis to contact positive n-axis'
+    5,'XCP_R','mm','x-position of the contact reference point in rail profile coordinates'
+    6,'YCP_R','mm','y-position of the contact reference point in rail profile coordinates'
+    7,'ZCP_R','mm','z-position of the contact reference point in rail profile coordinates'
+    8,'SCP_R','mm','s-parameter of the contact reference point, measured along the rail profile'
+    9,'DELTCP_R','rad','rotation about rail x-axis from rail positive z-axis to contact positive n-axis'
 
-    10,'XCP_W','x-position of the contact reference point in wheel profile coordinates'
-    11,'YCP_W','y-position of the contact reference point in wheel profile coordinates'
-    12,'ZCP_W','z-position of the contact reference point in wheel profile coordinates'
-    13,'SCP_W','s-parameter of the contact reference point, measured along the wheel profile'
-    14,'DELTCP_W','rotation about wheel x-axis from wheel positive z-axis to contact positive n-axis'
+    10,'XCP_W','mm','x-position of the contact reference point in wheel profile coordinates'
+    11,'YCP_W','mm','y-position of the contact reference point in wheel profile coordinates'
+    12,'ZCP_W','mm','z-position of the contact reference point in wheel profile coordinates'
+    13,'SCP_W','mm','s-parameter of the contact reference point, measured along the wheel profile'
+    14,'DELTCP_W','rad','rotation about wheel x-axis from wheel positive z-axis to contact positive n-axis'
 
-    15,'XPN_TR','x-position of the pressure center of gravity in track coordinates'
-    16,'YPN_TR','y-position of the pressure center of gravity in track coordinates'
+    15,'XPN_TR','mm','x-position of the pressure center of gravity in track coordinates'
+    16,'YPN_TR','mm','y-position of the pressure center of gravity in track coordinates'
 
-    21,'XW_TR','x-position of wheel profile marker in track coordinates'
-    22,'YW_TR','y-position of wheel profile marker in track coordinates'
-    23,'ZR_TR','z-position of wheel profile marker in track coordinates'
-    24,'ROLLW_TR','roll angle of wheel profile marker in track coordinates'
-    25,'YAWW_TR','yaw angle of wheel profile marker in track coordinates'
+    21,'XW_TR','mm','x-position of wheel profile marker in track coordinates'
+    22,'YW_TR','mm','y-position of wheel profile marker in track coordinates'
+    23,'ZR_TR','mm','z-position of wheel profile marker in track coordinates'
+    24,'ROLLW_TR','rad','roll angle of wheel profile marker in track coordinates'
+    25,'YAWW_TR','mm','yaw angle of wheel profile marker in track coordinates'
 
-    26,'YR_TR','y-position of rail profile marker in track coordinates'
-    27,'ZR_TR','z-position of rail profile marker in track coordinates'
-    28,'ROLLR_TR','roll angle of rail profile marker in track coordinates' % #roll_tr -2
+    26,'YR_TR','mm','y-position of rail profile marker in track coordinates'
+    27,'ZR_TR','mm','z-position of rail profile marker in track coordinates'
+    28,'ROLLR_TR','rad','roll angle of rail profile marker in track coordinates' % #roll_tr -2
 
-    31,'DY_DEFL','lateral rail shift according to massless rail deflection'
-    32,'DZ_DEFL','vertical rail shift according to massless rail deflection'
+    31,'DY_DEFL','mm','lateral rail shift according to massless rail deflection'
+    32,'DZ_DEFL','mm','vertical rail shift according to massless rail deflection'
     };l1(:,2)=lower(l1(:,2));
    if nargin==0
     if nargout==0;disp(l1);else; rvalues=l1; end
@@ -13921,9 +13921,9 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getcreepages
 
-   l1={1,'vx','Creepage in x-direction'
-    2,'vy','Creepage in y-direction'
-    3,'phi','Spin creepage'};
+   l1={1,'vx','-','Creepage in x-direction'
+    2,'vy','-','Creepage in y-direction'
+    3,'phi','rad/mm','Spin creepage'};
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -14184,33 +14184,33 @@ cntc : interface between SDT and CONTACT
    % #getglobalforces
 
    l1={
-    1,'FX_TR','total force on the output body, component in track longitudinal x-direction'
-    2,'FY_TR','total force on the output body, component in track lateral y-direction'
-    3,'FZ_TR','total force on the output body, component in track vertical z-direction'
-    4,'MX_R_TR','total moment on output body about rail profile marker, component in track x-direction'
-    5,'MY_R_TR','total moment on output body about rail profile marker, component in track y-direction'
-    6,'MZ_R_TR','total moment on output body about rail profile marker, component in track z-direction'
+    1,'FX_TR','N','total force on the output body, component in track longitudinal x-direction'
+    2,'FY_TR','N','total force on the output body, component in track lateral y-direction'
+    3,'FZ_TR','N','total force on the output body, component in track vertical z-direction'
+    4,'MX_R_TR','N.mm','total moment on output body about rail profile marker, component in track x-direction'
+    5,'MY_R_TR','N.mm','total moment on output body about rail profile marker, component in track y-direction'
+    6,'MZ_R_TR','N.mm','total moment on output body about rail profile marker, component in track z-direction'
 
-    7,'FX_WS','total force on the output body, component in wheelset longitudinal x-direction'
-    8,'FY_WS','total force on the output body, component in wheelset lateral y-direction'
-    9,'FZ_WS','total force on the output body, component in wheelset vertical z-direction'
-    10,'MX_W_WS','total moment on output body about wheel profile marker, component in wheelset x-direction'
-    11,'MY_W_WS','total moment on output body about wheel profile marker, component in wheelset y-direction'
-    12,'MZ_W_WS','total moment on output body about wheel profile marker, component in wheelset z-direction'
+    7,'FX_WS','N','total force on the output body, component in wheelset longitudinal x-direction'
+    8,'FY_WS','N','total force on the output body, component in wheelset lateral y-direction'
+    9,'FZ_WS','N','total force on the output body, component in wheelset vertical z-direction'
+    10,'MX_W_WS','N.mm','total moment on output body about wheel profile marker, component in wheelset x-direction'
+    11,'MY_W_WS','N.mm','total moment on output body about wheel profile marker, component in wheelset y-direction'
+    12,'MZ_W_WS','N.mm','total moment on output body about wheel profile marker, component in wheelset z-direction'
     %       Note that the 'output body' is the rail when using CONTACTs unit convention'
-    13,'FX_R','total force on the output body, component in rail profile x-direction'
-    14,'FY_R','total force on the output body, component in rail profile y-direction'
-    15,'FZ_R','total force on the output body, component in rail profile z-direction'
-    16,'MX_R_R','total moment on output body about rail profile marker, component in rail x-direction'
-    17,'MY_R_R','total moment on output body about rail profile marker, component in rail y-direction'
-    18,'MZ_R_R','total moment on output body about rail profile marker, component in rail z-direction'
+    13,'FX_R','N','total force on the output body, component in rail profile x-direction'
+    14,'FY_R','N','total force on the output body, component in rail profile y-direction'
+    15,'FZ_R','N','total force on the output body, component in rail profile z-direction'
+    16,'MX_R_R','N.mm','total moment on output body about rail profile marker, component in rail x-direction'
+    17,'MY_R_R','N.mm','total moment on output body about rail profile marker, component in rail y-direction'
+    18,'MZ_R_R','N.mm','total moment on output body about rail profile marker, component in rail z-direction'
 
-    19,'FX_W','total force on the output body, component in wheel profile x-direction'
-    20,'FY_W','total force on the output body, component in wheel profile y-direction'
-    21,'FZ_W','total force on the output body, component in wheel profile z-direction'
-    22,'MX_W_W','total moment on output body about wheel profile marker, component in wheel x-direction'
-    23,'MY_W_W','total moment on output body about wheel profile marker, component in wheel y-direction'
-    24,'MZ_W_W','total moment on output body about wheel profile marker, component in wheel z-direction'
+    19,'FX_W','N','total force on the output body, component in wheel profile x-direction'
+    20,'FY_W','N','total force on the output body, component in wheel profile y-direction'
+    21,'FZ_W','N','total force on the output body, component in wheel profile z-direction'
+    22,'MX_W_W','N.mm','total moment on output body about wheel profile marker, component in wheel x-direction'
+    23,'MY_W_W','N.mm','total moment on output body about wheel profile marker, component in wheel y-direction'
+    24,'MZ_W_W','N.mm','total moment on output body about wheel profile marker, component in wheel z-direction'
     }; l1(:,2)=lower(l1(:,2));
 
    LI=cntc.call;
@@ -14728,8 +14728,8 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getnumelements
 
-   l1={1,'mx','number of discretization elements in long/lat dirs'
-    2,'my','number of discretization elements in long/lat dirs'};
+   l1={1,'mx','-','number of discretization elements in long/lat dirs'
+    2,'my','-','number of discretization elements in long/lat dirs'};
    if (nargin<1 | isempty(ire))
     ire = 1;
    end
@@ -14778,12 +14778,12 @@ cntc : interface between SDT and CONTACT
    % #getparameters
 
    l1={
-    1,'veloc'
-    2,'chi'
-    3,'dq'
-    4,'spinxo'
-    5,'spinyo'
-    6,'tau_c0'
+    1,'veloc','mm/s','Rolling velocity'
+    2,'chi','rad','Rolling direction either 0 or pi'
+    3,'dq','mm', 'Rolling distance by timestep'
+    4,'spinxo','mm','Optional spin center'
+    5,'spinyo','mm','Optional spin center'
+    6,'tau_c0','N/mm^2','Initial yield limit at which plasticity starts to occur'
     };
 
    if (nargin<1 | isempty(ire))
@@ -14835,7 +14835,7 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getpenetration
 
-   l1={1,'pen','penetration for the contact problem'};
+   l1={1,'pen','mm','penetration for the contact problem'};
    if (nargin<1 | isempty(ire))
     ire = 1;
    end
@@ -14881,12 +14881,12 @@ cntc : interface between SDT and CONTACT
    % #getpotcontact
 
    l1={
-    1, 'mx', 'number of elements in x-directions [-]'
-    2, 'my', 'number of elements in y-directions [-]'
-    3, 'xc1', 'position of first element center [length]'
-    4, 'yc1', ' position of first element center [length]'
-    5, 'dx', 'grid discretization step sizes [length]'
-    6, 'dy', 'grid discretization step sizes [length]'
+    1, 'mx','-', 'number of elements in x-directions [-]'
+    2, 'my','-', 'number of elements in y-directions [-]'
+    3, 'xc1','mm', 'position of first element center [length]'
+    4, 'yc1','mm', ' position of first element center [length]'
+    5, 'dx','mm', 'grid discretization step sizes [length]'
+    6, 'dy','mm', 'grid discretization step sizes [length]'
     };
 
 
@@ -15058,7 +15058,7 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % #getreferencevelocity
 
-   l1={1,'Vel','Absolute rolling velocity'};
+   l1={1,'Vel','mm/s','Absolute rolling velocity'};
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -15225,12 +15225,12 @@ cntc : interface between SDT and CONTACT
    % #getwheelsetposition
 
    l1={
-    1, 'S_WS', 's-position of the wheelset center of mass along the track center line'
-    2, 'Y_WS', 'lateral y-position of the wheelset center of mass in track coordinates'
-    3, 'Z_WS', ' vertical z-position of the wheelset center of mass in track coordinates'
-    4, 'ROLL_WS', 'wheelset roll angle with respect to the track plane'
-    5, 'YAW_WS', 'wheelset yaw angle with respect to the track center line x_tr'
-    6, 'PITCH_WS', 'wheelset pitch angle, i.e. rotation about the wheelset axle'
+    1, 'S_WS','mm', 's-position of the wheelset center of mass along the track center line'
+    2, 'Y_WS','mm', 'lateral y-position of the wheelset center of mass in track coordinates'
+    3, 'Z_WS','mm', ' vertical z-position of the wheelset center of mass in track coordinates'
+    4, 'ROLL_WS','rad', 'wheelset roll angle with respect to the track plane'
+    5, 'YAW_WS','rad', 'wheelset yaw angle with respect to the track center line x_tr'
+    6, 'PITCH_WS','rad', 'wheelset pitch angle, i.e. rotation about the wheelset axle'
     };l1(:,2)=lower(l1(:,2));
 
    if (nargin<1 | isempty(ire))
