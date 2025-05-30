@@ -6,10 +6,12 @@ classdef cntc
  % <a href="matlab:sdtweb cntc">sdtweb cntc</a> for HTML documentation
  % <a href="matlab:sdtweb _taglist cntc">sdtweb _taglist cntc</a> for taglist
  %
+ % For Linux you may have to set 
+ %    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/o3/APP/contact_v24.1/bin
  %
  % For revision information type <a href="matlab:cntc.cvs">cntc.cvs</a>
 
- %  SDT wrapper E. Balmes, G. Guillet
+ % SDT wrapper E. Balmes, G. Guillet
  %  Copyright (c) 1990-2025 by SDTools, All Rights Reserved.
  % CONTACT wrapper functions
  %  Copyright 2008-2023 by Vtech CMCC.
@@ -17,8 +19,6 @@ classdef cntc
 
  %#ok<*NOSEM,*PROP,*ASGLU,*STREMP,*OR2,*AND2,*INUSD,*NBRAK1,*NBRAK2,*AGROW,*NASGU>
  properties (GetAccess = public , SetAccess = public)
-  % type
-  libname
  end
 
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,6 +42,13 @@ cntc : interface between SDT and CONTACT
 
  % #Static / generic methods  -------------------------------------------- -2
  methods (Static)
+
+
+ function out=libname
+   persistent lib
+   if isempty(lib);LI=cntc.call;lib=LI.libname;end
+   out=lib;
+ end
 
   %------------------------------------------------------------------------------------------------------------
   function []=testlibrary()
@@ -205,9 +212,7 @@ cntc : interface between SDT and CONTACT
     lib_ext='.dll';
    end
 
-   % unload the library if it was loaded before
-   %xxxgae cant unload the library when it crash and the library is still
-   %on
+   % unload the library if it was loaded before (why ?)
    if libisloaded(libname)
     LI=cntc.call;LI.libname=libname;
     cntc.closelibrary;
@@ -238,18 +243,13 @@ cntc : interface between SDT and CONTACT
    end
 
    % initialize the internal data of the library, open its output streams
-   if (nargin<1 | isempty(c_wrkdir))
-    c_wrkdir = ' ';
+   wd=sdtroot('param.Project.ProjectWd-safe');
+
+   if (nargin<1 | isempty(c_wrkdir));c_wrkdir = wd;   end
+   if (nargin<2 | isempty(c_outdir)); c_outdir = wd;
    end
-   if (nargin<2 | isempty(c_outdir))
-    c_outdir = ' ';
-   end
-   if (nargin<3 | isempty(c_expnam))
-    c_expnam = ' ';
-   end
-   if (nargin<4 | isempty(idebug))
-    idebug = 1;
-   end
+   if (nargin<3 | isempty(c_expnam)); c_expnam = ' ';   end
+   if (nargin<4 | isempty(idebug)); idebug = 1; end
    len_wrkdir = length(c_wrkdir);
    len_outdir = length(c_outdir);
    len_expnam = length(c_expnam);
@@ -259,8 +259,11 @@ cntc : interface between SDT and CONTACT
    p_ver  = libpointer('int32Ptr',-1);
 
    p_ierr.value = 0;
-   cntc.call(libname,'cntc.initializefirst_new', p_ver, p_ierr, ioutput, c_wrkdir, c_outdir, c_expnam, ...
-    len_wrkdir, len_outdir, len_expnam);
+   varg={p_ver, p_ierr, ioutput, c_wrkdir, c_outdir, c_expnam, ...
+    len_wrkdir, len_outdir, len_expnam};
+   calllib(libname,'cntc_initializefirst_new',varg{:});
+
+   %cntc.call(libname,'cntc.initializefirst_new',varg{:});
    % disp(sprintf('test_caddon: obtained ver=%d, ierr=%d', p_ver.value, p_ierr.value));
 
    ifcver = double(p_ver.value);
@@ -453,10 +456,9 @@ cntc : interface between SDT and CONTACT
 
    LI=cntc.call;
    cntc.call('cntc.finalizelast');
-   %dbstack;keyboard;
-   unloadlibrary(LI.libname);
-   LI.libname='';
-
+   if ~sdtkey('isdev')
+      unloadlibrary(LI.libname);
+   end
    %evalin('base','clear("LI")');
   end % cntc.closelibrary
 
@@ -489,7 +491,7 @@ cntc : interface between SDT and CONTACT
   function out=call(varargin)
    %% #call catch library calls to set variables  ------------------------- -2
 
-   persistent LI
+   persistent LI callLog
 
    if isempty(LI)
     if evalin('base','exist(''LI'',''var'')')
@@ -498,36 +500,38 @@ cntc : interface between SDT and CONTACT
     else
      % Initialize if does not exist
      LI=vhandle.uo([]); assignin('base','LI',LI);
-     LI.callLog=vhandle.nmap([],[],'calls and parameters');
+     %callLog=LI.callLog;
     end
    end
-   if nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
+   if nargin==0
+     out=LI;return;
+   elseif nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
     LI=varargin{1};return
    end
-   r1=struct;
-   for j1=1:nargin
-    %% store inputs by name
-    st1=inputname(j1);
-    if ~isempty(st1);r1.(st1)=varargin{j1};end
-   end
-   if nargin==0; out=LI;return;end
    CAM=varargin{1};
-   if ~isprop(LI,'callLog');addprop(LI,'callLog');LI.callLog=vhandle.nmap;end
-   if isa(LI.callLog,'vhandle.nmap')
+   if strcmpi(CAM,'callLog')
+    LI.callLog=vhandle.nmap([],[],'calls and parameters');
+    if ~isprop(LI,'callLog');addprop(LI,'callLog');LI.callLog=vhandle.nmap;end
+    callLog=LI.callLog;
+   elseif ~isempty(callLog)
+    %% possibly use callLog
+    r1=struct;
+    for j1=1:nargin
+     %% store inputs by name
+     st1=inputname(j1);
+     if ~isempty(st1);r1.(st1)=varargin{j1};end
+    end
     r1.now=now;r1.dbstack=dbstack; %#ok<TNOW1>
-    LI.callLog(CAM)=r1; % Store calls to allow logging
-    diary off;f1='C:\Users\0021221S.COMMUN\MATLAB\xxx.log';
-    if exist(f1,'file');diary(f1);end
+    callLog(CAM)=r1; % Store calls to allow logging
+    %diary off;f1='C:\Users\0021221S.COMMUN\MATLAB\xxx.log';
+    %if exist(f1,'file');diary(f1);end
     % debug message
     % disp(CAM);sdtm.toString(r1)
     % disp(f1);
    end
 
-   if strncmpi(CAM,'contact_addon',13)
-    LI.libname=CAM;varargin(1)=[];CAM=varargin{1};
-   end
    CAM=strrep(CAM,'cntc.','cntc_');
-   if ~isprop(LI,'libname')||isempty(LI.libname);
+   if isempty(LI.libname);
     if strcmpi(CAM,'cntc_finalizelast');return
     else
      error('Library not initialized');
@@ -535,6 +539,7 @@ cntc : interface between SDT and CONTACT
    end
    if strcmp(CAM,'finalizelast') % already loaded
     try
+    dbstack; keyboard;
      calllib(LI.libname,'cntc_finalizelast');
     end
    else
@@ -7373,7 +7378,6 @@ cntc : interface between SDT and CONTACT
    %% #CNTCPlotCmacro, plot time variation of Cmacor variable -3
    [~,RO]=sdtm.urnPar(CAM,'{sel%s}{}');
    LI=cntc.call;
-   LI.Cmacro.DimPos=[3,1,2];
    %ci=iiplot(2);
    %iicom(ci,'curveinit','Efforts',LI.Cmacro);
    cdm.urnVec(LI.Cmacro,sprintf('{x,iTime}{y,"#%s"}{gf100}',RO.sel))
@@ -13519,20 +13523,22 @@ end
    if (nargin<3 | isempty(idebug))
     idebug = 1;
    end
-
-   p_ierr = libpointer('int32Ptr',-1);
-
-   cntc.call('cntc.calculate', ire, icp, p_ierr);
+   persistent p_ierr; 
+   if isempty(p_ierr);
+    p_ierr = libpointer('int32Ptr',-1);
+   end
+   %cntc.call('cntc.calculate', ire, icp, p_ierr);
+   calllib(cntc.libname,'cntc_calculate',ire, icp, p_ierr);
 
    ierror = double(p_ierr.value);
    if (idebug>=1 & ierror==cntc_err_allow)
-    disp(sprintf('cntc.calculate: no valid license found for CONTACT library (%d).',ierror));
+    fprintf('cntc.calculate: no valid license found for CONTACT library (%d).\n',ierror);
    elseif (idebug>=1 & ierror==cntc_err_profil)
-    disp(sprintf('cntc.calculate: an error is found in the rail or wheel profile specification (%d).',ierror));
+    fprintf('cntc.calculate: an error is found in the rail or wheel profile specification (%d).\n',ierror);
    elseif (idebug>=1 & ierror<0)
-    disp(sprintf('cntc.calculate: an error occurred in the CONTACT library (%d).',ierror));
+    fprintf('cntc.calculate: an error occurred in the CONTACT library (%d).\n',ierror);
    elseif (idebug>=2 & ierror>0)
-    disp(sprintf('cntc.calculate: potential contact may be too small: there are %d points adjacent to the boundaries.',ierror));
+    fprintf('cntc.calculate: potential contact may be too small: there are %d points adjacent to the boundaries.\n',ierror);
    end
 
   end % cntc.calculate
@@ -13836,9 +13842,7 @@ end
 
    rvalues = p_values.value;
    if nargin==3
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=rvalues(vertcat(l1{:,1}));
-    %rvalues=sdtm.toStruct([l1(:,2) num2cell()]);
+        setCMacro(LI,rvalues,ire,LI.cur.j1); 
    end
 
   end % cntc.getcontactlocation
@@ -13896,7 +13900,6 @@ end
    % [ sol ] = cntc.getcpresults(ire, icp)
    %
    % get results of a single contact patch in the form used by loadcase and plot3d
-   %------------------------------------------------------------------------------------------------------------
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -13913,7 +13916,7 @@ end
     icp = 1;
    end
    if (icp<=0)
-    disp(sprintf('ERROR in cntc.getcpresults: not available for icp=%d',icp));
+    fprintf('ERROR in cntc.getcpresults: not available for icp=%d\n',icp);
     return
    end
 
@@ -14251,15 +14254,19 @@ end
 
    [ mx, my ] = cntc.getnumelements(ire, icp);
 
-   if (mx*my <= 0)
-    fld = [0];
+   if (mx*my <= 0);  fld = [0];
    else
     lenarr = mx * my;
     p_val = libpointer('doublePtr',zeros(lenarr,1));
-
-    cntc.call('cntc.getfielddata', ire, icp, ifld, lenarr, p_val);
-
+    cntc.call('cntc.getfielddata', ire, icp, ifld(1), lenarr, p_val);
     fld = reshape(p_val.value, mx, my)';
+    if length(ifld)>1 % Possibly get multiple fields
+     fld(1,1,length(ifld))=0; 
+     for j1=2:length(ifld)
+      cntc.call('cntc.getfielddata', ire, icp, ifld(j1), lenarr, p_val);
+      fld(:,:,j1) = reshape(p_val.value, mx, my)';
+     end
+    end
    end
 
   end % cntc.getfielddata
@@ -14373,8 +14380,7 @@ end
    values = p_values.value;
 
    if nargin==3
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
+    setCMacro(LI,values,ire,LI.cur.j1)
    end
 
    if 1==0
@@ -14892,11 +14898,7 @@ end
    mx = double(p_mx.value);
    my = double(p_my.value);
 
-   if nargin==3
-    values=[mx,my];
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
-   end
+   if nargin==3;  setCMacro(LI,[mx,my],ire,LI.cur.j1);   end
 
   end % cntc.getnumelements
 
@@ -14953,8 +14955,7 @@ end
    if nargin==3
     values=[values.veloc, values.chi, values.dq, values.spinxo, ...
      values.spinyo, values.tau_c0];
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
+    setCMacro(LI,values,ire,LI.cur.j1);
    end
 
   end % cntc.getparameters
@@ -14994,10 +14995,7 @@ end
    cntc.call('cntc.getpenetration', ire, icp, p_pen);
    pen=p_pen.value;
 
-   if nargin==3
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=pen;
-   end
+   if nargin==3;  setCMacro(LI,pen,ire,LI.cur.j1);  end
 
   end % cntc.getpenetration
 
@@ -15058,10 +15056,7 @@ end
    dx  = values(5);
    dy  = values(6);
 
-   if nargin==3
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
-   end
+   if nargin==3;  setCMacro(LI,values,ire,LI.cur.j1);  end
 
 
   end % cntc_getpotcontact
@@ -15220,8 +15215,7 @@ end
    veloc=p_veloc.value;
 
    if nargin==3 % 'LI'
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=veloc;
+     setCMacro(LI,veloc,ire,LI.cur.j1); 
    end
 
   end % cntc.getreferencevelocity
@@ -15307,12 +15301,8 @@ end
 
 
 
-   if (nargin<1 | isempty(ire))
-    ire = 1;
-   end
-   if (nargin<2 | isempty(icp))
-    icp = 1;
-   end
+   if (nargin<1 | isempty(ire)); ire = 1; end
+   if (nargin<2 | isempty(icp)); icp = 1; end
    if (icp<=0)
     disp(sprintf('ERROR in cntc.gettractions: not available for icp=%d',icp));
     return
@@ -15387,8 +15377,7 @@ end
 
    rvalues = p_values.value;
    if nargin==2
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=rvalues(vertcat(l1{:,1}));
+    setCMacro(LI,rvalues,ire,LI.cur.j1); 
    end
 
   end % cntc.getwheelsetposition
@@ -15474,6 +15463,7 @@ end
       % Fields SDT Storage
       Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
        'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}},'DimPos',[3 1 2]);
+      Cfield.Y(1,1,1,1,size(Cfield.X{5},1))=0;
       LI.Cfield=Cfield;
 
       % get detailed results per contact patch, if there is more than one
@@ -15482,6 +15472,7 @@ end
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
       LI.Cmacro.X={[],[],LI.Traj.X{1}};
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
+      setCMacro;
 
      case 'getbasis'
       ire=1;
@@ -15546,26 +15537,11 @@ end
        % get grid-data
        r1=cntc.getelementdivision(ire, icp);
        C1.Y(1:size(r1,1),1:size(r1,2),1,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_h);
-       C1.Y(1:size(r1,1),1:size(r1,2),2,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_mu);
-       C1.Y(1:size(r1,1),1:size(r1,2),3,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_pn);
-       C1.Y(1:size(r1,1),1:size(r1,2),4,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_px);
-       C1.Y(1:size(r1,1),1:size(r1,2),5,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_py);
-       C1.Y(1:size(r1,1),1:size(r1,2),6,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_un);
-       C1.Y(1:size(r1,1),1:size(r1,2),7,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_ux);
-       C1.Y(1:size(r1,1),1:size(r1,2),8,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_uy);
-       C1.Y(1:size(r1,1),1:size(r1,2),9,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sx);
-       C1.Y(1:size(r1,1),1:size(r1,2),10,ire,icase)=r1;
-       r1=cntc.getfielddata(ire, icp, LI.CNTC.fld_sy);
-       C1.Y(1:size(r1,1),1:size(r1,2),11,ire,icase)=r1;
+       if ~isfield(C1,'iField')
+        C1.iField=cellfun(@(x)LI.CNTC.(['fld_' x]),C1.X{3}(2:end));
+       end
+       r1=cntc.getfielddata(ire, icp,C1.iField);
+       C1.Y(1:size(r1,1),1:size(r1,2),1+(1:length(C1.iField)),ire,icase)=r1;
        LI.Cfield=C1;
 
        %Need to see the goal of what follow
@@ -15640,34 +15616,40 @@ end
      case 'traj'
       %% #set.traj set wheel position and velocity associated to a trajectory point -2
       % increment icase = j1 in fe_time
-      [~,RO]=sdtm.urnPar(['{s_ws,y_ws,z_ws,roll_ws,yaw_ws,pitch_ws,vs,vy,vz,vroll,' ...
-       'vyaw,vpitch,dxwhl, dywhl, dzwhl,drollw, dyaww, dpitchw, vxwhl,vywhl, vzwhl,' ...
-       ' vrollw, vyaww, vpitchw}'],'{}{}');
+
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';'vs';'vy';'vz'
+          'vroll';'vyaw';'vpitch';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';
+          'dpitchw';'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'};
+      if ~isequal(LI.Traj.X{2}(:,1),st1)
+       [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
+       C2=LI.Traj; C2.X{2}=st1;
+       C2.Y=zeros(size(C2.Y,1),length(st1));C2.Y(:,i2)=LI.Traj.Y;
+       C2.X{2}(i2,1:size(LI.Traj.X{2},2))=LI.Traj.X{2};
+       LI.Traj=C2; 
+      end
+
       
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
-      else;iwhe=evt.iwhe;icase=evt.j1;  end
+      else;iwhe=evt.iwhe;icase=evt.j1;  
+      end
 
       % xxxgae unl vnl
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(1:6));
-      pos=zeros(1,6);
-      pos(i2(i1))=LI.Traj.Y(icase,i1);
+      pos=LI.Traj.Y(icase,1:6);
       cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
 
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(7:12));
-      vel=zeros(1,6);vel(i2(i1))=LI.Traj.Y(icase,i1);
+      vel=LI.Traj.Y(icase,7:12);
       cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
 
-      [i1,i2]=ismember(LI.Traj.X{2},RO.Other(12:end));
-      flex=zeros(1,6);flex(i2(i1))=LI.Traj.Y(icase,i1);
+      flex=LI.Traj.Y(icase,13:24);
       cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
 
     end
    end
   end
 
-    function []= TempLoop(RT)
-   %% #TempLoop -2
+function []= TimeLoop(RT)
+   %% #TimeLoop -2
    [LI,RT.CNTC]=cntc.init;
 
    LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
@@ -15677,7 +15659,8 @@ end
    cntc.setflags;
    cntc.set(RT.Model);
    st1=RT.LoopParam;
-
+   if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
+   if RT.profile;try;profile('clear');end;profile('on');end
    if comstr(lower(st1{1}),'traj');
     for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
      st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
@@ -15687,8 +15670,10 @@ end
    else
     error('Trajectory must be define first')
    end
+   if RT.profile;profile('viewer'),end
 
-    end
+end
+
   %% #SDTUI user interface  ----------------------------------------------- -2
   function []=tab()
    % #tab -3
@@ -17850,10 +17835,30 @@ end
 
    %% decompress zip
 
-
-
   end % autoGen
 
  end % Static
+end
+
+
+function  setCMacro(LI,val,ire,j1)
+  %% #setCMacro efficient storage into CMacro
+  persistent iMap
+  if isempty(iMap)||nargin==0;
+    iMap=containers.Map;if nargin==0;return;end
+  end
+  st=dbstack;st=st(2).name;
+  if ~isKey(iMap,st)
+   l1=evalin('caller','l1');
+   i2=LI.Cmacro.rowM(l1(:,2));
+   if size(l1,2)==3
+    LI.Cmacro.X{1}(i2,2)=l1(:,3); % set units
+   end
+   iMap(st)=struct('iVal',vertcat(l1{:,1}),'iY',i2);
+  end
+  i2=iMap(st);
+  S=struct('type',{'.','.','()'},'subs',{'Cmacro','Y',{i2.iY,ire,j1}});
+  LI=builtin('subsasgn',LI,S,val(i2.iVal));
+  %LI.Cmacro.Y(i2.iY,ire,j1)=val(i2.iVal);
 end
 
