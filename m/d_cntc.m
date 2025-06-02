@@ -120,7 +120,7 @@ nmap('Global_flags')=vhandle.uo([],{ ...
   'idebug',1,'1: just a bit of information from the library'
   'imodul', 1,'w/r contact'
   'ire', 1, 'experiment called iwhe in the example'
-   'iwhe',1, 'Left/right wheel'});
+  'iwhe',1, 'Left/right wheel'});
 
 %% Trajectory 
 %Classic
@@ -148,8 +148,8 @@ C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'
             -4.24363750 ]
    ]');
 C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(2:end,5)=2000; % set vs
-C1.Y(2:end,6)=3; %set penetration
+C1.Y(1:end,5)=2000; % set vs
+C1.Y(1:end,6)=0.5; %set penetration
 nmap('BenchManchester_Traj')=C1;
 
 %  TestPen

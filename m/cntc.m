@@ -15654,7 +15654,8 @@ function []= TimeLoop(RT)
 
    LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
    LI.Traj=RT.Traj;LI.flags=RT.flags;  
-
+   
+   % Initialize
    cntc.initializeflags;
    cntc.setflags;
    cntc.set(RT.Model);
@@ -15663,6 +15664,26 @@ function []= TimeLoop(RT)
    if RT.profile;try;profile('clear');end;profile('on');end
    if comstr(lower(st1{1}),'traj');
     for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
+     % Maintain
+     if j1==2
+      list={'Solver{GauSei maintain}'
+       'Friction{FrcLaw Maintain}'
+       'Track{Design Maintain}'
+       'wheelsetDim{Ewheel NewFlexVelPos}'
+       };
+      for i1=1:size(RT.Model)
+       st3=RT.Model{i1};
+        if comstr(st3,'PotCntc')
+         list{end+1}=st3;
+        elseif comstr(st3,'Rolling')
+         list{end+1}=st3;
+        elseif comstr(st3,'Mat')
+         list{end+1}=st3;
+       end
+      end
+      RT.Model=list;
+      cntc.set(RT.Model);
+     end
      st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
      LI.cur=st2; st1{1}=st2;
      cntc.set(st1);
@@ -15688,10 +15709,7 @@ end
    r2=vhandle.tab(r1,LI);r2.name='CNTC';
    asTab(r2)
    %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
-
-  
   end
-
   %------------------------------------------------------------------------------------------------------------
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -15935,11 +15953,15 @@ end
    if (nargin<2 | isempty(icp))
     icp = -1; % default: W/R contact, all patches, doesn't support icp >0
    end
-   if (nargin<4 | isempty(imeth) | isempty(params))
-    disp('ERROR in cntc.setfrictionmethod: imeth, params are mandatory.');
+   % xxxgae
+   % if (nargin<4 | isempty(imeth) | isempty(params))
+   %  disp('ERROR in cntc.setfrictionmethod: imeth, params are mandatory.');
+   %  return
+   % end
+   if (nargin<4 | isempty(imeth))
+    disp('ERROR in cntc.setfrictionmethod: imeth is mandatory.');
     return
    end
-
    cntc.call('cntc.setfrictionmethod', ire, icp, imeth, length(params), params);
 
   end % cntc.setfrictionmethod
@@ -17065,7 +17087,7 @@ end
       error('Wrong parameter selected')
     end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
-    params=struct2cell(params);params=horzcat(params{:});
+    if ~isempty(params);params=struct2cell(params);params=horzcat(params{:});end
     cntc.settrackdimensions(Global.ire, LI.Track.Design, params); % config solver Gauss-Seidel
     return
     % end SDT packaging
@@ -17079,7 +17101,12 @@ end
     disp('ERROR in cntc.settrackdimensions: ztrack is mandatory.');
     return
    end
-   if (nargin<3 | isempty(params))
+   % xxxgae
+   % if (nargin<3 | isempty(params))
+   %  disp('ERROR in cntc.settrackdimensions: invalid params provided.');
+   %  return
+   % end
+   if (nargin<3)
     disp('ERROR in cntc.settrackdimensions: invalid params provided.');
     return
    end
@@ -17172,7 +17199,7 @@ end
    %  nparam         - number of parameters provided
    %  params(nparam) - depending on method that is used
    %
-   %  E=1,2,4: keep old wheelset dimensions, ignore params provided
+   %  E=0,1,2,4: keep old wheelset dimensions, ignore params provided
    %  E=3,5 : new wheelset geometry   params = [fbdist, fbpos, nomrad]
    %
    %  dimensions:  fbdist, fbpos, nomrad [length]
@@ -17187,8 +17214,8 @@ end
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4' ...
-     ',NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
+    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewVelPos,3,NewDimProfPosVel,4' ...
+     ',NewFlexVelPos,5,NewAll}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow")' ...
      'nomrad(#%g#"Nominal radius of the wheel")'];
@@ -17214,11 +17241,14 @@ end
    if (nargin<1 | isempty(ire))
     ire = 1;
    end
-   if (nargin<3 | isempty(ewheel) | isempty(params))
+   % xxxgae 
+   % if (nargin<3 | isempty(ewheel) | isempty(params))
+   %  disp('ERROR in cntc.setwheelsetdimensions: ewheel and params are mandatory.');
+   %  return
+   if (nargin<3 | isempty(ewheel))
     disp('ERROR in cntc.setwheelsetdimensions: ewheel and params are mandatory.');
     return
    end
-
    cntc.call('cntc.setwheelsetdimensions', ire, ewheel, length(params), params);
 
   end % cntc.setwheelsetdimensions
@@ -17253,7 +17283,7 @@ end
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
-     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
+     'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'dxwhl(#%g#"xxx")' ...
      'dywhl(#%g#"xxx")' ...
      'dzwhl(#%g#"xxx")' ...
@@ -17331,7 +17361,7 @@ end
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
-     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
+     'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      's_ws(#%g#"Wheelset position along the track center line")' ...
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.")' ...
      'z_ws(#%g#"Vertical position zws of the wheelset center")' ...
@@ -17407,7 +17437,7 @@ end
    if nargin==0||ischar(ire)
     % package SDT options
     DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
-     'NewDimPosVelFlex,5,NewAll}#"Wheelset options")' ...
+     'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'vs(#%g#"Wheelset forward velocity")' ...
      'vy(#%g#"Wheelset lateral velocity")' ...
      'vz(#%g#"Wheelset vertical velocity")' ...
