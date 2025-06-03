@@ -7328,16 +7328,32 @@ cntc : interface between SDT and CONTACT
       cdm.urnVec(LI.Traj,'{y,#pitch_ws}{cdm}') % xxx rad 
       %  cdm.urnVec(LI.Traj,'{x,#pitch_ws}')
     end
+    % xxxgae +LI.Cmacro.Y(73,:)
     X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
     Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
     clf(gf);ga=axes(gf);
-    go=surf(X,LI.prw.ysurf,Z,'parent',ga); % 
+    go=surf(X,LI.prw.ysurf,-Z,'parent',ga); % 
     %
     color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
     set(go,'edgecolor','none');
     set(gca,'DataAspectRatio',[1 1 1]);
     set(go,'CData',color);
-
+    for i1=LI.Traj.X{1}'
+     hold on;
+     [~,i2]=ismember({'xcp_w';'ycp_w';'zcp_w'},LI.Cmacro.X{1});
+     coord=LI.Cmacro.Y(i2,:);
+     coord(3,:)=coord(3,:)-460;
+     g1=plot3(coord(1,i1),coord(2,i1),coord(3,i1),"o")
+     if i1==1
+      rotate(go,[0,1,0],-LI.Traj.Y(1,6)*180/pi)
+     else
+     rotate(go,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
+     rotate(g1,[0,1,0],-LI.Traj.Y(1,6)*180/pi)
+     end 
+     pause(0.1);
+    end
+    
+    
     LI.flags.iwhe
     'xxx animate'
     'position the Contact line'
@@ -15919,9 +15935,9 @@ end
 
     if nargin==0; CAM='';else; CAM=ire;end
     LI=cntc.call;
-    LI.Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.Friction.FrcLaw
+    switch Friction.FrcLaw
      case 0; params={'fstat','fkin'}; % 0 Coul
      case 1; params={};% 1 Maintain
      case 2; params={'fkin', 'flin1', 'sabsh1', 'flin2', 'sabsh2', 'memdst', 'mem_s0'};% 2 LinFall
@@ -15940,9 +15956,10 @@ end
      otherwise
       error('Wrong parameter')
     end
-    params=sdth.sfield('addselected',struct,LI.Friction,params);
+    if Friction.FrcLaw~=1; LI.Friction=Friction; end
+    params=sdth.sfield('addselected',struct,Friction,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setfrictionmethod(LI.flags.ire, [], LI.Friction.FrcLaw, params);
+    cntc.setfrictionmethod(LI.flags.ire, [], Friction.FrcLaw, params);
     return
     % end SDT packaging
    end
@@ -16826,9 +16843,9 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.Solver=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    Solver=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.Solver.GauSei
+    switch Solver.GauSei
      case 0; iparam={'maxgs','maxin','maxnr','maxout'};rparam={'eps'}; % 0 Default
      case 1; iparam=[ ];rparam=[ ];                             % 1 Maintain
      case 2; iparam={'maxgs','maxin','maxnr','maxout','inislp'};% 2 ConvexGS
@@ -16842,13 +16859,13 @@ end
      case 6; iparam={'mxsens'};rparam={'epsens'};               % Flags Sensitivities
      otherwise; error('Wrong parameter selected')
     end
-
+    if Solver.GauSei~=1;LI.Solver=Solver;end;
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
-    iparam=sdth.sfield('addselected',struct,LI.Solver,iparam);
+    iparam=sdth.sfield('addselected',struct,Solver,iparam);
     iparam=struct2cell(iparam);iparam=horzcat(iparam{:});
-    rparam=sdth.sfield('addselected',struct,LI.Solver,rparam);
+    rparam=sdth.sfield('addselected',struct,Solver,rparam);
     rparam=struct2cell(rparam);rparam=horzcat(rparam{:});
-    cntc.setsolverflags(Global.ire, [], LI.Solver.GauSei, iparam, rparam); % config solver Gauss-Seidel
+    cntc.setsolverflags(Global.ire, [], Solver.GauSei, iparam, rparam); % config solver Gauss-Seidel
     return
     % end SDT packaging
    end
@@ -17056,39 +17073,40 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.Track=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    Track=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     % XXXGAE EB
-    switch LI.Track.Design
+    switch Track.Design
      case 0; params=[];% 0 Maintain
      case 1
       % 1 NewDim
-      gaught=sdth.sfield('addselected',struct,LI.Track,{'gaught'});
+      gaught=sdth.sfield('addselected',struct,Track,{'gaught'});
       gaught=struct2cell(gaught); gaught=gaught{:};
       if gaught>0
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught','gaugsq', 'gaugwd','cant', 'nomrad'});   % values
+       params=sdth.sfield('addselected',struct,Track,{'gaught','gaugsq', 'gaugwd','cant', 'nomrad'});   % values
       else
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', 'railz0', 'cant', 'nomrad'});   % values
+       params=sdth.sfield('addselected',struct,Track,{'gaught', 'raily0', 'railz0', 'cant', 'nomrad'});   % values
       end
      case 2
       % 2 NewDevia
-      params=sdth.sfield('addselected',struct,LI.Track,{'dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
+      params=sdth.sfield('addselected',struct,Track,{'dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
      case 3
       % 3 NewBoth
-      gaught=sdth.sfield('addselected',struct,LI.Track,{'gaught'});
+      gaught=sdth.sfield('addselected',struct,Track,{'gaught'});
       gaught=struct2cell(gaught); gaught=gaught{:};
       if gaught>0
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught','gaugsq', ...
+       params=sdth.sfield('addselected',struct,Track,{'gaught','gaugsq', ...
         'gaugwd','cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
       else
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
+       params=sdth.sfield('addselected',struct,Track,{'gaught', 'raily0', ...
         'railz0', 'cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
       end
      otherwise
       error('Wrong parameter selected')
     end
+    if Track.Design~=0;LI.Track=Track;end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if ~isempty(params);params=struct2cell(params);params=horzcat(params{:});end
-    cntc.settrackdimensions(Global.ire, LI.Track.Design, params); % config solver Gauss-Seidel
+    cntc.settrackdimensions(Global.ire, Track.Design, params); % config solver Gauss-Seidel
     return
     % end SDT packaging
 
@@ -17222,17 +17240,19 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetDim.Ewheel
+    switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
-     case {3,5}; params=sdth.sfield('addselected',struct,LI.wheelsetDim, ...
+     case {3,5}; params=sdth.sfield('addselected',struct,wheelsetDim, ...
        {'fbdist','fbpos','nomrad'}); % 1 NewDim
       params=struct2cell(params);params=horzcat(params{:});
      otherwise; error('Wrong parameter selected')
     end
+    if ~ismember(wheelsetDim.Ewheel,[0,1,2,4]);LI.wheelsetDim=wheelsetDim;
+    else LI.wheelsetDim.Ewheel=wheelsetDim.Ewheel; end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
-    cntc.setwheelsetdimensions(Global.ire, LI.wheelsetDim.Ewheel, params);
+    cntc.setwheelsetdimensions(Global.ire, wheelsetDim.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17299,9 +17319,9 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetFlex.Ewheel;
+    switch wheelsetFlex.Ewheel;
      case 0; params=[];% Maintain
      case {1:3}; params=zeros(1,12); % NoFlex
      case {4,5}; % New flexibilities with symmetry
@@ -17310,10 +17330,11 @@ end
      otherwise; error('Wrong parameter')
       %% xxxGAE
     end
+    if wheelsetFlex.Ewheel~=0;LI.wheelsetFlex=wheelsetFlex;end;
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
-    params=sdth.sfield('addselected',struct,LI.wheelsetFlex,params);
+    params=sdth.sfield('addselected',struct,wheelsetFlex,params);
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetflexibility(Global.ire, LI.wheelsetFlex.Ewheel, params);
+    cntc.setwheelsetflexibility(Global.ire, wheelsetFlex.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17371,21 +17392,22 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetPos.Ewheel
+    switch wheelsetPos.Ewheel
      case 0 % Maintain
       params=[];
      case {1:5}; % 1 NewPos
-      params=sdth.sfield('addselected',struct,LI.wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
+      params=sdth.sfield('addselected',struct,wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
        'roll', 'yaw', 'pitch'});
      otherwise
       error('Wrong parameter')
       %% xxxGAE
     end
+    if wheelsetPos.Ewheel~=0;LI.wheelsetPos=wheelsetPos;end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetposition(Global.ire, LI.wheelsetPos.Ewheel, params);
+    cntc.setwheelsetposition(Global.ire, wheelsetPos.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17454,21 +17476,22 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    switch LI.wheelsetVel.Ewheel
+    switch wheelsetVel.Ewheel
      case {0,1} % Maintain
       params=[];
      case {2:5} % New Velocity
-      params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vs', 'vy', 'vz', ...
+      params=sdth.sfield('addselected',struct,wheelsetVel,{'vs', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
       error('Wrong parameter')
       %% xxxGAE
     end
+    if ~ismember(wheelsetVel.Ewheel,[0,1]); LI.wheelsetVel=wheelsetVel;end %xxxgae
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
-    cntc.setwheelsetvelocity(Global.ire, LI.wheelsetVel.Ewheel, params);
+    cntc.setwheelsetvelocity(Global.ire, wheelsetVel.Ewheel, params);
     return
     % end SDT packaging
 
@@ -17542,16 +17565,16 @@ end
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    LI.wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
 
-    Vel=LI.wheelsetVel.Vel;
+    Vel=wheelsetVel.Vel;
     switch Vel
      case 0
       % 0 Maintain
       params=[];
      case 1
       % 1 NewVel xxxgae roller rigs ???
-      params=sdth.sfield('addselected',struct,LI.wheelsetVel,{'vx', 'vy', 'vz', ...
+      params=sdth.sfield('addselected',struct,wheelsetVel,{'vx', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
       error('Wrong parameter')

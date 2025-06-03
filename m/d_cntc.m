@@ -120,7 +120,7 @@ nmap('Global_flags')=vhandle.uo([],{ ...
   'idebug',1,'1: just a bit of information from the library'
   'imodul', 1,'w/r contact'
   'ire', 1, 'experiment called iwhe in the example'
-  'iwhe',1, 'Left/right wheel'});
+  'iwhe',1, '0/1 Left/right wheel'});
 
 %% Trajectory 
 %Classic
@@ -131,6 +131,14 @@ C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,5)=2000; % set vs
 nmap('Classic_traj')=C1;
+
+%ODG
+% Vs=89000mm/s ; Vpitch = 
+C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
+   [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
+C1.X{1}=(1:size(C1.Y,1))';
+C1.Y(:,5)=2000; % set vs
+nmap('ODG_traj')=C1;
 
 %  Benchmark
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [ ... 
@@ -160,8 +168,9 @@ nmap('TestPen_Traj')=C1;
 %  Wheelflat
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
-C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
- [-pi/180*[27 : 0.5 : 47]']); % rotation angle [rad] (pdf page 36)
+C1=struct('X',{{[],{'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
+ 'Xlab',{{'Step','Comp'}},'Y', ...
+ -pi/180*linspace(27,47,100)'); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,2)=2000; % set vs [mm/s]
 C1.Y(:,3)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
