@@ -168,13 +168,28 @@ nmap('TestPen_Traj')=C1;
 %  Wheelflat
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
-C1=struct('X',{{[],{'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
- 'Xlab',{{'Step','Comp'}},'Y', ...
- -pi/180*linspace(27,47,100)'); % rotation angle [rad] (pdf page 36)
+C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
+ 'Xlab',{{'Step','Comp'}},'Y',[]);
+ C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
+if isfield(LI,'wheelsetDim')
+ C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
+end
 C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(:,2)=2000; % set vs [mm/s]
-C1.Y(:,3)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+C1.Y(:,3)=2000; % set vs [mm/s]
+C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
 nmap('WheelFlat_Traj')=C1;
+
+%  TimeTest
+C1=struct('X',{{[],{'pitch_ws','rad',[];'s_ws','mm',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
+ 'Xlab',{{'Step','Comp'}},'Y', ...
+ -pi/180*[0:720]'); % rotation angle [rad] (pdf page 36)
+C1.X{1}=(1:size(C1.Y,1))';
+if isfield(LI,'wheelsetDim')
+ C1.Y(:,2)=-C1.Y(:,1)*LI.wheelsetDim.nomrad;
+end
+C1.Y(:,3)=2000; % set vs [mm/s]
+C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+nmap('TimeTest_Traj')=C1;
 
 %  TestParam 1
 l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...

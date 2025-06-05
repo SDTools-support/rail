@@ -6,7 +6,7 @@ classdef cntc
  % <a href="matlab:sdtweb cntc">sdtweb cntc</a> for HTML documentation
  % <a href="matlab:sdtweb _taglist cntc">sdtweb _taglist cntc</a> for taglist
  %
- % For Linux you may have to set 
+ % For Linux you may have to set
  %    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/o3/APP/contact_v24.1/bin
  %
  % For revision information type <a href="matlab:cntc.cvs">cntc.cvs</a>
@@ -44,11 +44,11 @@ cntc : interface between SDT and CONTACT
  methods (Static)
 
 
- function out=libname
+  function out=libname
    persistent lib
    if isempty(lib);LI=cntc.call;lib=LI.libname;end
    out=lib;
- end
+  end
 
   %------------------------------------------------------------------------------------------------------------
   function []=testlibrary()
@@ -60,7 +60,7 @@ cntc : interface between SDT and CONTACT
   function []=initializeflags()
    % #initializeflags-2
    if nargin==0
-    RT=evalin('caller','RT'); % LI.CNTC=CNTC;
+    RT=evalin('caller','RT');
     cntc.setglobalflags(RT.CNTC.if_idebug, RT.flags.ire);
     [ifcver, ierror] = cntc.initialize(RT.flags.ire,RT.flags.imodul);
    else
@@ -171,6 +171,7 @@ cntc : interface between SDT and CONTACT
 
    if (idebug>=1 & ierror==cntc_err_allow)
     disp(sprintf('cntc.initialize: no license found or license invalid, check output-file (%d).',ierror));
+
    elseif (idebug>=1 & ierror<0)
     disp(sprintf('cntc.initialize: an error occurred in the CONTACT library (%d).',ierror));
    end
@@ -203,7 +204,7 @@ cntc : interface between SDT and CONTACT
 
    % retrieve current directory, form library name
    [pathstr, name, ext] = fileparts(which('cntc.initlibrary'));
-
+   
    if (isunix())
     libname='contact_addon_linux64';
     lib_ext='.so';
@@ -211,10 +212,11 @@ cntc : interface between SDT and CONTACT
     libname=['contact_addon_', computer('arch')];
     lib_ext='.dll';
    end
-
+   %load LI
+   LI=cntc.call;
    % unload the library if it was loaded before (why ?)
    if libisloaded(libname)
-    LI=cntc.call;LI.libname=libname;
+    LI.libname=libname;
     cntc.closelibrary;
    end
    if nargin>0
@@ -239,6 +241,7 @@ cntc : interface between SDT and CONTACT
      return
     else
      loadlibrary(fullname, 'contact_addon.h');
+     LI.libname=libname;
     end
    end
 
@@ -457,7 +460,7 @@ cntc : interface between SDT and CONTACT
    LI=cntc.call;
    cntc.call('cntc.finalizelast');
    if ~sdtkey('isdev')
-      unloadlibrary(LI.libname);
+    unloadlibrary(LI.libname);
    end
    %evalin('base','clear("LI")');
   end % cntc.closelibrary
@@ -504,7 +507,7 @@ cntc : interface between SDT and CONTACT
     end
    end
    if nargin==0
-     out=LI;return;
+    out=LI;return;
    elseif nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
     LI=varargin{1};return
    end
@@ -539,7 +542,7 @@ cntc : interface between SDT and CONTACT
    end
    if strcmp(CAM,'finalizelast') % already loaded
     try
-    dbstack; keyboard;
+     dbstack; keyboard;
      calllib(LI.libname,'cntc_finalizelast');
     end
    else
@@ -554,10 +557,10 @@ cntc : interface between SDT and CONTACT
   function out=help(CAM)
    %% #help : configure help -2
    wd0=pwd;
-    wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
-     'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
-     '/o/APP/contact_v24.1/bin'});
-    wd=sdtdef('Contact_Path-safe',wd);
+   wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
+    'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
+    '/o/APP/contact_v24.1/bin'});
+   wd=sdtdef('Contact_Path-safe',wd);
    cd(wd0);
    f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
    if exist(f1,'file')
@@ -574,7 +577,7 @@ cntc : interface between SDT and CONTACT
    end
    if nargin==0
    elseif strcmpi(CAM,'@examples')
-     out=sdtu.f.cffile(fullfile(wd),'../examples');
+    out=sdtu.f.cffile(fullfile(wd),'../examples');
    elseif strcmpi(CAM,'pdf')
     out=f1;
    elseif strcmpi(CAM,'md')
@@ -5743,6 +5746,214 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+  function [ xsurf, ysurf, zsurf ] = make_3d_surface_modified( sol, nsol, opt, want_rail, xrange, dx_true, dx_appx,srange, ds_true, ds_appx, idebug)
+
+   % create 2D arrays (x,y,z) for a prismatic rail (prr), variable rail (slcs), roller (prr, nom_radius),
+   %    round wheel (prw, nom_radius), or out-of-round wheel (slcw)
+   %  - the profile will be plotted for xrange = [xmin, xmax] in track coordinates
+   %  - fixed steps of size dx_true may be requested, or n-time fitting steps of approximately dx_appx
+   %  - the whole profile will be used if srange = [smin, smax] is left empty
+   %  - the profile will be sampled at sj-values in the profile close to uniform sj = [smin: ds: smax]
+   %  - all profile points will be used if both ds_true and ds_appx are left empty
+   %  - for variable profiles, x-positions and arc-lengths s are replaced by the (u,v)-parametrization
+   % #make_3d_surface -2
+
+   if (nargin< 5), dx_true = []; end
+   if (nargin< 6), dx_appx = []; end
+   if (nargin< 7), srange  = []; end
+   if (nargin< 8), ds_true = []; end
+   if (nargin< 9), ds_appx = []; end
+   if (nargin<10 | isempty(idebug)), idebug  =  0; end
+
+   if (want_rail)
+    prf = LI.prr;
+    nom_radius = sol.meta.rnom_rol;
+   else
+    prf = LI.prw;
+    nom_radius = sol.meta.rnom_whl;
+   end
+   has_slcs   = ( want_rail & isfield(prf,'nslc'));
+   has_slcw   = (~want_rail & isfield(sol,'nslc'));
+
+   %% determine longitudinal positions xi (track coords) for evaluation of surface
+
+   if (~isempty(dx_true))
+
+    % if 'final' dx_true is prescribed,
+    %    set xi = { i * dx_true } for appropriate i
+
+    i0 = ceil( xrange(1) / dx_true );
+    i1 = floor( xrange(2) / dx_true );
+    xi = [i0 : i1] * dx_true;
+
+   elseif (~isempty(dx_appx))
+
+    % if 'target' dx_appx is given,
+    %    divide [xmin,xmax] in odd #intervals of size dx_true close to dx_appx
+    nintv   = floor( (xrange(2) - xrange(1)) / dx_appx );
+    if (mod(nintv,2)==1)  % prefer odd #lines for symmetric [-xmax, xmax]
+     nintv = nintv + 1;
+    end
+    dx = (xrange(2) - xrange(1)) / max(1,nintv);
+    xi = xrange(1) + [0:nintv] * dx;
+   else
+    disp('Error: either dx_true or dx_appx must be given');return
+   end
+
+   % determine lateral positions sj for evaluation of surface
+
+   if (has_slcs);    profile_s = prf.vj;
+   elseif (has_slcw);profile_s = prf.vj;
+   else ;            profile_s = prf.ProfileS;
+   end
+
+   if (isempty(srange))
+    srange = [ profile_s(1), profile_s(end) ];
+   end
+
+   if (~isempty(ds_true))
+
+    % if 'final' ds_true is prescribed,
+    %    set si = { j * ds_true } for appropriate j
+    j0 = ceil( (srange(1)-profile_s(1)) / ds_true );
+    j1 = floor( (srange(2)-profile_s(1)) / ds_true );
+    sj = [j0 : j1] * ds_true;
+
+   elseif (~isempty(ds_appx))
+
+    % if 'target' ds_appx is given,
+    %    divide [smin,smax] in odd #intervals of size ds_true close to ds_appx
+
+    if (has_slcs)
+     len = 1.3 * max(max(prf.ysurf)) - min(min(prf.ysurf));
+     nintv = floor ( len / ds_appx );
+    elseif (has_slcw)
+     len = 1.3 * max(max(prf.ysurf)) - min(min(prf.ysurf));
+     nintv = floor ( len / ds_appx );
+    else
+     nintv = floor( (srange(2) - srange(1)) / ds_appx );
+    end
+    if (mod(nintv,2)==1)
+     nintv = nintv + 1;  % prefer odd #lines for symmetric [-smax, smax]
+    end
+    ds = (srange(2) - srange(1)) / max(1,nintv);
+    sj = srange(1) + [0:nintv] * ds;
+
+   else
+    % if neither is given, use all profile points in range srange
+    sj = profile_s(profile_s>=srange(1) & profile_s<=srange(2) );
+   end
+
+   % determine indices js closest to each sj
+
+   js = zeros(size(sj));
+   for j = 1 : length(sj)
+    [~,js(j)] = min(abs(profile_s - sj(j)));
+   end
+
+   % form profile surface at given xi and js
+
+   nx    = length(xi);
+   ns    = length(js);
+
+   if (want_rail & ~has_slcs & abs(nom_radius)<1e-3)
+
+    % prismatic rail
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    zsurf = ones(nx,1) * prf.ProfileZ(js)';
+
+   elseif (want_rail & cntc.myisfield(sol, 'slcs.spl2d'))
+
+    % variable rail profile, using 2D spline algorithm
+
+    % form profile surface at given ui (==x_fc) and vj
+
+    sf_min = min(prf.spl2d.ui);
+    sf_max = max(prf.spl2d.ui);
+    ui     = max(sf_min, min(sf_max, sol.meta.s_ws + xi));
+    vj     = sj;
+
+    [ ~, xsurf, ysurf, zsurf ] = cntc.eval_2dspline( prf.spl2d, ui, vj );
+
+   elseif (want_rail & has_slcs)
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = []; zsurf = [];
+    for ix = 1 : nx
+     x_cur = sol.meta.s_ws + xi(ix);
+     tmp_prr = cntc.get_profile_slice(prf, x_cur);
+     ysurf = [ysurf; tmp_prr.ProfileY(js)'];
+     zsurf = [zsurf; tmp_prr.ProfileZ(js)'];
+    end
+
+   elseif (want_rail)
+
+    % roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
+
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    r_y   = nom_radius - prf.ProfileZ(js)';
+    zsurf = nom_radius - sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
+
+   elseif (~want_rail & ~has_slcw)
+
+    % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
+    % #Prw.Rev origin -2
+    xsurf = xi' * ones(1,ns);
+    ysurf = ones(nx,1) * prf.ProfileY(js)';
+    r_y   =  nom_radius + prf.ProfileZ(js)';
+    zsurf = -nom_radius + sqrt( max(0, (ones(nx,1)*r_y).^2 - xsurf.^2) );
+
+   elseif (~want_rail & cntc.myisfield(sol, 'slcw.spl2d'))
+
+    % variable wheel profile, using 2D spline algorithm
+
+    % form profile surface at given ui (==th_w) and vj
+
+    th_min = min(prf.spl2d.ui);
+    th_max = max(prf.spl2d.ui);
+    th_w   = -LI.Cmacro.Y(62,nsol) + mean(xi)/sol.meta.rnom_whl;
+    ui     = max(th_min, min(th_max, -LI.Cmacro.Y(62,nsol) + xi/sol.meta.rnom_whl));
+    vj     = sj;
+
+    [ ~, thsurf, ysurf, drsurf ] = cntc.eval_2dspline( prf.spl2d, ui, vj );
+    [xsurf, ysurf, zsurf] = cntc.wcyl_to_wprof_coords(sol, thsurf, ysurf, drsurf);
+
+   else
+
+    disp('make_3d_surface: ERROR: case not supported.')
+    disp([want_rail, has_slcs, has_slcw, cntc.myisfield(sol,'slcw.spl2d'), exist('eval_2dspline')])
+    return;
+
+   end
+
+   % profiles are given for right-side w/r combination
+   % mirror y for left-side w/r combination
+
+   if (cntc.is_left_side(sol))
+    ysurf = -ysurf;
+   end
+
+   % transform to track coordinates if needed
+
+   if (want_rail & strcmp(opt.rw_surfc,'both'))
+
+    %xyzsurf=cat(3,xsurf,ysur,zsurf)
+    [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
+
+   elseif (strcmp(opt.rw_surfc,'both'))
+
+    [xsurf, ysurf, zsurf] = cntc.wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
+
+   end
+
+  end % make_3d_surface
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  
   function [ ] = show_scalar_field(sol, field, opt)
    %
    % [ ] = show_scalar_field(sol, field, opt)
@@ -7270,166 +7481,182 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function plot(varargin)
-  %% #Plot select from standard plots
+   %% #Plot select from standard plots
 
-  [CAM,Cam]=comstr(varargin{1},1);carg=2;
+   [CAM,Cam]=comstr(varargin{1},1);carg=2;
 
-  if comstr(Cam,'sol');[CAM,Cam]=comstr(CAM,4);
-   %{
+   if comstr(Cam,'sol');[CAM,Cam]=comstr(CAM,4);
+    %{
 ```DocString {module=rail,src@onedrive/*/SNC*/doc/R25_SNCF_Guillet.docx} -3
  CNTCPlotSol : adaptation of plot commands
-   %}
-   LI=cntc.call;
-   if isempty(LI)||~isfield(LI,'sol')
-    wd=sdtu.f.safe('@onedrive/*/SNC*/exchange');cd(wd);
-    load('LI.mat'); cntc.call(LI);
-   end
-
-   if comstr(Cam,'1');[CAM,Cam]=comstr(CAM,2);
-    % #CNTCPlotSol1 : px -3
-
-    cntc.plot3d([],'{typplot=surf,field=px,rw_surfc=prw,ch1,gf10}')
-
-    if 1==2 % Low level tests for EB
-     x=cellfun(@(x)x.x,LI.sol,'uni',0)';x=unique(horzcat(x{:}));
-     figure(1);plot(sort(horzcat(ans{:})))
-     a=LI.Cmacro.rowM;a.prop.name
-     a=cntc.sol2curve;
-     C1=a.Cfield;iicom('curveinit',C1)
-
-     iicom('curveinit',a.prr)
-     figure(1);clf
-     xyz=a.prr.Y-a.prr.Y(:,:,1);
-     surface(squeeze(a.prr.Y(:,1,:)),squeeze(a.prr.Y(:,2,:)),squeeze(a.prr.Y(:,3,:)))
-     set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile');view(3);
-     figure(12);clf
-     surface(squeeze(a.prw.Y(:,1,:)),squeeze(a.prw.Y(:,2,:)),squeeze(a.prw.Y(:,3,:)))
-     set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile')
+    %}
+    LI=cntc.call;
+    if isempty(LI)||~isfield(LI,'sol')
+     wd=sdtu.f.safe('@onedrive/*/SNC*/exchange');cd(wd);
+     load('LI.mat'); cntc.call(LI);
     end
-   end
-  elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
-   %% #cntc.Plot.Wheel wheel profile or 3D wheel model -3
-   LI=cntc.call;
-   if contains(Cam,'prw') % cntc.plot('Wheel{prw}')
-    gf=findobj(0,'tag','prw','type','figure');if isempty(gf);gf=figure('tag','prw');end
-    %gf=sdth.urn('figure(nameprw)');
-    go=surf(LI.prw.xsurf,LI.prw.ysurf,LI.prw.zsurf);
-    xlabel('x [rad]');ylabel('y_w [mm]');zlabel('z_w [mm]');
-    set(go,'edgecolor','none');
-    set(gca,'DataAspectRatio',[.1 1 1]);
-    'xxx interact'
-   elseif contains(Cam,'stick') 
-    %% Wheel.SurfStick number of slices hence variable 
-    % cntc.plot('Wheel{Stick}')
-    gf=findobj(0,'tag','wstick','type','figure');if isempty(gf);gf=figure('tag','wstick');end
 
-    % LI.Traj('pitch_ws')
-    if 1==2
-      cdm.urnVec(LI.Traj,'{y,#pitch_ws}{cdm}') % xxx rad 
+    if comstr(Cam,'1');[CAM,Cam]=comstr(CAM,2);
+     % #CNTCPlotSol1 : px -3
+
+     cntc.plot3d([],'{typplot=surf,field=px,rw_surfc=prw,ch1,gf10}')
+
+     if 1==2 % Low level tests for EB
+      x=cellfun(@(x)x.x,LI.sol,'uni',0)';x=unique(horzcat(x{:}));
+      figure(1);plot(sort(horzcat(ans{:})))
+      a=LI.Cmacro.rowM;a.prop.name
+      a=cntc.sol2curve;
+      C1=a.Cfield;iicom('curveinit',C1)
+
+      iicom('curveinit',a.prr)
+      figure(1);clf
+      xyz=a.prr.Y-a.prr.Y(:,:,1);
+      surface(squeeze(a.prr.Y(:,1,:)),squeeze(a.prr.Y(:,2,:)),squeeze(a.prr.Y(:,3,:)))
+      set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile');view(3);
+      figure(12);clf
+      surface(squeeze(a.prw.Y(:,1,:)),squeeze(a.prw.Y(:,2,:)),squeeze(a.prw.Y(:,3,:)))
+      set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile')
+     end
+    end
+   elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
+    %% #cntc.Plot.Wheel wheel profile or 3D wheel model -3
+    LI=cntc.call;
+    if contains(Cam,'prw') % cntc.plot('Wheel{prw}')
+     gf=findobj(0,'tag','prw','type','figure');if isempty(gf);gf=figure('tag','prw');end
+     %gf=sdth.urn('figure(nameprw)');
+     go=surf(LI.prw.xsurf,LI.prw.ysurf,LI.prw.zsurf);
+     xlabel('x [rad]');ylabel('y_w [mm]');zlabel('z_w [mm]');
+     set(go,'edgecolor','none');
+     set(gca,'DataAspectRatio',[.1 1 1]);
+     'xxx interact'
+    elseif contains(Cam,'stick')
+     %% Wheel.SurfStick number of slices hence variable
+     % cntc.plot('Wheel{Stick}')
+     gf=findobj(0,'tag','wstick','type','figure');if isempty(gf);gf=figure('tag','wstick');end
+
+     % LI.Traj('pitch_ws')
+     if 1==2
+      cdm.urnVec(LI.Traj,'{y,#pitch_ws}{cdm}') % xxx rad
       %  cdm.urnVec(LI.Traj,'{x,#pitch_ws}')
-    end
-    % xxxgae +LI.Cmacro.Y(73,:)
-    X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
-    Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
-    clf(gf);ga=axes(gf);
-    go=surf(X,LI.prw.ysurf,-Z,'parent',ga); % 
-    %
-    color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
-    set(go,'edgecolor','none');
-    set(gca,'DataAspectRatio',[1 1 1]);
-    set(go,'CData',color);
-    for i1=LI.Traj.X{1}'
+     end
+     % xxxgae +LI.Cmacro.Y(73,:)
+     X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
+     Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
+     clf(gf);ga=axes(gf);
+     go=surf(X,LI.prw.ysurf,Z,'parent',ga); %
+     %
+     color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
+     set(go,'edgecolor','none');
+     set(gca,'DataAspectRatio',[1 1 1]);
+     set(go,'CData',color);
      hold on;
      [~,i2]=ismember({'xcp_w';'ycp_w';'zcp_w'},LI.Cmacro.X{1});
      coord=LI.Cmacro.Y(i2,:);
      coord(3,:)=coord(3,:)-460;
-     g1=plot3(coord(1,i1),coord(2,i1),coord(3,i1),"o")
-     if i1==1
-      rotate(go,[0,1,0],-LI.Traj.Y(1,6)*180/pi)
-     else
-     rotate(go,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
-     rotate(g1,[0,1,0],-LI.Traj.Y(1,6)*180/pi)
-     end 
-     pause(0.1);
+     for i1=LI.Traj.X{1}'
+      if i1==1
+       rotate(go,[0,1,0],90-LI.Traj.Y(1,6)*180/pi);
+       g1=plot3(coord(1,i1),coord(2,i1),coord(3,i1),".",'MarkerSize',20,'MarkerEdgeColor','r');
+      else
+       set(g1, 'XData', coord(1,i1), 'YData', coord(2,i1), 'ZData',coord(3,i1));
+       rotate(go,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
+       rotate(g1,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
+      end
+      pause(0.1);
+     end
+     LI.flags.iwhe
+     'xxx animate'
+     'position the Contact line'
+
+    else
+     gf=2;figure(gf); plot(LI.prw.ProfileY,LI.prw.ProfileZ,'.');
+     theta= pi/180*[0:360];
+     % X=(500+LI.prw.ProfileZ).*cos(theta);
+     % Y=(500+LI.prw.ProfileZ).*sin(theta);
+     % gf=3;
     end
+
+   elseif comstr(Cam,'rail');[CAM,Cam]=comstr(CAM,10);
+    %% #cntc.plot('rail'), plot rail profil or 3D rail model -3
+
+    LI=cntc.call;
+    want_rail=1;xrange=[-26,26];dx_true=1;
+    opt.rw_surfc='both'; %'both' for track coordinates
+    % opt.rw_surfc='prr'; %'both' for rail coordinates
+    [ xsurf, ysurf, zsurf ] = cntc.make_3d_surface_modified( LI.sol,20, opt, want_rail, xrange, dx_true);
+    gf=60;figure(gf); 
+    l=surf(xsurf, ysurf, zsurf, 'EdgeColor','none', 'FaceAlpha',0.5);
+       
     
-    
-    LI.flags.iwhe
-    'xxx animate'
-    'position the Contact line'
+    if (1==2)
+    if isfield(LI.prr,'nslc')
+     figure; go=surf(LI.prr.xsurf,LI.prr.ysurf,LI.prr.zsurf);
+     set(go,'edgecolor','none');
+     set(gca,'DataAspectRatio',[1 1 1]);
 
-   else
-    gf=2;figure(gf); plot(LI.prw.ProfileY,LI.prw.ProfileZ,'.');
-    theta= pi/180*[0:360];
-    % X=(500+LI.prw.ProfileZ).*cos(theta);
-    % Y=(500+LI.prw.ProfileZ).*sin(theta);
-    % gf=3; 
+     X=(500+LI.prr.zsurf).*cos(LI.prr.xsurf);
+     Y=(500+LI.prr.zsurf).*sin(LI.prr.xsurf);
+     figure();go=surf(X,Y,LI.prr.ysurf);
+     color=LI.prr.zsurf-(mean(LI.prr.zsurf,1).*ones(size(LI.prr.zsurf,1),1));
+     set(go,'edgecolor','none');
+     set(gca,'DataAspectRatio',[1 1 1]);
+     set(go,'CData',color);
+
+    else
+     gf=2;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.');
+     [~,i]=min(LI.prr.ProfileZ);
+     xline(LI.prr.ProfileY(i));
+     [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, xrange, ...
+      dx_true, dx_appx,srange, ds_true, ds_appx, idebug);
+    end
+
+    end
+   elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
+    %% #cntc.plot('cmacro'), plot time variation of Cmacor variable -3
+    % l1=varargin{carg}; carg=carg+1;
+    % LI=cntc.call;
+    % v1=cellfun(@(x) find(strcmpi(x,LI.Cmacro.X{1})),l1);
+    % if any(v1); error('Missing parameter');end
+    [~,RO]=sdtm.urnPar(CAM,'{sel%s}{}');
+    LI=cntc.call;
+    %ci=iiplot(2);
+    %iicom(ci,'curveinit','Efforts',LI.Cmacro);
+    cdm.urnVec(LI.Cmacro,sprintf('{x,iTime}{y,"#%s"}{gf100}',RO.sel))
+    LI.Cmacro.Y()
+
+
+    if 1==2
+     ci=iiplot(25);
+     iicom(ci,'curveinit','Cmacro',LI.Cmacro);
+     % Plot the forces in different basis
+     C1=fe_def('subchcurve',LI.Cmacro,{'comp', [1:24]});
+     iicom(ci,'curveinit','Efforts',C1);
+     iicom(ci,'ch',{'comp',{'fx_tr','fx_ws','fx_r','fx_w'}})
+
+     % Plot the forces in different basis
+     C2=fe_def('subchcurve',LI.Cmacro,{'comp', [25:39]});
+     ci=iiplot(3);
+     iicom(ci,'curveinit','Efforts2',C2);
+     iicom(ci,'ch',{'comp',{'xcp_tr','xcp_r','xcp_w'}})
+
+     % Plot the forces in different basis
+     C3=fe_def('subchcurve',LI.Cmacro,{'comp',[40:77]});
+     ci=iiplot(4);
+     iicom(ci,'curveinit','Efforts3',C3);
+    end
    end
-
-  elseif comstr(Cam,'rail');[CAM,Cam]=comstr(CAM,10);
-   %% #CNTCPlotRail, plot rail profil or 3D rail model -3
-
-   LI=cntc.call;
-   if isfield(LI.prr,'nslc')
-    figure; go=surf(LI.prr.xsurf,LI.prr.ysurf,LI.prr.zsurf);
-    set(go,'edgecolor','none');
-    set(gca,'DataAspectRatio',[1 1 1]);
-
-    X=(500+LI.prr.zsurf).*cos(LI.prr.xsurf);
-    Y=(500+LI.prr.zsurf).*sin(LI.prr.xsurf);
-    figure();go=surf(X,Y,LI.prr.ysurf);
-    color=LI.prr.zsurf-(mean(LI.prr.zsurf,1).*ones(size(LI.prr.zsurf,1),1));
-    set(go,'edgecolor','none');
-    set(gca,'DataAspectRatio',[1 1 1]);
-    set(go,'CData',color);
-
-   else
-    gf=2;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.');
-    [~,i]=min(LI.prr.ProfileZ);
-    xline(LI.prr.ProfileY(i));
-   end
-
-
-  elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
-   %% #CNTCPlotCmacro, plot time variation of Cmacor variable -3
-   [~,RO]=sdtm.urnPar(CAM,'{sel%s}{}');
-   LI=cntc.call;
-   %ci=iiplot(2);
-   %iicom(ci,'curveinit','Efforts',LI.Cmacro);
-   cdm.urnVec(LI.Cmacro,sprintf('{x,iTime}{y,"#%s"}{gf100}',RO.sel))
-if 1==2
-   %iicom(ci,'curveinit','Cmacro',LI.Cmacro);
-   % Plot the forces in different basis
-   C1=fe_def('subchcurve',LI.Cmacro,{'comp', [1:24]});
-   iicom(ci,'curveinit','Efforts',C1);
-   iicom(ci,'ch',{'comp',{'fx_tr','fx_ws','fx_r','fx_w'}})
-
-   % Plot the forces in different basis
-   C2=fe_def('subchcurve',LI.Cmacro,{'comp', [25:39]});
-   ci=iiplot(3);
-   iicom(ci,'curveinit','Efforts2',C2);
-   iicom(ci,'ch',{'comp',{'xcp_tr','xcp_r','xcp_w'}})
-
-   % Plot the forces in different basis
-   C3=fe_def('subchcurve',LI.Cmacro,{'comp',[40:77]});
-   ci=iiplot(4);
-   iicom(ci,'curveinit','Efforts3',C3);
-end
-
-
-  end
   end
 
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function checkXXlab
-    LI=cntc.call;  
-    C1=LI.Cmacro;
-    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^f[xyz]'),2)={'N'};
-    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^m[xyz]'),2)={'N/mm'};
-    C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^[xyz]'),2)={'mm'};
-    C1.X{1}(:,3)={[]};
-    LI.Cmacro=C1; 
+   LI=cntc.call;
+   C1=LI.Cmacro;
+   C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^f[xyz]'),2)={'N'};
+   C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^m[xyz]'),2)={'N/mm'};
+   C1.X{1}(sdtm.regContains(C1.X{1}(:,1),'^[xyz]'),2)={'mm'};
+   C1.X{1}(:,3)={[]};
+   LI.Cmacro=C1;
 
   end
 
@@ -7975,8 +8202,10 @@ end
      else;opt3.gf=opt3.gf(1)+opt3.ch;
      end % Figure Offset
      opt=sdtm.rmfield(opt3,'gf','Other');
+     % assignin('base','opt',opt);
      for j1=1:length(opt3.ch)
       gf=figure(opt3.gf(j1));opt.ch=opt3.ch(j1);
+      LI.sol{opt.ch}.opt=opt;
       cntc.plot3d(LI.sol{opt.ch},opt)
       sdt.cntc=struct('do',@cntc.plot3d,'ch',opt3.ch(j1),'opt',opt);
      end
@@ -8887,7 +9116,7 @@ end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #plot_low_level_methods 
+  %% #plot_low_level_methods
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -13539,7 +13768,7 @@ end
    if (nargin<3 | isempty(idebug))
     idebug = 1;
    end
-   persistent p_ierr; 
+   persistent p_ierr;
    if isempty(p_ierr);
     p_ierr = libpointer('int32Ptr',-1);
    end
@@ -13693,7 +13922,7 @@ end
   %------------------------------------------------------------------------------------------------------------
 
   %% #get
-  
+
   function [ tcpu, twall]=getcalculationtime(ire, icp)
    % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
@@ -13750,7 +13979,7 @@ end
    % # getcontactforces
 
    l1=struct('ColumnName',{{'cntcpos','name','unit','ToolTip'}}, ...
-        'table',{{1,'fn','N','total normal force'
+    'table',{{1,'fn','N','total normal force'
     2,'tx','N','total tangential forces'
     3,'ty','N','total tangential forces'
     4,'mz','N.mm','total torsional moment'}});
@@ -13858,7 +14087,7 @@ end
 
    rvalues = p_values.value;
    if nargin==3
-        setCMacro(LI,rvalues,ire,LI.cur.j1); 
+    setCMacro(LI,rvalues,ire,LI.cur.j1);
    end
 
   end % cntc.getcontactlocation
@@ -14277,7 +14506,7 @@ end
     cntc.call('cntc.getfielddata', ire, icp, ifld(1), lenarr, p_val);
     fld = reshape(p_val.value, mx, my)';
     if length(ifld)>1 % Possibly get multiple fields
-     fld(1,1,length(ifld))=0; 
+     fld(1,1,length(ifld))=0;
      for j1=2:length(ifld)
       cntc.call('cntc.getfielddata', ire, icp, ifld(j1), lenarr, p_val);
       fld(:,:,j1) = reshape(p_val.value, mx, my)';
@@ -15231,7 +15460,7 @@ end
    veloc=p_veloc.value;
 
    if nargin==3 % 'LI'
-     setCMacro(LI,veloc,ire,LI.cur.j1); 
+    setCMacro(LI,veloc,ire,LI.cur.j1);
    end
 
   end % cntc.getreferencevelocity
@@ -15393,7 +15622,7 @@ end
 
    rvalues = p_values.value;
    if nargin==2
-    setCMacro(LI,rvalues,ire,LI.cur.j1); 
+    setCMacro(LI,rvalues,ire,LI.cur.j1);
    end
 
   end % cntc.getwheelsetposition
@@ -15502,7 +15731,7 @@ end
 
       % Initialize the loop
       if icase==1
-       cntc.set('initout{}'); 
+       cntc.set('initout{}');
       end
 
       if icase==LI.Traj.X{1}(end)
@@ -15531,6 +15760,7 @@ end
        cntc.getparameters(ire, icp, LI);% get material / kinematic parameters needed
        cntc.getpotcontact(ire, icp,LI);
        cntc.getnumelements(ire,icp,LI);
+       
 
 
        % itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
@@ -15634,20 +15864,20 @@ end
       % increment icase = j1 in fe_time
 
       st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';'vs';'vy';'vz'
-          'vroll';'vyaw';'vpitch';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';
-          'dpitchw';'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'};
+       'vroll';'vyaw';'vpitch';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';
+       'dpitchw';'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'};
       if ~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
        C2.Y=zeros(size(C2.Y,1),length(st1));C2.Y(:,i2)=LI.Traj.Y;
        C2.X{2}(i2,1:size(LI.Traj.X{2},2))=LI.Traj.X{2};
-       LI.Traj=C2; 
+       LI.Traj=C2;
       end
 
-      
+
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
-      else;iwhe=evt.iwhe;icase=evt.j1;  
+      else;iwhe=evt.iwhe;icase=evt.j1;
       end
 
       % xxxgae unl vnl
@@ -15664,13 +15894,13 @@ end
    end
   end
 
-function []= TimeLoop(RT)
+  function []= TimeLoop(RT)
    %% #TimeLoop -2
    [LI,RT.CNTC]=cntc.init;
 
    LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
-   LI.Traj=RT.Traj;LI.flags=RT.flags;  
-   
+   LI.Traj=RT.Traj;LI.flags=RT.flags;
+
    % Initialize
    cntc.initializeflags;
    cntc.setflags;
@@ -15689,12 +15919,12 @@ function []= TimeLoop(RT)
        };
       for i1=1:size(RT.Model)
        st3=RT.Model{i1};
-        if comstr(st3,'PotCntc')
-         list{end+1}=st3;
-        elseif comstr(st3,'Rolling')
-         list{end+1}=st3;
-        elseif comstr(st3,'Mat')
-         list{end+1}=st3;
+       if comstr(st3,'PotCntc')
+        list{end+1}=st3;
+       elseif comstr(st3,'Rolling')
+        list{end+1}=st3;
+       elseif comstr(st3,'Mat')
+        list{end+1}=st3;
        end
       end
       RT.Model=list;
@@ -15709,13 +15939,13 @@ function []= TimeLoop(RT)
    end
    if RT.profile;profile('viewer'),end
 
-end
+  end
 
   %% #SDTUI user interface  ----------------------------------------------- -2
   function []=tab()
    % #tab -3
    r1={'Name','level';
-       'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
+    'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
     'Experiment Definition',1;'flags',2;'global',2;'wheels',2;'Material parameter', ...
     1;'Bound' ,2; 'Friction',2 ;'Mat',2 ;'Solver Definition',1;'PotCntc',2 ; ...
     'Rolling',2 ; 'Solver',2;'Geometry Definition',1;'Track',2 ; 'prr' ,2; ...
@@ -17261,7 +17491,7 @@ end
    if (nargin<1 | isempty(ire))
     ire = 1;
    end
-   % xxxgae 
+   % xxxgae
    % if (nargin<3 | isempty(ewheel) | isempty(params))
    %  disp('ERROR in cntc.setwheelsetdimensions: ewheel and params are mandatory.');
    %  return
@@ -17895,23 +18125,23 @@ end
 
 
 function  setCMacro(LI,val,ire,j1)
-  %% #setCMacro efficient storage into CMacro
-  persistent iMap
-  if isempty(iMap)||nargin==0;
-    iMap=containers.Map;if nargin==0;return;end
-  end
-  st=dbstack;st=st(2).name;
-  if ~isKey(iMap,st)
-   l1=evalin('caller','l1');
-   i2=LI.Cmacro.rowM(l1(:,2));
-   if size(l1,2)==3
-    LI.Cmacro.X{1}(i2,2)=l1(:,3); % set units
-   end
-   iMap(st)=struct('iVal',vertcat(l1{:,1}),'iY',i2);
-  end
-  i2=iMap(st);
-  S=struct('type',{'.','.','()'},'subs',{'Cmacro','Y',{i2.iY,ire,j1}});
-  LI=builtin('subsasgn',LI,S,val(i2.iVal));
-  %LI.Cmacro.Y(i2.iY,ire,j1)=val(i2.iVal);
+%% #setCMacro efficient storage into CMacro
+persistent iMap
+if isempty(iMap)||nargin==0;
+ iMap=containers.Map;if nargin==0;return;end
+end
+st=dbstack;st=st(2).name;
+if ~isKey(iMap,st)
+ l1=evalin('caller','l1');
+ i2=LI.Cmacro.rowM(l1(:,2));
+ if size(l1,2)==3
+  LI.Cmacro.X{1}(i2,2)=l1(:,3); % set units
+ end
+ iMap(st)=struct('iVal',vertcat(l1{:,1}),'iY',i2);
+end
+i2=iMap(st);
+S=struct('type',{'.','.','()'},'subs',{'Cmacro','Y',{i2.iY,ire,j1}});
+LI=builtin('subsasgn',LI,S,val(i2.iVal));
+%LI.Cmacro.Y(i2.iY,ire,j1)=val(i2.iVal);
 end
 
