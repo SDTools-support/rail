@@ -60,7 +60,19 @@ cntc : interface between SDT and CONTACT
   function []=initializeflags()
    % #initializeflags-2
    if nargin==0
-    RT=evalin('caller','RT');
+    if evalin('caller','exist(''RT'',''var'')')
+     RT=evalin('caller','RT');     
+    else
+     RT.flags=d_cntc('nmap.Global_flags');
+     warning('Using d_cntc(''nmap.Global_flags'')')
+    end
+    if isfield(RT,'CNTC')
+    else
+      LI=cntc.call;
+      if ~isfield(LI,'CNTC');cntc.init;end
+      RT.CNTC=LI.CNTC;
+    end
+    if isa(RT.flags,'vhandle.uo');LI.flags=RT.flags;end    
     cntc.setglobalflags(RT.CNTC.if_idebug, RT.flags.ire);
     [ifcver, ierror] = cntc.initialize(RT.flags.ire,RT.flags.imodul);
    else
@@ -576,6 +588,7 @@ cntc : interface between SDT and CONTACT
     % xxx should test if needed
    end
    if nargin==0
+     %sdtweb('_linkhelp',f1)
    elseif strcmpi(CAM,'@examples')
     out=sdtu.f.cffile(fullfile(wd),'../examples');
    elseif strcmpi(CAM,'pdf')
@@ -5537,6 +5550,63 @@ cntc : interface between SDT and CONTACT
 
   end % show_profiles
 
+  function  asFeplot(RO)
+  %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))
+
+   d1=[];
+   if isfield(RO,'li')
+    if size(RO.li,1)>3&&strncmpi(RO.li{4,2},'radius',5)
+      Z=max(RO.li{4,1},1);dZ=RO.li{4,1}-Z;
+      RO.li{4,1}=repmat(Z,size(dZ,1),1);
+      d1=struct('def',dZ(:),'DOF',(1:numel(dZ))'+.01);
+      XYZ=RO.XYZ(RO.li{2:end,1});
+      RO.show='showficEvalA';
+    elseif strcmpi(RO.li{1},'xyz')&&size(RO.li{2},3)==1
+      n0=0;
+      for j1=2:size(RO.li,1)
+       XYZ=RO.li{j1,1};
+       n1=[((1:size(XYZ,1))+n0)'*[1 0 0 0] XYZ];n0=n1(end,1);
+       elt= feutil('objectbeamline',n1(:,1));elt(2:end,3:4)=j1; 
+       RO.li{j1,1}=n1;RO.li{j1,3}=elt;
+      end
+    end
+   else
+    XYZ=RO.XYZ;
+   end
+   if size(XYZ,3)==1
+    mo1=struct('Node',vertcat(RO.li{2:end,1}),'Elt',vertcat(RO.li{2:end,3}));
+   else
+    mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
+    mo1.Node(:,5:7)=reshape(XYZ,[],3);
+   end
+   
+   if isempty(d1); feplot(mo1);fecom showFiPro
+   else; feplot(mo1,d1);fecom showFiCevalA
+   end
+
+  end
+
+  function  out=genSurf(prf,RO);
+   %% #genSurf struct('x',xi,'ind',js))
+   % RO
+   if isfield(prf,'is_wheel')&&~prf.is_wheel 
+     X=ones(length(RO.ind),1)*RO.x(:)';
+     Y=prf.ProfileY(RO.ind);
+     if size(Y,2)==1; Y=Y*ones(1,length(RO.x));end
+     Z=prf.ProfileZ(RO.ind);
+     if size(Z,2)==1; Z=Z*ones(1,length(RO.x));end     
+
+   end
+   if ~isfield(prf,'name')
+       [~,prf.name]=sdtu.f.getWdFname(prf.Fname);
+   end
+   if ~isfield(RO,'gf');RO.gf=55;end
+   figure(RO.gf);clf;
+   h=surface(X,Y,Z); set(h,'EdgeColor','none','DisplayName',prf.name)
+   ga=gca;set(ga,'DataAspectRatio',[1 1 1]);view(3)
+
+  end
+
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   function [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, xrange, dx_true, dx_appx,srange, ds_true, ds_appx, idebug)
@@ -5558,13 +5628,10 @@ cntc : interface between SDT and CONTACT
    if (nargin< 9), ds_appx = []; end
    if (nargin<10 | isempty(idebug)), idebug  =  0; end
 
-   if (want_rail)
-    prf = sol.prr;
-    nom_radius = sol.meta.rnom_rol;
-   else
-    prf = sol.prw;
-    nom_radius = sol.meta.rnom_whl;
+   if (want_rail);    prf = sol.prr; nom_radius = sol.meta.rnom_rol;prf.name='prr';
+   else;              prf = sol.prw;    nom_radius = sol.meta.rnom_whl;;prf.name='prw';
    end
+   prf.radius=nom_radius;
    has_slcs   = ( want_rail & isfield(sol,'slcs'));
    has_slcw   = (~want_rail & isfield(sol,'slcw'));
 
@@ -5640,27 +5707,21 @@ cntc : interface between SDT and CONTACT
    % determine indices js closest to each sj
 
    js = zeros(size(sj));
-   for j = 1 : length(sj)
-    [~,js(j)] = min(abs(profile_s - sj(j)));
-   end
+   for j = 1 : length(sj); [~,js(j)] = min(abs(profile_s - sj(j)));end
 
    % form profile surface at given xi and js
 
-   nx    = length(xi);
-   ns    = length(js);
+   nx    = length(xi);   ns    = length(js);
 
    if (want_rail & ~has_slcs & abs(nom_radius)<1e-3)
-
-    % prismatic rail
+    %% prismatic rail
 
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
     zsurf = ones(nx,1) * prf.ProfileZ(js)';
 
    elseif (want_rail & cntc.myisfield(sol, 'slcs.spl2d'))
-
-    % variable rail profile, using 2D spline algorithm
-
+    %% variable rail profile, using 2D spline algorithm
     % form profile surface at given ui (==x_fc) and vj
 
     sf_min = min(sol.slcs.spl2d.ui);
@@ -5683,7 +5744,7 @@ cntc : interface between SDT and CONTACT
 
    elseif (want_rail)
 
-    % roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
+    %% roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
 
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
@@ -5692,7 +5753,8 @@ cntc : interface between SDT and CONTACT
 
    elseif (~want_rail & ~has_slcw)
 
-    % round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
+   %% round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
+    LI=cntc.call;cntc.genSurf(LI.prr,struct('x',xi,'ind',js))
     % #Prw.Rev origin -2
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
@@ -7444,10 +7506,20 @@ cntc : interface between SDT and CONTACT
       %  cdm.urnVec(LI.Traj,'{x,#pitch_ws}')
      end
      % xxxgae +LI.Cmacro.Y(73,:)
+     RP=struct('li',{{'Data','ToolTip'; 
+         LI.prw.xsurf([1:end 1],:),'angle rad';LI.prw.ysurf([1:end 1],:),'Y' 
+         LI.prw.zsurf([1:end 1],:),sprintf('radius - %f ',LI.wheelsetDim.nomrad)}}, ...
+         'cf',30,'is_wheel',LI.prw.is_wheel, ...
+         'toXYZ',@(X,Y,Z)cat(3,(Z+LI.wheelsetDim.nomrad).*cos(X), ...
+           Y,(Z+LI.wheelsetDim.nomrad).*sin(X)), ...
+          'Traj',LI.Traj);
+     cntc.asFeplot(RP)
+
      X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
+     Y=LI.prw.ysurf;
      Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
      clf(gf);ga=axes(gf);
-     go=surf(X,LI.prw.ysurf,Z,'parent',ga); 
+     go=surf(X,Y,Z,'parent',ga); %
      color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
      set(go,'edgecolor','none');
      set(gca,'DataAspectRatio',[1 1 1]);
@@ -16728,7 +16800,7 @@ cntc : interface between SDT and CONTACT
      'kinkwid(#%g#"Half-width of window used for kink detection")'];
 
     if nargin==0; CAM='';else; CAM=ire;end
-    LI=cntc.call;
+    LI=cntc.call;if ~isfield(LI,'flags');cntc.initializeflags;end
 
     ProfileFname=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     if ProfileFname.iswheel == 1
