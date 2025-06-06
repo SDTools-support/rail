@@ -5360,6 +5360,7 @@ cntc : interface between SDT and CONTACT
    end
 
    % set target step-sizes for plotting
+    RP=struct('li',{{'xyz','name'}});
 
    if (isempty(opt.xysteps))
     xlen = opt.xrange(2) - opt.xrange(1);  ylen = 0;
@@ -5425,6 +5426,7 @@ cntc : interface between SDT and CONTACT
     % plot 90% transparent surface (alpha=0.1); color-value?
 
     csurf = -1 * ones(size(xsurf));
+    RP.li(end+1,1:2)={cat(3,xsurf,ysurf,zsurf),'prr'};
     l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
     set(l,'tag','prr');
 
@@ -5511,6 +5513,7 @@ cntc : interface between SDT and CONTACT
      [], [], []);
 
     % plot 90% transparent surface (alpha=0.1); color-value?
+    RP.li(end+1,1:2)={cat(3,xsurf,ysurf,zsurf),'prw'};
 
     csurf = -1 * ones(size(xsurf));
     l=surf(xsurf, ysurf, zsurf, csurf, 'EdgeAlpha',0.1, 'FaceAlpha',0.1);
@@ -5524,8 +5527,7 @@ cntc : interface between SDT and CONTACT
 
     % determine transverse curves along the surface at fixed steps in x
 
-    [ xcurv, ycurv, zcurv ] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1), ...
-     [], [], []);
+    [xcurv,ycurv,zcurv] = cntc.make_3d_surface( sol, opt, want_rail, opt.xrange, [], opt.xysteps(1),[], [], []);
 
     % plot transverse curves along the surface
 
@@ -5547,13 +5549,18 @@ cntc : interface between SDT and CONTACT
     set(l(imid), 'color', [.3 .3 .3], 'linewidth',1);
 
    end
+   if size(RP.li,1)>1 % Possibly display in feplot 
+    gf=gcf;
+     cntc.asFeplot(RP);fecom('triaxOn')
+     figure(gf)
+   end
 
   end % show_profiles
 
   function  asFeplot(RO)
   %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))
 
-   d1=[];
+   d1=[];mo1=[];
    if isfield(RO,'li')
     if size(RO.li,1)>3&&strncmpi(RO.li{4,2},'radius',5)
       Z=max(RO.li{4,1},1);dZ=RO.li{4,1}-Z;
@@ -5561,6 +5568,9 @@ cntc : interface between SDT and CONTACT
       d1=struct('def',dZ(:),'DOF',(1:numel(dZ))'+.01);
       XYZ=RO.XYZ(RO.li{2:end,1});
       RO.show='showficEvalA';
+          mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
+    mo1.Node(:,5:7)=reshape(XYZ,[],3);
+
     elseif strcmpi(RO.li{1},'xyz')&&size(RO.li{2},3)==1
       n0=0;
       for j1=2:size(RO.li,1)
@@ -5569,6 +5579,20 @@ cntc : interface between SDT and CONTACT
        elt= feutil('objectbeamline',n1(:,1));elt(2:end,3:4)=j1; 
        RO.li{j1,1}=n1;RO.li{j1,3}=elt;
       end
+    elseif strcmpi(RO.li{1},'xyz')
+      for j1=2:size(RO.li,1)
+       XYZ=RO.li{j1,1};
+       mo2=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
+       mo2.Elt(2:end,5:6)=j1;
+       mo2.Node(:,5:7)=reshape(XYZ,[],3);
+       if isempty(mo1);mo1=mo2; 
+       else;
+          mo2.Node(:,1)=mo2.Node(:,1)+mo1.Node(end,1);
+          mo2.Elt(2:end,1:4)=mo2.Elt(2:end,1:4)+mo1.Node(end,1);
+          mo1.Node=[mo1.Node;mo2.Node];mo1.Elt=[mo1.Elt;mo2.Elt];
+       end
+      end
+    else; error('Not implemented')
     end
    else
     XYZ=RO.XYZ;
@@ -5576,8 +5600,6 @@ cntc : interface between SDT and CONTACT
    if size(XYZ,3)==1
     mo1=struct('Node',vertcat(RO.li{2:end,1}),'Elt',vertcat(RO.li{2:end,3}));
    else
-    mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
-    mo1.Node(:,5:7)=reshape(XYZ,[],3);
    end
    
    if isempty(d1); feplot(mo1);fecom showFiPro
@@ -5746,7 +5768,7 @@ cntc : interface between SDT and CONTACT
    elseif (want_rail)
 
     %% roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2
-
+    prf.type='roller surface: circle x^2 + (rnom - z)^2 = (rnom - z(0,y))^2';
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
     r_y   = nom_radius - prf.ProfileZ(js)';
@@ -5755,7 +5777,8 @@ cntc : interface between SDT and CONTACT
    elseif (~want_rail & ~has_slcw)
 
    %% round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2
-    LI=cntc.call;cntc.genSurf(LI.prr,struct('x',xi,'ind',js))
+    LI=cntc.call;%cntc.genSurf(LI.prr,struct('x',xi,'ind',js))
+    prf.type='round wheel surface: circle x^2 + (rnom + z)^2 = (rnom + z(0,y))^2';
     % #Prw.Rev origin -2
     xsurf = xi' * ones(1,ns);
     ysurf = ones(nx,1) * prf.ProfileY(js)';
@@ -5793,16 +5816,16 @@ cntc : interface between SDT and CONTACT
    end
 
    % transform to track coordinates if needed
-
    if (want_rail & strcmp(opt.rw_surfc,'both'))
-
-    %xyzsurf=cat(3,xsurf,ysur,zsurf)
+    st='c_tr_r';
     [xsurf, ysurf, zsurf] = cntc.rail_to_track_coords(sol, xsurf, ysurf, zsurf);
-
    elseif (strcmp(opt.rw_surfc,'both'))
-
+    st='c_tr_w';
     [xsurf, ysurf, zsurf] = cntc.wheel_to_track_coords(sol, xsurf, ysurf, zsurf);
-
+   end
+   if evalin('base','exist(''longDebug'',''var'')');
+     disp({prf.ProfileS(1) prf.ProfileY(1) prf.ProfileZ(1),prf.name,prf.radius,st})
+     disp(prf.type);dbstack
    end
 
   end % make_3d_surface
@@ -6996,6 +7019,7 @@ cntc : interface between SDT and CONTACT
    if (isfield(sol.meta, 'roty')) % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
     Rref = Rref * cntc.roty(sol.meta.roty*180/pi);
    end
+
    oref = [sol.meta.xcp_r; sol.meta.ycp_r; sol.meta.zcp_r];
 
    R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
@@ -7006,6 +7030,14 @@ cntc : interface between SDT and CONTACT
     % change coordinates from contact to rail to track coordinates
 
     coords = o_r*ones(1,m*n) + R_r * oref*ones(1,m*n) + R_r * Rref * coords;
+   if isfield(sol,'debug')&&sol.debug
+    LI=cntc.call;
+    LI.debug.toTr=struct('o',o_r','R',R_r* Rref, ...
+        'rollyawpitch_d',[sol.meta.roll_r+sol.meta.deltcp_r 0 0]*180/pi, ...
+        'doRot',@(x)cntc.rotx(x(1)) * cntc.rotz(x(2)) * cntc.roty(x(3)));
+    %   cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
+    % LI.debug.toTr;ans.doRot(ans.rollyawpitch_d)-ans.R
+   end
 
    else
 
@@ -7275,8 +7307,11 @@ cntc : interface between SDT and CONTACT
    if isfield(sol,'slcs');o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
    else;                  o_r  = [          0   ; sol.meta.y_r; sol.meta.z_r];
    end
-
-   if nargin==1; xtr=struct('o',o_r,'R',R_r,'name','c_tr_r');end
+   if isfield(sol,'debug')&&sol.debug
+    LI=cntc.call;LI.debug.doRot=@(x)cntc.rotx(x(1)) * cntc.rotz(x(2)) * cntc.roty(x(3));
+    LI.debug.c_tr_r=struct('o',o_r,'R',R_r,'rollyawpitch_d',[sol.meta.roll_r 0 0]*180/pi);
+    %   cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
+   end
    % reshape inputs to row vectors
 
    m = size(xr,1); n = size(xr,2);
@@ -7347,6 +7382,11 @@ cntc : interface between SDT and CONTACT
    o_w_tr = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
 
    % change coordinates from wheel to track coordinates
+   if isfield(sol,'debug')&&sol.debug
+    LI=cntc.call;
+    LI.debug.c_tr_w=struct('o',o_w_tr,'R',R_w_tr,'rollyawpitch_d',[sol.meta.roll_w sol.meta.yaw_w 0]*180/pi);
+    %   cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
+   end
 
    coords = o_w_tr * ones(1,m*n) + R_w_tr * coords;
 
@@ -14242,8 +14282,8 @@ cntc : interface between SDT and CONTACT
    sol.meta.z_w      = cp_pos(23);
    sol.meta.roll_w   = ws_pos( 4);
    sol.meta.yaw_w    = ws_pos( 5);
-   sol.meta.y_r      = cp_pos(26);
-   sol.meta.z_r      = cp_pos(27);
+   sol.meta.y_r      = cp_pos(26);% yr_tr % z=cntc.getcontactlocation;z([z{:,1}]==26,:)
+   sol.meta.z_r      = cp_pos(27);% zr_tr
    sol.meta.roll_r   = cp_pos(28);
    sol.meta.xcp_r    = cp_pos( 5);
    sol.meta.ycp_r    = cp_pos( 6);
