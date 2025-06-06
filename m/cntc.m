@@ -58,7 +58,7 @@ cntc : interface between SDT and CONTACT
 
   %------------------------------------------------------------------------------------------------------------
   function []=initializeflags()
-   % #initializeflags-2
+   % #initializeflags -2
    if nargin==0
     if evalin('caller','exist(''RT'',''var'')')
      RT=evalin('caller','RT');     
@@ -5583,6 +5583,7 @@ cntc : interface between SDT and CONTACT
    if isempty(d1); feplot(mo1);fecom showFiPro
    else; feplot(mo1,d1);fecom showFiCevalA
    end
+
 
   end
 
