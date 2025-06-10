@@ -7668,32 +7668,40 @@ cntc : interface between SDT and CONTACT
     LI=cntc.call;
     RO=struct('gauge_y',-LI.Track.gaugwd/2, ...
               'gauge_z',0, ...
-              'cant',-LI.Track.cant);
-    gf=figure(55);clf;xlabel('y_tr');ylabel('z_tr');axis equal;
+              'cant',-LI.Track.cant, ...
+              'yw',LI.wheelsetDim.fbpos-LI.wheelsetDim.fbdist/2, ...
+              'zw',LI.wheelsetDim.nomrad);
+    gf=figure(55);clf;
     % track center
-    plot(0,0,'+','MarkerSize',10,'DisplayName','Otr');
-    % basis
-    plot(-RO.gauge_y,'+','MarkerSize',10,'DisplayName','Or');
-    % rail position
-    hrail = hggroup;
-    go=plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'Parent',hrail); 
-    plot(RO.gauge_y,RO.gauge_z,'+','MarkerSize',10,'Parent',hrail);
+    plot(0,0,'+','MarkerSize',10,'DisplayName','Otr'); hold on;
+    % Rail origin xxx 
+    plot(RO.gauge_y,0,'+','MarkerSize',10,'DisplayName','Or');
+    % wheel origin
+    plot(RO.yw,RO.zw,'+','MarkerSize',10);
+    axis equal; set(gca,'ydir','reverse');xlabel('ytr');ylabel('ztr');
+   
+   % rail position
+   R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
+   o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
+   
+   % xppr=LI
+   m = size(xr,1); n = size(xr,2);
+   xprr = reshape(x, 1, m*n);
+   yprr = reshape(yr, 1, m*n);
+   zprr = reshape(zr, 1, m*n);
+   coords = [xr; yr; zr];
+
+   coords = o_r * ones(1,m*n) + R_r * coords;
+   go=plot(LI.prr.ProfileY,-LI.prr.ProfileZ); 
+    
 
     Rz = makehgtform('zrotate',RO.cant,'translate',[RO.gauge_y,0,0]);
-    hrail.Matrix = Rz;drawnow
     
-    hold on;
     % wheel profil position
-    hwheel = hggroup;
-    go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:),'Parent',hwheel); %
-    plot(0,0,'+','MarkerSize',10,'Parent',hwheel);
-    for i1=LI.Traj.X{1}
-     set(hwheel, 'XData', LI.prw.ysurf(i1,:), 'YData',-LI.prw.zsurf(i1,:));
-     
-     translate(hwheel);
-     ga=axes(gf);
-     pause(0.5);
-    end
+
+    go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
+    
+    
    end
   end
 
@@ -15988,6 +15996,7 @@ cntc : interface between SDT and CONTACT
     error('Trajectory must be define first')
    end
    if RT.profile;profile('viewer'),end
+   eval(iigui({'RT'},'SetInBaseC'));
 
   end
 
