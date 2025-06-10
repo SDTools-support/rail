@@ -549,7 +549,7 @@ cntc : interface between SDT and CONTACT
    if isempty(LI.libname);
     if strcmpi(CAM,'cntc_finalizelast');return
     else
-     error('Library not initialized');
+     sdtw('_nb','Library not initialized');return
     end
    end
    if strcmp(CAM,'finalizelast') % already loaded
@@ -5569,27 +5569,37 @@ cntc : interface between SDT and CONTACT
       XYZ=RO.XYZ(RO.li{2:end,1});
       RO.show='showficEvalA';
           mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
-    mo1.Node(:,5:7)=reshape(XYZ,[],3);
+     mo1.Node(:,5:7)=reshape(XYZ,[],3);
 
     elseif strcmpi(RO.li{1},'xyz')&&size(RO.li{2},3)==1
-      n0=0;
+      %% XYZ Segment 
+      n0=1000;
       for j1=2:size(RO.li,1)
-       XYZ=RO.li{j1,1};
-       n1=[((1:size(XYZ,1))+n0)'*[1 0 0 0] XYZ];n0=n1(end,1);
-       elt= feutil('objectbeamline',n1(:,1));elt(2:end,3:4)=j1; 
-       RO.li{j1,1}=n1;RO.li{j1,3}=elt;
-      end
-    elseif strcmpi(RO.li{1},'xyz')
-      for j1=2:size(RO.li,1)
-       XYZ=RO.li{j1,1};
-       mo2=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
-       mo2.Elt(2:end,5:6)=j1;
-       mo2.Node(:,5:7)=reshape(XYZ,[],3);
-       if isempty(mo1);mo1=mo2; 
-       else;
-          mo2.Node(:,1)=mo2.Node(:,1)+mo1.Node(end,1);
-          mo2.Elt(2:end,1:4)=mo2.Elt(2:end,1:4)+mo1.Node(end,1);
-          mo1.Node=[mo1.Node;mo2.Node];mo1.Elt=[mo1.Elt;mo2.Elt];
+       XYZ=RO.li{j1,1};R2=struct;
+       if isnumeric(XYZ)
+       elseif ischar(XYZ)
+         LI=cntc.call;XYZ=eval(['LI.' XYZ]);
+         if ~isfield(XYZ,'qbas'); error('Expecting .bas field');end
+         [XYZ,R2]=cntc.genXYZ(XYZ,RO);
+       else; error('Not implemented')
+       end
+       if size(XYZ,2)==1
+        n1=[((1:size(XYZ,1))+n0)'*[1 0 0 0] XYZ];n0=n1(end,1);
+        elt= feutil('objectbeamline',n1(:,1));elt(2:end,3:4)=j1; 
+        mo2=struct('Node',n1,'Elt',elt);
+       else
+        mo2=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
+        mo2.Elt(2:end,5:6)=j1;mo2.Elt(2:end,1:4)=mo2.Elt(2:end,1:4)+n0;
+        mo2.Node(:,5:7)=reshape(XYZ,[],3);
+        mo2.Node(:,1)=mo2.Node(:,1)+n0;
+       end
+       if isempty(mo1);mo1=mo2;mo1.bas=[];mo1.nmap=vhandle.nmap;nodeM=mo1.nmap('Map:Nodes');
+       else;mo1.Node=[mo1.Node;mo2.Node];mo1.Elt=[mo1.Elt;mo2.Elt];
+       end
+       n0=mo1.Node(end,1);
+       if isfield(R2,'bas')
+        mo1.bas(end+1,1:15)=R2.bas; 
+        nodeM(R2.basName)=R2.bas(1);mo1.Node(end+1,[1 5:7])=R2.bas([1 4:6]);
        end
       end
     else; error('Not implemented')
@@ -5601,32 +5611,116 @@ cntc : interface between SDT and CONTACT
     mo1=struct('Node',vertcat(RO.li{2:end,1}),'Elt',vertcat(RO.li{2:end,3}));
    else
    end
-   
+   cf=feplot(2,';');
    if isempty(d1); feplot(mo1);fecom showFiPro
    else; feplot(mo1,d1);fecom showFiCevalA
    end
+   iimouse('view',gca,[ -2362 2102 -2174 206.7 -745.1 -299.9 0.27 -0.35 -0.90 8.82]);
+   % pos targ up angle
+   if mean(mo1.Node(:,6))<0 % left
+    set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 -7400 -500   0 0 -500  0 0 -1 NaN]'});
+    set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[-7400 0 -500   0 0 -500  0 0 -1 NaN]'});
+    set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[-9400 -9400 -3500   0 0 -500  0 0 -1 NaN]'});
+    set(findobj(cf.opt(1),'tag','iivn4'),'callback',{@iimouse,'view[-00 -00 9500   0 0 -500  1 0 0 NaN]'});
+   end
+   %set(findobj(cf.opt(1),'tag','iivn2'),'callback',';iimouse view3;');
+   %fecom view1
+   % xxx need to revise rotations camrotate 
+   if 1==2
+     iimouse('view[ -3664 -5503 3018 0.04492 -728.1 -456.6 0.00 0.00 -1.00 9] ')
+     iimouse('view',gca,[0 -7400 -500   0 0 -500  0 0 -1])
+   end
+
 
 
   end
 
-  function  out=genSurf(prf,RO);
-   %% #genSurf struct('x',xi,'ind',js))
+  function  [out,out1]=genXYZ(prf,RO);
+   %% #genXYZ(prf,struct('x',xi,'ind',js)) -3
    % RO
-   if isfield(prf,'is_wheel')&&~prf.is_wheel 
-     X=ones(length(RO.ind),1)*RO.x(:)';
-     Y=prf.ProfileY(RO.ind);
-     if size(Y,2)==1; Y=Y*ones(1,length(RO.x));end
+   if ~isfield(prf,'isWheel')&&isfield(prf,'is_wheel');prf.isWheel=prf.is_wheel;end
+   %leftCoef=sign(.5-double(prf.isLeft));
+   leftCoef=sign(prf.qbas(2)); % right is positive, left negative (z downward)
+   prf.isLeft=leftCoef<0;
+   out1=struct;
+   if isfield(prf,'isWheel')&&~prf.isWheel
+     %% is rail (~isWheel)
+     if isfield(prf,'x')
+     elseif isfield(RO,'x');prf.x=RO.x;  
+     else; prf.x=-40:10:40;
+     end
+     if ~isfield(RO,'ind');RO.ind=1:length(prf.ProfileY);end
+     X=ones(length(RO.ind),1)*prf.x(:)';
+     Y=prf.ProfileY(RO.ind)*leftCoef;
+     if size(Y,2)==1; Y=Y*ones(1,length(prf.x));end
      Z=prf.ProfileZ(RO.ind);
-     if size(Z,2)==1; Z=Z*ones(1,length(RO.x));end     
+     if size(Z,2)==1; Z=Z*ones(1,length(prf.x));end    
+     out1.basName='r';out1.bas=[1 1 0 ];
+   else 
+     %% wheel
+     if isfield(prf,'x')
+     elseif isfield(RO,'x');prf.x=RO.x;  
+     else; prf.x=[80 85:95 100]; % degrees
+     end
+     if isfield(RO,'ind');
+     elseif isfield(prf,'xsurf');RO.ind=1:size(prf.xsurf,2);
+     else; RO.ind=1:length(prf.ProfileY);
+     end
+     if isfield(prf,'xsurf')
+      theta=prf.xsurf(:,RO.ind);
+      rad=prf.zsurf(:,RO.ind)+prf.radius_w_ws;
+      if theta(end,1)-theta(1)<2*pi-.01
+       theta(end+1,:)=theta(1,:);
+       rad(end+1,:)=rad(1,:);
+       prf.ysurf(end+1,:)=prf.ysurf(1,:);
+      end
+      X=rad.*cos(theta);
+      Y=prf.ysurf(:,RO.ind)*leftCoef;
+      Z=-prf.radius_w_ws+rad.*sin(theta);
+     else
+      thetad=prf.x(:)';
+      rad=prf.ProfileZ(RO.ind)+prf.radius_w_ws;
+      X=rad.*cosd(thetad);
+      Y=prf.ProfileY(RO.ind)*leftCoef*ones(1,length(prf.x));
+      Z=-prf.radius_w_ws+rad.*sind(thetad);
+     end
+     out1.basName='r';out1.bas=[2 1 0 ];
+   end
+   out=cat(3,X,Y,Z);XYZ=out;
+   if isfield(prf,'lc')
+     S=cumsum([0;sqrt(sum(diff(squeeze(out(:,1,:))).^2,2))]);%along track
+     [~,i1]=min(reshape(abs(XYZ(:,1,2))+abs(XYZ(:,1,3)),[],1));
+     S=S-S(i1);s2=feutil(sprintf('refineline%.15g',prf.lc),S([1 end]));
+     RO.ind=unique(sdtm.indNearest(S,s2));
 
+     S=cumsum([0;sqrt(sum(diff(squeeze(out(1,:,:))).^2,2))]);%section
+     [~,i1]=min(reshape(abs(XYZ(1,:,2))+abs(XYZ(1,:,3)),[],1));
+     S=S-S(i1);s2=feutil(sprintf('refineline%.15g',prf.lc),S([1 end]));
+     RO.iy=sdtm.indNearest(S,s2);
+
+     out=out(RO.ind,RO.iy,:);
    end
-   if ~isfield(prf,'name')
+
+    %   cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
+   % reshape inputs to row vectors
+   R= cntc.rotx(prf.qbas(4)*180/pi) * cntc.rotz(prf.qbas(5)*180/pi) * cntc.roty(prf.qbas(6)*180/pi);
+   out=reshape([reshape(out,[],3)*R']+reshape(prf.qbas(1:3),1,3),size(out));
+   out1.bas(4:15)=[reshape(prf.qbas(1:3),1,3) R(:)'];
+
+   %or=qbas(1:3);
+
+   if isfield(prf,'name')
+   elseif isfield(prf,'Fname')
        [~,prf.name]=sdtu.f.getWdFname(prf.Fname);
+   else; error('Expecting a profile .name')
    end
-   if ~isfield(RO,'gf');RO.gf=55;end
-   figure(RO.gf);clf;
-   h=surface(X,Y,Z); set(h,'EdgeColor','none','DisplayName',prf.name)
-   ga=gca;set(ga,'DataAspectRatio',[1 1 1]);view(3)
+   if isfield(RO,'gf');
+    %% possibly display 
+    figure(RO.gf);clf;
+    h=surface(X,Y,Z); 
+    set(h,'EdgeColor','none','DisplayName',prf.name)
+    ga=gca;set(ga,'DataAspectRatio',[1 1 1]);view(3)
+   end
 
   end
 
@@ -6721,9 +6815,8 @@ cntc : interface between SDT and CONTACT
   function show_rw_side_view(sol, field, opt)
 
    % show_rw_side_view: plot w/r profiles, contact plane & contact results
-
    % plot the potential contact area
-   % #show_rw_side_view
+   % #show_rw_side_view -2
 
    xc = sol.x; zc = zeros(1,sol.mx);
    if (strcmp(opt.rw_surfc,'prr'))
@@ -11173,12 +11266,8 @@ cntc : interface between SDT and CONTACT
    if (nargin<3 | isempty(mirror_y))
     mirror_y = 0;
    end
-   if (nargin<4 | isempty(mirror_z))
-    mirror_z = 0;
-   end
-   if (nargin<5 | isempty(scale_yz))
-    scale_yz = 1;
-   end
+   if (nargin<4 | isempty(mirror_z));    mirror_z = 0;   end
+   if (nargin<5 | isempty(scale_yz));    scale_yz = 1;   end
    if (scale_yz<1e-11)
     disp('ERROR(read_profile): scale_yz must be > 0');
     return;
@@ -11186,12 +11275,8 @@ cntc : interface between SDT and CONTACT
    if (nargin<6 | isempty(rgt_side))
     rgt_side = 1;
    end
-   if (nargin<7 | isempty(idebug))
-    idebug = 0;
-   end
-   if (nargin<8 | isempty(make_plot))
-    make_plot = 0;
-   end
+   if (nargin<7 | isempty(idebug));    idebug = 0;   end
+   if (nargin<8 | isempty(make_plot));    make_plot = 0;   end
 
    % switch to appropriate routine based on filename extension
 
@@ -11200,15 +11285,11 @@ cntc : interface between SDT and CONTACT
    is_vampire = 0;
 
    if (any(strcmpi(ext, {'.slcs', '.slcw'}) ))
-
     p = cntc.read_slices(fname, mirror_y, mirror_z, scale_yz, idebug);
     is_slices  = 1;
-
    elseif (any(strcmpi(ext, {'.prr', '.prw'}) ))
-
     p = cntc.read_simpack(fname, idebug, make_plot);
     is_simpack = 1;
-
    elseif (any(strcmpi(ext, {'.rai', '.whe'}) ))
 
     p = cntc.read_vampire(fname, rgt_side, idebug, make_plot);
@@ -12536,15 +12617,9 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
    % #resample_slices -2
 
-   if (nargin<3 | isempty(idebug))
-    idebug   = 0;
-   end
-   if (nargin<4)
-    show_fig = [];
-   end
-   if (nargin<5 | isempty(fig_ofs))
-    fig_ofs = 0;
-   end
+   if (nargin<3 | isempty(idebug)); idebug   = 0;   end
+   if (nargin<4); show_fig = [];   end
+   if (nargin<5 | isempty(fig_ofs));fig_ofs = 0;   end
    is_debug = 0; % slice for which information is printed
    if (idebug>=3 & ~isempty(show_fig))
     is_debug = 8;
@@ -12627,11 +12702,9 @@ cntc : interface between SDT and CONTACT
    i_p    = cumsum([1, nseg_p]);
 
    % set total number of points after resampling
-
    n_pnt  = i_p(end);
 
    % set the sampling positions vj
-
    vj  = [1 : n_pnt];
 
    if (idebug>=2 | n_pnt<=4)
@@ -13973,6 +14046,13 @@ cntc : interface between SDT and CONTACT
 
   %% #get
 
+  function out=getMacro(varargin)
+   %% getMacro
+   LI=cntc.call;
+   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1});
+   out=zeros(length(varargin{1}),length(varargin{2}));
+   out(i1,:)=LI.Cmacro.Y(i2(i1),varargin{2});
+  end
   function [ tcpu, twall]=getcalculationtime(ire, icp)
    % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
@@ -17516,7 +17596,7 @@ cntc : interface between SDT and CONTACT
      ',NewFlexVelPos,5,NewAll}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow")' ...
-     'nomrad(#%g#"Nominal radius of the wheel")'];
+     'nomrad(#%g#"z distance between o_w and o_ws (revolution center)")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;

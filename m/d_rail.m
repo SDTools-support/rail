@@ -190,8 +190,13 @@ if comstr(Cam,'db');
    d_rail('MeshWheelCut',dbM);
  end
 
-
- if nargout>0; out=projM;
+ if nargout>0; 
+  st=CAM(4:end);
+  if ~isempty(st)&&isKey(dbM,st)
+     out=dbM(st);
+  else
+     out=projM;
+  end
  else; % Display database contents 
    [~,RM]=sdtm.urnPar(CAM,'{}{}');
    if isfield(RM,'Other')&&any(sdtm.regContains(RM.Other,'imgen','i'))
@@ -438,7 +443,7 @@ elseif comstr(Cam,'wheel')
     mo1=stack_set(mo1,'info','wheel_geom',r1);
    
     %% now map profile for accurate gap
-    f1='/o/sdtdata/rail19/INP/profil_roue_castem.mat';
+    f1=sdtu.f.safe('@sdtdata/rail19/INP/profil_roue_castem.mat');
     mo1=feval(t_exp19('@liRad'),'init',mo1,f1);  
     out=mo1;
 
@@ -609,6 +614,20 @@ out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
   % 
   % RO.name='WC4';
 
+
+elseif comstr(Cam,'railfromcontour')
+ %% d_rail('MeshFromContour');
+ if carg>nargin;f1='@d_rail.m/Rail_UIC60.stp';
+ else; f1=varargin{carg};carg=carg+1;
+ end
+ if carg<=nargin;RO=varargin{carg};
+ else
+    RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v1');
+ end
+ mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
+ if nargout==0;
+   feplot(mo1);fecom shownodemark groupall
+ end
 
 
 elseif comstr(Cam,'railtop')

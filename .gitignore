@@ -1,4 +1,5 @@
 plots/*
+m/*.msh 
 mat/*
 doc/*
 help/*
@@ -9,5 +10,6 @@ RefDFR/*
 template*
 pres*
 */*.asv
+*.bak
 
 tex/hakobian/plots
