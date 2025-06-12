@@ -7619,7 +7619,7 @@ cntc : interface between SDT and CONTACT
      end
     end
    elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
-    %% #cntc.Plot.Wheel wheel profile or 3D wheel model -3
+    %% #cntc.Plot('wheel') wheel profile or 3D wheel model -3
     LI=cntc.call;
     if contains(Cam,'prw') % cntc.plot('Wheel{prw}')
      gf=findobj(0,'tag','prw','type','figure');if isempty(gf);gf=figure('tag','prw');end
@@ -7648,27 +7648,23 @@ cntc : interface between SDT and CONTACT
            Y,(Z+LI.wheelsetDim.nomrad).*sin(X)), ...
           'Traj',LI.Traj);
      cntc.asFeplot(RP)
-
      X=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*cos(LI.prw.xsurf);
      Y=LI.prw.ysurf;
      Z=(LI.wheelsetDim.nomrad+LI.prw.zsurf).*sin(LI.prw.xsurf);
-     clf(gf);ga=axes(gf);
-     go=surf(X,Y,Z,'parent',ga); %
+     clf(gf);ga=axes(gf); go=surf(X,Y,Z,'parent',ga); %
      color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
-     set(go,'edgecolor','none');
+     set(go,'edgecolor','none');  set(go,'CData',color);  hold on;
      set(gca,'DataAspectRatio',[1 1 1]);
-     set(go,'CData',color);
-     hold on;
      [~,i2]=ismember({'xcp_w';'ycp_w';'zcp_w'},LI.Cmacro.X{1});
-     coord=LI.Cmacro.Y(i2,:);
-     coord(3,:)=coord(3,:)-460;
+     coord=LI.Cmacro.Y(i2,:); coord(3,:)=coord(3,:)-460;
      for i1=LI.Traj.X{1}'
       if i1==1
        rotate(go,[0,1,0],90-LI.Traj.Y(1,6)*180/pi);
        g1=plot3(coord(1,i1),coord(2,i1),coord(3,i1),".",'MarkerSize',20,'MarkerEdgeColor','r');
       else
        set(g1, 'XData', coord(1,i1), 'YData', coord(2,i1), 'ZData',coord(3,i1));
-       rotate(go,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
+       rotate(go,[0,1,0],-(LI.Traj.Y(i1 ...
+        ,6)-LI.Traj.Y(i1-1,6))*180/pi)
        rotate(g1,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
       end
       pause(0.1);
@@ -7689,15 +7685,13 @@ cntc : interface between SDT and CONTACT
     %% #cntc.plot('rail'), plot rail profil or 3D rail model -3
 
     LI=cntc.call;
-    want_rail=1;xrange=[-26,26];dx_true=1;
-    opt.rw_surfc='both'; %'both' for track coordinates
-    % opt.rw_surfc='prr'; %'both' for rail coordinates
-    gf=60;figure(gf); 
-       
-    
-    if (1==2)
+
     if isfield(LI.prr,'nslc')
-     figure; go=surf(LI.prr.xsurf,LI.prr.ysurf,LI.prr.zsurf);
+     want_rail=1;xrange=[-26,26];dx_true=1;
+     opt.rw_surfc='both'; %'both' for track coordinates
+     % opt.rw_surfc='prr'; %'both' for rail coordinates
+     gf=60;figure(gf);
+     go=surf(LI.prr.xsurf,LI.prr.ysurf,LI.prr.zsurf);
      set(go,'edgecolor','none');
      set(gca,'DataAspectRatio',[1 1 1]);
 
@@ -7710,14 +7704,12 @@ cntc : interface between SDT and CONTACT
      set(go,'CData',color);
 
     else
-     gf=2;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.');
-     [~,i]=min(LI.prr.ProfileZ);
-     xline(LI.prr.ProfileY(i));
-     [ xsurf, ysurf, zsurf ] = make_3d_surface( sol, opt, want_rail, xrange, ...
-      dx_true, dx_appx,srange, ds_true, ds_appx, idebug);
+     gf=15;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.', DisplayName='Rail profile');
+     [~,i]=min(LI.prr.ProfileZ); hold on;
+     plot(LI.prr.ProfileY(i),LI.prr.ProfileZ(i),'+','DisplayName','Or', 'MarkerSize',10);
+     xlabel('yr');ylabel('zr');hold off;
     end
 
-    end
    elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
     %% #cntc.plot('cmacro'), plot time variation of Cmacor variable -3
 
