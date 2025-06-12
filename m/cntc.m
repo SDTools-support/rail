@@ -16117,7 +16117,7 @@ cntc : interface between SDT and CONTACT
    RT.ProjectWd=sdtu.f.firstdir({'C:\Users\0021221S.COMMUN\MATLAB\Code_Cntc\Variable_rail'
     cntc.help('@examples')});
    RT.flags=d_cntc('nmap.Global_flags');
-   RT.Model={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   ModelStr={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
     'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
     'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
     'Bound{Cond Force, fz 125000}'
@@ -16128,8 +16128,19 @@ cntc : interface between SDT and CONTACT
     'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
     'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
     'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
+    RT.Model=ModelStr;
+  else
+    ModelStr={'Solver{GauSei maintain}'
+    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+    'Friction{FrcLaw Maintain}'
+    'Bound{Cond Force, fz 125000}'
+    'wheelsetDim{Ewheel NewFlexVelPos}'
+    'Track{Design NewDevia}'
+    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+    'Rolling{StepSize WRCn, dqrel 1}'};
+  end
 
-  % Wheel/Rail trajectory definition
+   % Wheel/Rail trajectory definition
    l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';
        'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';
        'dyrail' ;'dzrail' ;'drollr' ;'vyrail';'vzrail';'vrollr'};
@@ -16143,7 +16154,7 @@ cntc : interface between SDT and CONTACT
    % Launch initialisation
    [LI,RT.CNTC]=cntc.init;
    LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;LI.Traj=RT.Traj;LI.flags=RT.flags;
-   cntc.initializeflags; cntc.setflags;  cntc.set(RT.Model);
+   cntc.initializeflags; cntc.setflags; cntc.set(ModelStr);
    
    % Lauch calcultions
    st1={{};'calculate{}';'getout{}'};
@@ -16151,15 +16162,6 @@ cntc : interface between SDT and CONTACT
    LI.cur=st2; st1{1}=st2;
    cntc.set(st1);
    LI.RT=RT;LI.RC=RC;
-  else
-   % Loop between SDT & CNTC
-
-
-
-  
-
-
-  end
 
   if 1==2
    Owd_isys=T1*unl; % O wheel deformed in isys basis
