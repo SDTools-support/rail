@@ -595,6 +595,8 @@ cntc : interface between SDT and CONTACT
     out=f1;
    elseif strcmpi(CAM,'md')
     out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));
+   elseif ~isempty(CAM)
+       sdtu.f.open([f1 '#' CAM])
    end
 
   end
@@ -5615,7 +5617,10 @@ cntc : interface between SDT and CONTACT
    if isempty(d1); feplot(mo1);fecom showFiPro
    else; feplot(mo1,d1);fecom showFiCevalA
    end
-   iimouse('view',gca,[ -2362 2102 -2174 206.7 -745.1 -299.9 0.27 -0.35 -0.90 8.82]);
+   ga=handle(cf.ga);
+   if ~isfield(RO,'cv')
+    RO.cv=[ -2362 2102 -2174 206.7 -745.1 -299.9 0.27 -0.35 -0.90 NaN];
+   end
    % pos targ up angle
    if mean(mo1.Node(:,6))<0 % left
     set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 -7400 -500   0 0 -500  0 0 -1 NaN]'});
@@ -5626,6 +5631,11 @@ cntc : interface between SDT and CONTACT
    %set(findobj(cf.opt(1),'tag','iivn2'),'callback',';iimouse view3;');
    %fecom view1
    % xxx need to revise rotations camrotate 
+   if isfield(RO,'ShowBas')
+     RB=RO.ShowBas;RB.cf=cf.opt(1);
+     sel=sdtu.fe.genSel(struct('bas',cf.mdl.bas),RB);
+   end
+   iimouse('view',ga,RO.cv);
    if 1==2
      iimouse('view[ -3664 -5503 3018 0.04492 -728.1 -456.6 0.00 0.00 -1.00 9] ')
      iimouse('view',gca,[0 -7400 -500   0 0 -500  0 0 -1])
@@ -5703,10 +5713,10 @@ cntc : interface between SDT and CONTACT
 
     %   cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
    % reshape inputs to row vectors
-   R= cntc.rotx(prf.qbas(4)*180/pi) * cntc.rotz(prf.qbas(5)*180/pi) * cntc.roty(prf.qbas(6)*180/pi);
-   out=reshape([reshape(out,[],3)*R']+reshape(prf.qbas(1:3),1,3),size(out));
-   out1.bas(4:15)=[reshape(prf.qbas(1:3),1,3) R(:)'];
+   bas=cntc.getBas(prf.qbas);
 
+   out=reshape([reshape(out,[],3)*reshape(bas(7:end),3,3)']+reshape(prf.qbas(1:3),1,3),size(out));
+   out1.bas(4:15)=bas(4:15);
    %or=qbas(1:3);
 
    if isfield(prf,'name')
@@ -7527,7 +7537,15 @@ cntc : interface between SDT and CONTACT
   end % wheel_to_rail_coords
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  function bas=getBas(qM)
+    %% getBas marker DOF to SDT basis 
+    R=cntc.rotx(qM(4)*180/pi) * cntc.rotz(qM(5)*180/pi) * cntc.roty(qM(6)*180/pi); 
+    bas=[1 0 0 reshape(qM(1:3),1,3) R(:)'];
+    if nargout==0
+      sdtu.fe.genSel(struct('bas',bas),struct('cf',gcf))
+    end
 
+  end
   function [ rot ] = rotx(roll_deg)
    % #rotx -2
 
@@ -7682,7 +7700,7 @@ cntc : interface between SDT and CONTACT
     end
 
    elseif comstr(Cam,'rail');[CAM,Cam]=comstr(CAM,10);
-    %% #cntc.plot('rail'), plot rail profil or 3D rail model -3
+    %% #plot.rail plot rail profile or 3D rail model -3
 
     LI=cntc.call;
 
@@ -7704,10 +7722,20 @@ cntc : interface between SDT and CONTACT
      set(go,'CData',color);
 
     else
-     gf=15;figure(gf); plot(LI.prr.ProfileY,-LI.prr.ProfileZ,'.', DisplayName='Rail profile');
-     [~,i]=min(LI.prr.ProfileZ); hold on;
-     plot(LI.prr.ProfileY(i),LI.prr.ProfileZ(i),'+','DisplayName','Or', 'MarkerSize',10);
-     xlabel('yr');ylabel('zr');hold off;
+     gf=15;
+     figure(gf); clf;
+     plot3(LI.prr.ProfileY*0,LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
+     [~,i1]=min(LI.prr.ProfileZ); hold on;
+     Mr_r=[0 LI.prr.ProfileY(i1),LI.prr.ProfileZ(i1) 0 0 0];
+     bas=cntc.getBas(Mr_r);
+     RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
+         'arProp',{{'linewidth',2}},'DefLen',10);
+     sel=sdtu.fe.genSel(struct('bas',bas),RB);
+     xlabel('xr');ylabel('yr');zlabel('zr');hold off;
+     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
+     iimouse('on')
+     sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
+
     end
 
    elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
@@ -7785,7 +7813,6 @@ cntc : interface between SDT and CONTACT
     % wheel profil position
 
     go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
-    
     
    end
   end
@@ -16958,8 +16985,10 @@ cntc : interface between SDT and CONTACT
    fname=sdtu.f.safe(fname);
 
    len_fname = length(fname);nints= length(iparam);nreals=length(rparam);
-
-   cntc.call('cntc.setprofileinputfname', ire, fname, len_fname, nints, iparam, nreals, rparam);
+   warning('xxxGG need qbas set')
+   if ~isempty(LI.libname)
+    cntc.call('cntc.setprofileinputfname', ire, fname, len_fname, nints, iparam, nreals, rparam);
+   end
 
   end % cntc.setprofileinputfname
 
