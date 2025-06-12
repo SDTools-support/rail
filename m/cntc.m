@@ -35,7 +35,9 @@ cntc : interface between SDT and CONTACT
 
  methods
   function ob = cntc(varargin)
-   help cntc
+   if nargout==0
+    help cntc
+   end
   end
 
  end % methods
@@ -6114,7 +6116,9 @@ cntc : interface between SDT and CONTACT
    else
 
     disp('make_3d_surface: ERROR: case not supported.')
-    disp([want_rail, has_slcs, has_slcw, cntc.myisfield(sol,'slcw.spl2d'), exist('eval_2dspline')])
+    disp([want_rail, has_slcs, has_slcw, ...
+         cntc.myisfield(sol,'slcw.spl2d'), ismethod(cntc,'eval_2dspline')])
+    %exist('eval_2dspline'))
     return;
 
    end
@@ -6806,7 +6810,7 @@ cntc : interface between SDT and CONTACT
     [ ~, yval, zval, delta ] =cntc.to_track_coords(sol, [], yc, zc);
    end
 
-   if (exist('plot_cm','file'))
+   if ismethod(cntc,'plot_cm')%(exist('plot_cm','file'))
     l  = cntc.plot_cm([yval(2),zval(2)], 0.3, axlen, delta*180/pi, 'k');
     set(l, 'Tag','CM');
    else
@@ -6892,7 +6896,7 @@ cntc : interface between SDT and CONTACT
     [ xval, ~, zval ] =cntc.to_track_coords(sol, xc, [], zc);
    end
 
-   if (exist('plot_cm','file'))
+   if ismethod(cntc,'plot_cm')%(exist('plot_cm','file'))
     roty = 0; % hack for 'grade' normal [nx,0,nz] instead of [0,0,1]
     if (isfield(sol.meta, 'roty')), roty = sol.meta.roty*180/pi; end
     l = cntc.plot_cm([xval(2),zval(2)], 0.15*axlen, axlen, -roty, 'k');
@@ -12060,7 +12064,7 @@ cntc : interface between SDT and CONTACT
    % wheels: parameter (u,v) --> cylindrical (th,y,dr) with th==u, basic interval [-pi,pi) + wrap-around
    % TODO: smoothing in x/theta-direction
 
-   if (ierror==0 & exist('make_2dspline'))
+   if (ierror==0 & ismethod(cntc,'make_2dspline'))
     use_approx = (slcs.u_intpol==2); use_insert = 1; use_cylindr = is_wheel; idebug = 0;
     slcs.spl2d = cntc.make_2dspline(slcs.u, slcs.vj, [], slcs.ysurf, slcs.zsurf, slcs.mask_j, ...
      use_approx, use_insert, use_cylindr, idebug);
@@ -12628,8 +12632,12 @@ cntc : interface between SDT and CONTACT
    %         -->  for this slice 'islc', breaks 1, 2, 7, 8 are non-existent
    %         -->  break 3 == 5.0 means that 5 mm will be trimmed off from the start of the profile
    %         -->  break 6 == 999.0 will be changed to s(end), the end-point of the profile
-
+   %
    % variable naming focuses on the use of rail slices. Wheels use (x,y,z) to mean (th,y,dr).
+   %
+   % See <a href="matlab: cntc.help('section.3.2')">section.3.2</a>
+
+   
 
    % method:
    %  - for this slice, len_part(islc,:) = [ NaN, NaN, 5.3, 9.7, s(end)-20.0, NaN, NaN ]
@@ -12672,26 +12680,21 @@ cntc : interface between SDT and CONTACT
    for is = 1 : nslc
 
     % - mark non-used breaks (features) for this slice by NaN-value
-
     ib  = find(s_feat(is,:) < 0);
     s_feat(is,ib) = NaN;
 
     % - determine active 'breaks' [ib0:ib1] for each slice
-
     ib0 = find(s_feat(is,:) >= 0, 1, 'first');
     ib1 = find(s_feat(is,:) >= 0, 1, 'last');
     slcs.slc_ib(is,1:2) = [ib0, ib1];
 
     % - shift s_feat from [0, L] as used in the parts-file to [s_0, s_end] as used in the profile
-
     s_feat(is,ib0:ib1) = s_feat(is,ib0:ib1) + slcs.prf(is).ProfileS(1);
 
     % - clip last value after s_end
-
     s_feat(is,ib1) = min(s_feat(is,ib1), slcs.prf(is).ProfileS(end));
 
     % - check that s_feat are in strictly increasing order and in range of profile
-
     if (any(diff(s_feat(is,ib0:ib1))<=0))
      disp(sprintf('Incorrect break points s_feat for slice %d, must be strictly increasing.',is))
      disp([ib0, ib1])
@@ -12703,7 +12706,6 @@ cntc : interface between SDT and CONTACT
     end
 
     % - determine the length of each part in this slice
-
     len_part(is,ib0:ib1-1) = diff(s_feat(is,ib0:ib1));
 
    end % for is: adapt parts-info
@@ -12721,11 +12723,9 @@ cntc : interface between SDT and CONTACT
    end
 
    % determine number of points and step size du for each of the parts
-
    nseg_p = ceil( L_part / ds_max2d );
 
    % determine the first point number i_p for each of the parts after resampling
-
    i_p    = cumsum([1, nseg_p]);
 
    % set total number of points after resampling
@@ -12751,7 +12751,6 @@ cntc : interface between SDT and CONTACT
    slcs.zsurf  = NaN * ones(slcs.nslc, n_pnt);
 
    % create mask array for use in spline computation
-
    for is = 1 : slcs.nslc
     ib0 = slcs.slc_ib(is,1);  % active features [ib0:ib1]
     ib1 = slcs.slc_ib(is,2);
@@ -12761,7 +12760,6 @@ cntc : interface between SDT and CONTACT
    end
 
    % loop over slices, resample each slice
-
    for is = 1 : slcs.nslc
 
     slc = slcs.prf(is);
@@ -12795,11 +12793,10 @@ cntc : interface between SDT and CONTACT
     end
 
     % resample at selected sj-positions
-
     i0  = i_p(ib0);
     i1  = i_p(ib1);
 
-    if (exist('make_spline'))
+    if ismethod(cntc,'make_spline')%(exist('make_spline'))
 
      % make spline for the slice, evaluate at positions sj
 
@@ -13336,7 +13333,7 @@ cntc : interface between SDT and CONTACT
     end
 
     % prevent jumping over u2 in first iteration
-    if (iter<=1 & discr>0 & exist('u2'))
+    if (iter<=1 & discr>0 & exist('u2','var'))
      if (ul<u2)
       ul = min(u2, ul+du);
      else
@@ -16985,45 +16982,47 @@ cntc : interface between SDT and CONTACT
   %------------------------------------------------------------------------------------------------------------
 
 
-  %------------------------------------------------------------------------------------------------------------
-  function []=setprofileinputfname(ire, fname, iparam, rparam)
+%------------------------------------------------------------------------------------------------------------
+function []=setprofileinputfname(ire, fname, iparam, rparam)
 
-   % [ ] = cntc.setprofileinputfname(ire, fname, iparam, rparam)
-   %
-   % set a wheel or rail profile filename for a wheel-rail contact problem
-   %
-   %  fname          - string: name of profile file, absolute path or relative wrt effective working folder
-   %  iparam         - integer configuration parameters
-   %                     1: iswheel     0 = rail, 1 = wheel profile, -1 = taken from file extension (default)
-   %                     2:  -        not used
-   %                     3: mirrory   0 or -1 = no mirroring (default), 1 = mirror y coordinate values
-   %                     4: mirrorz   0 = autodetect (default), -1 = no mirroring, 1 = mirror z values
-   %                     5: errhndl   configuration of error handling.
-   %                                   -2 = continue as much as possible, suppress error messages;
-   %                                   -1 = suppress warnings; 0: warn and continue (default);
-   %                                    1 = signal errors and abort
-   %                     6: ismooth   selection of smoothing method. 0 = original smoothing spline (default),
-   %                                    1 = weighted PP smoothing spline, 2 = weighted smoothing B-spline (best)
-   %  rparam         - real configuration parameters
-   %                     1: sclfac    scaling factor for conversion to [mm], e.g. 1e3 for data given in [m]
-   %                                  default (sclfac<=0): using the active unit convention
-   %                     2: smooth    smoothing parameter lambda for non-weighted spline or l_filt for
-   %                                  weighted spline smoothing
-   %                     3: maxomit   fraction: signal error if more than maxomit of profile points are
-   %                                  discarded after cleanup of profile. Default 0.5, use 1 to disable check.
-   %                     4: zigthrs   angle threshold for zig-zag detection. Default 5/6*pi, >=pi to disable.
-   %                     5: kinkhigh  angle threshold for kink detection. Default pi/6, >=pi to disable.
-   %                     6: kinklow   angle threshold for neighbouring points in kink detection.
-   %                                  default kinkhigh/5.
-   %                     7: kinkwid   half-width of window used for kink detection, [len], default 2 mm
-   %------------------------------------------------------------------------------------------------------------
+% [ ] = cntc.setprofileinputfname(ire, fname, iparam, rparam)
+%
+% set a wheel or rail profile filename for a wheel-rail contact problem
+%
+%  fname          - string: name of profile file, absolute path or relative wrt effective working folder
+%  iparam         - integer configuration parameters
+%   1: iswheel     0 = rail, 1 = wheel profile, -1 = taken from file extension (default)
+%   2:  -        not used
+%   3: mirrory   0 or -1 = no mirroring (default), 1 = mirror y coordinate values
+%   4: mirrorz   0 = autodetect (default), -1 = no mirroring, 1 = mirror z values
+%   5: errhndl   configuration of error handling.
+%               -2 = continue as much as possible, suppress error messages;
+%               -1 = suppress warnings; 0: warn and continue (default);
+%                1 = signal errors and abort
+%    6: ismooth   selection of smoothing method. 0 = original smoothing spline (default),
+%                1 = weighted PP smoothing spline, 2 = weighted smoothing B-spline (best)
+%  rparam         - real configuration parameters
+%    1: sclfac    scaling factor for conversion to [mm], e.g. 1e3 for data given in [m]
+%                 default (sclfac<=0): using the active unit convention
+%    2: smooth    smoothing parameter lambda for non-weighted spline or l_filt for
+%                 weighted spline smoothing
+%    3: maxomit   fraction: signal error if more than maxomit of profile points are
+%                 discarded after cleanup of profile. Default 0.5, use 1 to disable check.
+%    4: zigthrs   angle threshold for zig-zag detection. Default 5/6*pi, >=pi to disable.
+%    5: kinkhigh  angle threshold for kink detection. Default pi/6, >=pi to disable.
+%    6: kinklow   angle threshold for neighbouring points in kink detection.
+%                 default kinkhigh/5.
+%    7: kinkwid   half-width of window used for kink detection, [len], default 2 mm
+%
+% See <a href="matlab: cntc.help('subsection.2.1.2')">section.2.1.2</a>
 
-   % Copyright 2008-2023 by Vtech CMCC.
-   %
-   % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+%------------------------------------------------------------------------------------------------------------
 
-   % category 2: m=1, wtd    - no icp needed
-   % #setprofileinputfname(pdfsubsection.2.1.2) set a profile FileName -2
+% Copyright 2008-2023 by Vtech CMCC.
+% Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
+
+% category 2: m=1, wtd    - no icp needed
+% #setprofileinputfname(pdfsubsection.2.1.2) set a profile FileName -2
 
    % parameters
    if nargin==0||ischar(ire)
@@ -17224,10 +17223,9 @@ cntc : interface between SDT and CONTACT
    %     chi            - rolling direction [angle]
    %     dq             - rolling step size [length]
    %
-   %------------------------------------------------------------------------------------------------------------
+   %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a>
 
    % Copyright 2008-2023 by Vtech CMCC.
-   %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 5: m=*, wtd    - default icp=-1
