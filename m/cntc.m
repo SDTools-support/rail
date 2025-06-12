@@ -16019,10 +16019,11 @@ cntc : interface between SDT and CONTACT
      case 'traj'
       %% #set.traj set wheel position and velocity associated to a trajectory point -2
       % increment icase = j1 in fe_time
-
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';'vs';'vy';'vz'
-       'vroll';'vyaw';'vpitch';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';
-       'dpitchw';'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'};
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';
+           'vs';'vy';'vz';'vroll';'vyaw';'vpitch';
+           'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw';
+           'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw';
+           'dyrail';'dzrail';'drollr';'vyrail';'vzrail';'vrollr'};
       if ~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
@@ -16031,13 +16032,12 @@ cntc : interface between SDT and CONTACT
        LI.Traj=C2;
       end
 
-
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
 
-      % xxxgae unl vnl
+      % Wheel trajectory
       pos=LI.Traj.Y(icase,1:6);
       cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
 
@@ -16047,6 +16047,11 @@ cntc : interface between SDT and CONTACT
       flex=LI.Traj.Y(icase,13:24);
       cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
 
+      % Rail Traj
+      dev=LI.Traj.Y(icase,25:30);
+      if ~isempty(dev)
+      cntc.settrackdimensions(iwhe, 2, dev); % NewDevia
+      end
     end
    end
   end
@@ -16054,7 +16059,6 @@ cntc : interface between SDT and CONTACT
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    [LI,RT.CNTC]=cntc.init;
-
    LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
    LI.Traj=RT.Traj;LI.flags=RT.flags;
 
@@ -16097,6 +16101,97 @@ cntc : interface between SDT and CONTACT
    if RT.profile;profile('viewer'),end
    eval(iigui({'RT'},'SetInBaseC'));
 
+  end
+
+
+  function []= SDTLoop(RC)
+   %% #SDTLoop -2
+   
+  % initialize 
+  % RC, RCoordinates
+  % RC=struct('Mr',[0 0 0 0 0 0], ...
+  %  'Mw',[0 0 0 0 0 0], ...
+  %  'vMr',[0 0 0 0 0 0], ...
+  %  'vMw',[0 0 0 0 0 0], ...
+  %  'j1',1);
+
+  if RC.j1==1
+   LI=cntc.call;
+   RT.ProjectWd=sdtu.f.firstdir({'C:\Users\0021221S.COMMUN\MATLAB\Code_Cntc\Variable_rail'
+    cntc.help('@examples')});
+   RT.flags=d_cntc('nmap.Global_flags');
+   RT.Model={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+    'Bound{Cond Force, fz 125000}'
+    ['Track{Design NewDim, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05,' ...
+    'nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+    'Rolling{StepSize WRCn, dqrel 1}'
+    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
+
+  % Wheel/Rail trajectory definition
+   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';
+       'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';
+       'dyrail' ;'dzrail' ;'drollr' ;'vyrail';'vzrail';'vrollr'};
+   RT.Traj=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+    'Y',[]);
+   RT.Traj.Y=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
+           RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
+           RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
+   RT.Traj.X{1}=(1:size(RT.Traj.Y,2))';
+
+   % Launch initialisation
+   [LI,RT.CNTC]=cntc.init;
+   LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;LI.Traj=RT.Traj;LI.flags=RT.flags;
+   cntc.initializeflags; cntc.setflags;  cntc.set(RT.Model);
+   
+   % Lauch calcultions
+   st1={{};'calculate{}';'getout{}'};
+   st2=struct('type','Traj','j1',RC.j1,'iwhe',RT.flags.iwhe);
+   LI.cur=st2; st1{1}=st2;
+   cntc.set(st1);
+   LI.RT=RT;LI.RC=RC;
+  else
+   % Loop between SDT & CNTC
+
+
+
+  
+
+
+  end
+
+  if 1==2
+   Owd_isys=T1*unl; % O wheel deformed in isys basis
+   Owsd_isys=T2*unl; % O wheelset deformed in isys basis
+   % speed component
+   Vwd_isys=T1*vnl;
+   Vwsd_isys=T2*vnl;
+   % Basis change
+   Owd_ws=Ow+R*Owd_isys;
+   Owsd_ws=Ows+R*Owsd_isys;
+   % speed component
+   Vwd_ws=T1*vnl;
+   Vwsd_ws=T2*vnl;
+
+   %flexibilities calculations
+   flex = (Owd_ws-Owsd_ws)-(Ow-Ows);
+   Vflex = (Vwd_ws-Vwsd_ws);
+
+   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
+    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
+    'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
+    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
+   C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+    'Y',[]);
+   C1.X=[Owsd_ws(1);Owsd_ws(2);Owsd_ws(3);Owsd_ws(4);Owsd_ws(5);Owsd_ws(6); ...
+    Vwsd_ws(1);Vwsd_ws(2);Vwsd_ws(3);Vwsd_ws(4);Vwsd_ws(5);Vwsd_ws(6); ...
+    flex(1); flex(2); flex(3); flex(4); flex(5); flex(6); ...
+    Vflex(1); Vflex(2); Vflex(3); Vflex(4); Vflex(5); Vflex(6)];
+  end
   end
 
   %% #SDTUI user interface  ----------------------------------------------- -2
