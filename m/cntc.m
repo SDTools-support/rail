@@ -14062,7 +14062,7 @@ cntc : interface between SDT and CONTACT
   function out=getMacro(varargin)
    %% getMacro
    LI=cntc.call;
-   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1});
+   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(:,1));
    out=zeros(length(varargin{1}),length(varargin{2}));
    out(i1,:)=LI.Cmacro.Y(i2(i1),varargin{2});
   end
@@ -15859,7 +15859,7 @@ cntc : interface between SDT and CONTACT
       % contact between the wheel and the rail
       LI.Cmacro.rowM=sdtu.ivec('ColList', {}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
-      LI.Cmacro.X={[],[],LI.Traj.X{1}};
+      LI.Cmacro.X={{},[],LI.Traj.X{1}};
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
       setCMacro;
 
@@ -16066,7 +16066,7 @@ cntc : interface between SDT and CONTACT
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    cntc.init; LI=cntc.call;LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
-
+   LI.flags=RT.flags;
    % Initialize
    cntc.initializeflags; %initialize Global_flags
    cntc.setflags;
@@ -18395,12 +18395,15 @@ if isempty(iMap)||nargin==0;
  iMap=containers.Map;if nargin==0;return;end
 end
 st=dbstack;st=st(2).name;
-if ~isKey(iMap,st)
+if ~isKey(iMap,st) % Increment the X{1} to contain keys
  l1=evalin('caller','l1');
  i2=LI.Cmacro.rowM(l1(:,2));
- if size(l1,2)==3
+ if ~iscell(LI.Cmacro.X{1});LI.Cmacro.X{1}={};end
+ LI.Cmacro.X{1}(i2,1)=l1(:,2); % set labels
+ if size(l1,2)>=3
   LI.Cmacro.X{1}(i2,2)=l1(:,3); % set units
  end
+
  iMap(st)=struct('iVal',vertcat(l1{:,1}),'iY',i2);
 end
 i2=iMap(st);
