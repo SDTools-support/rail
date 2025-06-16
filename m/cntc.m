@@ -5263,7 +5263,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #show
+  %% #show -1
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -5339,7 +5339,7 @@ cntc : interface between SDT and CONTACT
    %
 
    % set the x range for plotting
-   % #show_profiles
+   % #show_profiles -2
 
    if (isempty(opt.xrange))
     if (any(strcmp(opt.rw_surfc,{'prr','both'})))
@@ -5551,7 +5551,7 @@ cntc : interface between SDT and CONTACT
   end % show_profiles
 
   function  asFeplot(RO)
-  %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))
+  %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))     -2   
 
    d1=[];mo1=[];
    if isfield(RO,'li')
@@ -12855,7 +12855,7 @@ cntc : interface between SDT and CONTACT
   end % resample_slices
 
   function [ prr ] = get_profile_slice( slcs, u_i, make_plot )
-   % #get_profile_slice
+   % #get_profile_slice -2
 
    if (nargin<3)
     make_plot = 0;
@@ -14122,11 +14122,10 @@ cntc : interface between SDT and CONTACT
    % category 6: m=*, cp     - require icp>0, default 1
    % # getcontactforces
 
-   l1=struct('ColumnName',{{'cntcpos','name','unit','ToolTip'}}, ...
-    'table',{{1,'fn','N','total normal force'
+   l1={1,'fn','N','total normal force'
     2,'tx','N','total tangential forces'
     3,'ty','N','total tangential forces'
-    4,'mz','N.mm','total torsional moment'}});
+    4,'mz','N.mm','total torsional moment'};
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -14153,8 +14152,7 @@ cntc : interface between SDT and CONTACT
 
    if nargin ==3
     values=[fn,tx,ty,mz];
-    i2=LI.Cmacro.rowM(l1.table(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1.table{:,1}));
+    setCMacro(LI,values,ire,LI.cur.j1);
    end
   end % cntc.getcontactforces
 
@@ -14483,8 +14481,7 @@ cntc : interface between SDT and CONTACT
 
    if nargin ==3
     values=[vx,vy,phi];
-    i2=LI.Cmacro.rowM(l1(:,2));
-    LI.Cmacro.Y(i2,ire,LI.cur.j1)=values(vertcat(l1{:,1}));
+    setCMacro(LI,values,ire,LI.cur.j1);
    end
 
   end % cntc.getcreepages
@@ -16114,11 +16111,11 @@ cntc : interface between SDT and CONTACT
    
   % initialize 
   % RC, RCoordinates
-  % RC=struct('Mr',[0 0 0 0 0 0], ...
-  %  'Mw',[0 0 0.4 0 0 0], ...
-  %  'vMr',[0 0 0 0 0 0], ...
-  %  'vMw',[0 0 0 0 0 0], ...
-  %  'j1',1);
+  RC=struct('Mr',[0 0 0 0 0 0], ...
+   'Mw',[5 0 0.4 0 0 0], ...
+   'vMr',[0 0 0 0 0 0], ...
+   'vMw',[0 0 0 0 0 0], ...
+   'j1',1);
    LI=cntc.call;
    
   if RC.j1==1
@@ -16170,7 +16167,12 @@ cntc : interface between SDT and CONTACT
    st2=struct('type','Traj','j1',RC.j1,'iwhe',RT.flags.iwhe);
    LI.cur=st2; st1{1}=st2; cntc.set(st1); LI.RT=RT;LI.RC=RC;
 
-   LI.Fmacro = cntc.getMacro({'z_ws','pen'},RC.j1);
+   LI.Fmacro.F_r=cntc.getMacro({'fx_r','fy_r','fz_r','mx_r_r','my_r_r','mz_r_r'},RC.j1);
+   LI.Fmacro.F_w=cntc.getMacro({'fx_w','fy_w','fz_w','mx_w_w','my_w_w','mz_w_w'},RC.j1);
+   LI.Fmacro.Pos_w=zeros(6,1);
+   LI.Fmacro.Pos_w(1:4)=cntc.getMacro({'xcp_r','ycp_r','zcp_r','deltcp_r'},RC.j1);
+   LI.Fmacro.Pos_r=zeros(6,1);
+   LI.Fmacro.Pos_r(1:4)=cntc.getMacro({'xcp_w','ycp_w','zcp_w','deltcp_w'},RC.j1);
 
   if 1==2
    Owd_isys=T1*unl; % O wheel deformed in isys basis
