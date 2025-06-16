@@ -5556,15 +5556,18 @@ cntc : interface between SDT and CONTACT
    d1=[];mo1=[];
    if isfield(RO,'li')
     if size(RO.li,1)>3&&strncmpi(RO.li{4,2},'radius',5)
-      Z=max(RO.li{4,1},1);dZ=RO.li{4,1}-Z;
+     %% wheel to nominal + deviation
+      Z=max(RO.li{4,1},[],1);dZ=RO.li{4,1}-Z;
       RO.li{4,1}=repmat(Z,size(dZ,1),1);
-      d1=struct('def',dZ(:),'DOF',(1:numel(dZ))'+.01);
+      X=RO.li{2};
+      i1=(1:numel(dZ))';
+      d1=struct('def',[dZ(:).*cos(X(:));dZ(:).*sin(X(:))],'DOF',[i1+.01;i1+.03]);
       XYZ=RO.XYZ(RO.li{2:end,1});
       RO.show='showficEvalA';
-          mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
-     mo1.Node(:,5:7)=reshape(XYZ,[],3);
+      mo1=femesh('objectquad',[0 0 0;eye(3)],size(XYZ,1)-1,size(XYZ,2)-1);
+      mo1.Node(:,5:7)=reshape(XYZ,[],3);
 
-    elseif strcmpi(RO.li{1},'xyz')&&size(RO.li{2},3)==1
+    elseif strcmpi(RO.li{1},'xyz')
       %% XYZ Segment 
       n0=1000;
       for j1=2:size(RO.li,1)
@@ -6733,10 +6736,9 @@ cntc : interface between SDT and CONTACT
 
   function show_rw_rear_view(sol, field, opt)
 
-   % show_rw_rear_view: plot w/r profiles, contact plane & contact results
-
+   % #show_rw_rear_view: plot w/r profiles, contact plane & contact results
+   % 
    % plot the potential contact area
-   % #show_rw_rear_view
 
    yc = sol.y; zc = zeros(1,sol.my);
    if (strcmp(opt.rw_surfc,'prr'))
@@ -6746,8 +6748,10 @@ cntc : interface between SDT and CONTACT
    elseif (strcmp(opt.rw_surfc,'both'))
     [ ~, ypln, zpln ] =cntc.to_track_coords(sol, [], yc, zc);
    end
-
-   plot(ypln, zpln, '.-', 'markersize',12, 'color',cntc.matlab_color(5));
+   % plot pln (contact plane) 
+   ga=gca; chi=[findobj(ga,'type','line');findobj(ga,'type','patch')];
+   delete(chi(ismember(get(chi,'tag'),{'pln','MaxLine','PlaneToMax','CM'})))
+   plot(ypln, zpln, '.-', 'markersize',12, 'color',cntc.matlab_color(5),'tag','pln');
 
    % get field to be plotted, replace values in exterior elements
    if (ischar(field))
@@ -6784,8 +6788,8 @@ cntc : interface between SDT and CONTACT
    if (~isempty(opt.veccolor))
     col = opt.veccolor;
    end
-   plot( yval, zval, 'linewidth',1, 'color',col );
-   plot( [ypln; yval], [zpln; zval], 'linewidth',1, 'color',col );
+   plot( yval, zval, 'linewidth',1, 'color',col,'tag','MaxLine'); % Max line
+   plot( [ypln; yval], [zpln; zval], 'linewidth',1, 'color',col,'tag','PlaneToMax');  % vertical lines
 
    % plot contact reference point, origin of contact local coordinate system
 
@@ -7598,8 +7602,8 @@ cntc : interface between SDT and CONTACT
 
    if comstr(Cam,'sol');[CAM,Cam]=comstr(CAM,4);
     %{
-```DocString {module=rail,src@onedrive/*/SNC*/doc/R25_SNCF_Guillet.docx} -3
- CNTCPlotSol : adaptation of plot commands
+```DocString {module=rail,src@onedrive/*/SNC*/doc/R25_SNCF_Guillet.docx} -2
+ plot : SDT adaptation of plot commands
     %}
     LI=cntc.call;
     if isempty(LI)||~isfield(LI,'sol')
@@ -7655,7 +7659,7 @@ cntc : interface between SDT and CONTACT
          LI.prw.xsurf([1:end 1],:),'angle rad';LI.prw.ysurf([1:end 1],:),'Y' 
          LI.prw.zsurf([1:end 1],:),sprintf('radius - %f ',LI.wheelsetDim.nomrad)}}, ...
          'cf',30,'is_wheel',LI.prw.is_wheel, ...
-         'toXYZ',@(X,Y,Z)cat(3,(Z+LI.wheelsetDim.nomrad).*cos(X), ...
+         'XYZ',@(X,Y,Z)cat(3,(Z+LI.wheelsetDim.nomrad).*cos(X), ...
            Y,(Z+LI.wheelsetDim.nomrad).*sin(X)), ...
           'Traj',LI.Traj);
      cntc.asFeplot(RP)
@@ -7769,7 +7773,7 @@ cntc : interface between SDT and CONTACT
      end
     end
    elseif comstr(Cam,'poswheelrail');[CAM,Cam]=comstr(CAM,7);
-    %% #cntc.plot('PosWheelRail')
+    %% #cntc.plot('PosWheelRail') -3 
     % rail profil
     LI=cntc.call;
     RO=struct('gauge_y',-LI.Track.gaugwd/2, ...
@@ -8220,6 +8224,8 @@ cntc : interface between SDT and CONTACT
     end
    elseif isfield(evt,'VerticalScrollCount')
     ev1.ch=max(min(ev1.ch+evt.VerticalScrollCount,length(LI.sol)),1);
+   elseif isfield(evt,'ch') % ch given programatically
+    ev1.ch=evt.ch;
    end
 
    if isfield(ev1,'ch')
@@ -9783,17 +9789,11 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #plot_cm colormap -3
+   % #plot_cm plot a CM marker -3
 
-   if (nargin<1 | isempty(O))
-    O = [0; 0];
-   end
-   if (size(O,2)>size(O,1))
-    O = O';
-   end
-   if (nargin<2 | isempty(r))
-    r = 1;
-   end
+   if (nargin<1 | isempty(O)); O = [0; 0];   end
+   if (size(O,2)>size(O,1));    O = O';   end
+   if (nargin<2 | isempty(r));    r = 1;   end
    if (nargin<3 | isempty(veclen))
     veclen = 2*r;
    end
