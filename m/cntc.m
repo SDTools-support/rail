@@ -62,21 +62,10 @@ cntc : interface between SDT and CONTACT
   function []=initializeflags()
    % #initializeflags -2
    if nargin==0
-    if evalin('caller','exist(''RT'',''var'')')
-     RT=evalin('caller','RT');     
-    else
-     RT.flags=d_cntc('nmap.Global_flags');
-     warning('Using d_cntc(''nmap.Global_flags'')')
-    end
-    if isfield(RT,'CNTC')
-    else
-      LI=cntc.call;
-      if ~isfield(LI,'CNTC');cntc.init;end
-      RT.CNTC=LI.CNTC;
-    end
-    if isa(RT.flags,'vhandle.uo');LI.flags=RT.flags;end    
-    cntc.setglobalflags(RT.CNTC.if_idebug, RT.flags.ire);
-    [ifcver, ierror] = cntc.initialize(RT.flags.ire,RT.flags.imodul);
+    LI=cntc.call;
+    if ~isfield(LI,'CNTC');cntc.init;end
+    cntc.setglobalflags(LI.CNTC.if_idebug, LI.flags.idebug);
+    [ifcver, ierror] = cntc.initialize(LI.flags.ire,LI.flags.imodul);
    else
     disp('ERROR cntc.initializeflags : no parameter is needed');
    end
@@ -616,7 +605,7 @@ cntc : interface between SDT and CONTACT
   % end
 
 
-  function [LI,CNTC]=init
+  function init
    %% #init -2
 
    % if (~exist('cntc_initlibrary.m','file'))
@@ -14077,6 +14066,7 @@ cntc : interface between SDT and CONTACT
    out=zeros(length(varargin{1}),length(varargin{2}));
    out(i1,:)=LI.Cmacro.Y(i2(i1),varargin{2});
   end
+
   function [ tcpu, twall]=getcalculationtime(ire, icp)
    % [ tcpu, twall ] = cntc.getcalculationtime(ire, icp)
    %
@@ -14168,7 +14158,7 @@ cntc : interface between SDT and CONTACT
    end
   end % cntc.getcontactforces
 
-  function [ rvalues]=getcontactlocation(ire, icp,LI)
+  function [ rvalues]=getcontactlocation(ire, icp, LI)
    % [ rvalues ] = cntc.getcontactlocation(ire, icp)
    %
    % return the contact reference location for a contact problem (module 1 only)
@@ -14209,7 +14199,7 @@ cntc : interface between SDT and CONTACT
 
     21,'XW_TR','mm','x-position of wheel profile marker in track coordinates'
     22,'YW_TR','mm','y-position of wheel profile marker in track coordinates'
-    23,'ZR_TR','mm','z-position of wheel profile marker in track coordinates'
+    23,'ZW_TR','mm','z-position of wheel profile marker in track coordinates'
     24,'ROLLW_TR','rad','roll angle of wheel profile marker in track coordinates'
     25,'YAWW_TR','mm','yaw angle of wheel profile marker in track coordinates'
 
@@ -15874,8 +15864,21 @@ cntc : interface between SDT and CONTACT
       setCMacro;
 
      case 'getbasis'
-      ire=1;
-      values = cntc.getwheelsetposition(ire);
+
+      % Initialize the loop
+      if icase==1
+       cntc.set('initout{}');
+      end
+
+      % RB.qbasR_tr= [LI.Traj.Y(:,1),LI.Traj.Y(:,1)];
+
+      RB.qbasWS_tr= LI.Traj.Y(:,1:6); 
+      RB.qbasWS_tr(:,3)=LI.Traj.Y(:,3)-LI.wheelsetDim.nomrad;
+
+      dispW_tr= LI.Traj.Y(:,1:6)+LI.Traj.Y(:,13:18);
+      dispW_tr(:,2)=dispW_tr(:,2)-LI.wheelsetDim.fbdist/2+LI.wheelsetDim.fbpos;
+      RB.qbasW_tr=dispW_tr;
+      LI.RB=RB;
 
      case 'getout'
       %% #set.GetOut Get results -2
@@ -15883,7 +15886,7 @@ cntc : interface between SDT and CONTACT
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;  end
 
-      % Initialize the loop
+      %Initialize the loop
       if icase==1
        cntc.set('initout{}');
       end
@@ -16046,21 +16049,26 @@ cntc : interface between SDT and CONTACT
 
       % Rail Traj
       dev=LI.Traj.Y(icase,25:30);
-      if ~isempty(dev)
-      cntc.settrackdimensions(iwhe, 2, dev); % NewDevia
+      % Track Definition at first timestep
+      if icase==1
+      params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
+        'railz0', 'cant', 'nomrad'}); params=struct2cell(params);
+      params=horzcat(params{:},dev); 
+      cntc.settrackdimensions(iwhe, 3, params); % NewBoth, new track dimension and deviation
+      else
+      cntc.settrackdimensions(iwhe, 2, dev); %  New Devia, deviation definition only
       end
+
     end
    end
   end
 
   function []= TimeLoop(RT)
    %% #TimeLoop -2
-   [LI,RT.CNTC]=cntc.init;
-   LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;
-   LI.Traj=RT.Traj;LI.flags=RT.flags;
+   cntc.init; LI=cntc.call;LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
 
    % Initialize
-   cntc.initializeflags;
+   cntc.initializeflags; %initialize Global_flags
    cntc.setflags;
    cntc.set(RT.Model);
    st1=RT.LoopParam;
@@ -16107,61 +16115,62 @@ cntc : interface between SDT and CONTACT
   % initialize 
   % RC, RCoordinates
   % RC=struct('Mr',[0 0 0 0 0 0], ...
-  %  'Mw',[0 0 0 0 0 0], ...
+  %  'Mw',[0 0 0.4 0 0 0], ...
   %  'vMr',[0 0 0 0 0 0], ...
   %  'vMw',[0 0 0 0 0 0], ...
   %  'j1',1);
-
-  if RC.j1==1
    LI=cntc.call;
-   RT.ProjectWd=sdtu.f.firstdir({'C:\Users\0021221S.COMMUN\MATLAB\Code_Cntc\Variable_rail'
+   
+  if RC.j1==1
+   RT.ProjectWd=sdtu.f.firstdir({'C:\Users\0021221S.COMMUN\MATLAB\Code_Cntc\Manchester'
     cntc.help('@examples')});
    RT.flags=d_cntc('nmap.Global_flags');
-   ModelStr={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   ModelStr={'initout{}'
+    'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
     'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
     'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
-    'Bound{Cond Force, fz 125000}'
-    ['Track{Design NewDim, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05,' ...
-    'nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
     'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
     'Rolling{StepSize WRCn, dqrel 1}'
+    'Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05, nomrad 0}'
     'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
-    RT.Model=ModelStr;
+    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
+   RT.Model=ModelStr;
+   % Wheel/Rail trajectory definition
+   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';
+    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';
+    'dyrail' ;'dzrail' ;'drollr' ;'vyrail';'vzrail';'vrollr'};
+   RT.Traj=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+    'Y',[]);
+   RT.Traj.Y=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
+    RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
+    RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
+   RT.Traj.X{1}=(1:size(RT.Traj.Y,1))';
   else
-    ModelStr={'Solver{GauSei maintain}'
+    ModelStr={'initout{}'
+     'Solver{GauSei maintain}'
     'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
     'Friction{FrcLaw Maintain}'
-    'Bound{Cond Force, fz 125000}'
     'wheelsetDim{Ewheel NewFlexVelPos}'
     'Track{Design NewDevia}'
     'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
     'Rolling{StepSize WRCn, dqrel 1}'};
+     RT.Traj.Y(RC.j1,:)=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
+     RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
+     RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
   end
 
-   % Wheel/Rail trajectory definition
-   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';
-       'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';
-       'dyrail' ;'dzrail' ;'drollr' ;'vyrail';'vzrail';'vrollr'};
-   RT.Traj=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
-    'Y',[]);
-   RT.Traj.Y=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
-           RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
-           RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
-   RT.Traj.X{1}=(1:size(RT.Traj.Y,2))';
-
    % Launch initialisation
-   [LI,RT.CNTC]=cntc.init;
-   LI=cntc.call;LI.CNTC=RT.CNTC;LI.ProjectWd=RT.ProjectWd;LI.Traj=RT.Traj;LI.flags=RT.flags;
-   cntc.initializeflags; cntc.setflags; cntc.set(ModelStr);
+   cntc.init; LI=cntc.call; LI.ProjectWd=RT.ProjectWd;
+   LI.Traj=RT.Traj; LI.flags=RT.flags; cntc.initializeflags; cntc.setflags;
+   cntc.set(ModelStr);
    
    % Lauch calcultions
    st1={{};'calculate{}';'getout{}'};
    st2=struct('type','Traj','j1',RC.j1,'iwhe',RT.flags.iwhe);
-   LI.cur=st2; st1{1}=st2;
-   cntc.set(st1);
-   LI.RT=RT;LI.RC=RC;
+   LI.cur=st2; st1{1}=st2; cntc.set(st1); LI.RT=RT;LI.RC=RC;
+
+   LI.Fmacro = cntc.getMacro({'z_ws','pen'},RC.j1);
 
   if 1==2
    Owd_isys=T1*unl; % O wheel deformed in isys basis
@@ -16326,13 +16335,13 @@ cntc : interface between SDT and CONTACT
    % #setflags(pdfsection.2.3)  configure flags for a contact problem
 
    if nargin==0
-    RT=evalin('caller','RT');
-    flagM=vhandle.nmap([fieldnames(RT.CNTC) struct2cell(RT.CNTC)]);
-    li=cell(RT.flags);li(ismember(li(:,1),{'iwhe','imodul','ire'}),:)=[];
+    LI=cntc.call;
+    flagM=vhandle.nmap([fieldnames(LI.CNTC) struct2cell(LI.CNTC)]);
+    li=cell(LI.flags);li(ismember(li(:,1),{'iwhe','imodul','ire','idebug'}),:)=[];
     flags=flagM(li(:,1));flags=vertcat(flags{:});% skip iwhe given first always
     % xxx check if scalar value for each row
     values = vertcat(li{:,2});
-    cntc.setflags(RT.flags.ire, [], flags, values); %config
+    cntc.setflags(LI.flags.ire, [], flags, values); %config
     return
    end
 

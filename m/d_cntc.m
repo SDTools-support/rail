@@ -104,7 +104,6 @@ cinM.add={
 
 %% Global flags 
 %CNTC.un_cntc=1934;
-% Global Flags
 nmap('Global_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
   'ic_config',0,'Configuration of the problem; 0 for left side, 1 for right side'
@@ -113,14 +112,14 @@ nmap('Global_flags')=vhandle.uo([],{ ...
   ' previous time instance; P=2: no previous time'] 
   'ic_discns',2,'Type of contact area, D=2 planar contact surface'
   'if_wrtinp',1,' 0: no .inp-file needed'
-  'ic_matfil',0,'subsurface stress input; A=0: no .mat-file needed'
+  'ic_matfil',1,'subsurface stress input; A=0: no .mat-file needed'
   'ic_output',3,'subsurface stress output; O=1: min. output to .out-file'
   'ic_flow',2,['governs the extent of the flow trace to the screen and the ' ...
   'output-file; little progress output']
   'idebug',1,'1: just a bit of information from the library'
   'imodul', 1,'w/r contact'
   'ire', 1, 'experiment called iwhe in the example'
-  'iwhe',1, '0/1 Left/right wheel'});
+  'iwhe',1, '1/2 Left/right wheel'});
 
 %% Trajectory 
 %Classic
@@ -198,10 +197,12 @@ l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[]); % rotation angle [rad] (pdf page 36)
-C1.Y=zeros(24,24*2);
-for i1=1:24
- C1.Y(i1,(2*i1-1):(2*i1))=1;
-end
+C1.Y(1,:)=zeros(1,24);C1.Y(1,3)=2;
+C1.Y(2,:)=[0,3,0.4,0,0,0,...
+           0,0,0,0,0,0,...
+           1,2,1,0,0,0,...
+           0,0,0,0,0,0];
+C1.X{1}=(1:size(C1.Y,1))';
 nmap('TestParam_Traj1')=C1;
 
 %  TestParam 2
@@ -211,8 +212,11 @@ l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[]); % rotation angle [rad] (pdf page 36)
-C1.Y=0.1*ones(2,24);
-C1.Y(:,3)=3; %set penetration
+C1.Y=zeros(3,24);
+C1.Y(2,14)=-10; 
+C1.Y(3,14)=10; 
+C1.Y(:,3)=2; %set penetration
+C1.X{1}=(1:size(C1.Y,1))';
 nmap('TestParam_Traj2')=C1;
 
 %% #nmap.Cst : constants to be reused
