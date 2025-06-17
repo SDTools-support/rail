@@ -16108,7 +16108,7 @@ cntc : interface between SDT and CONTACT
 
   function []= SDTLoop(RC)
    %% #SDTLoop -2
-   
+  % CNTC script, wheel/rail position ->   
   % initialize 
   % RC, RCoordinates
   RC=struct('Mr',[0 0 0 0 0 0], ...
@@ -16116,6 +16116,13 @@ cntc : interface between SDT and CONTACT
    'vMr',[0 0 0 0 0 0], ...
    'vMw',[0 0 0 0 0 0], ...
    'j1',1);
+unlab= {'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mw
+        '0';'dyrail' ;'dzrail' ;'drollr';'0';'0'}; % Mr
+vnlab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vyaw'  ;'vpitch'; %vMw
+         '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
+snllab= { }
+
+ 
    LI=cntc.call;
    
   if RC.j1==1
@@ -16134,9 +16141,10 @@ cntc : interface between SDT and CONTACT
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
    RT.Model=ModelStr;
    % Wheel/Rail trajectory definition
-   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';
-    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';
-    'dyrail' ;'dzrail' ;'drollr' ;'vyrail';'vzrail';'vrollr'};
+   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mw
+    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';      %vMw
+    '0';'dyrail' ;'dzrail' ;'drollr';'0';'0' ; % Mr 
+    '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
    RT.Traj=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
     'Y',[]);
    RT.Traj.Y=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
