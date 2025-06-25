@@ -12847,7 +12847,7 @@ cntc : interface between SDT and CONTACT
      if (length(slc.ProfileY)==7), ikinks = [2,3,4,5,6]; end    % hack for V-groove test-case
      spl = cntc.make_spline( slc.ProfileS, slc.ProfileY, slc.ProfileZ, lambda, wgt, ikinks, iaccel, ...
       use_bspline, ds_bspline);
-     [~, yj, zj] = eval_spline(spl, sj(i0:i1));
+     [~, yj, zj] = cntc.eval_spline(spl, sj(i0:i1));
      slcs.xsurf(is,i0:i1) = slcs.u(is);
      slcs.ysurf(is,i0:i1) = yj;
      slcs.zsurf(is,i0:i1) = zj;
@@ -16117,11 +16117,14 @@ cntc : interface between SDT and CONTACT
      case 'traj'
       %% #set.traj set wheel position and velocity associated to a trajectory point -2
       % increment icase = j1 in fe_time
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';
+      %NL=cntc.SDTLoop;
+      %[NL.unllab NL.vnllab NL.snllab]
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
            'vs';'vy';'vz';'vroll';'vyaw';'vpitch';
            'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw';
            'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw';
-           'dyrail';'dzrail';'drollr';'vyrail';'vzrail';'vrollr'};
+           'dyrail';'dzrail';'drollr'; % Mr
+           'vyrail';'vzrail';'vrollr'};% vMr 
       if ~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
@@ -16135,14 +16138,14 @@ cntc : interface between SDT and CONTACT
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
 
-      % Wheel trajectory
+      % Wheel trajectory % i1=1:6;[ st1(i1) num2cell(pos)']
       pos=LI.Traj.Y(icase,1:6);
       cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
 
       vel=LI.Traj.Y(icase,7:12);
       cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
 
-      flex=LI.Traj.Y(icase,13:24);
+      i1=13:24;flex=LI.Traj.Y(icase,i1);%[ st1(i1) num2cell(flex)']
       cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
 
       % Rail Traj
@@ -16169,13 +16172,13 @@ cntc : interface between SDT and CONTACT
    cntc.initializeflags; %initialize Global_flags
    cntc.setflags;
    cntc.set(RT.Model);
-   st1=RT.LoopParam;
+   li=RT.LoopParam;
    if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
    if RT.profile;try;profile('clear');end;profile('on');end
-   if comstr(lower(st1{1}),'traj');
+   if comstr(lower(li{1}),'traj');
     for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
-     % Maintain
      if j1==2
+      %% After first step maintain parameters as constant
       list={'Solver{GauSei maintain}'
        'Friction{FrcLaw Maintain}'
        'Track{Design Maintain}'
@@ -16195,8 +16198,9 @@ cntc : interface between SDT and CONTACT
       cntc.set(RT.Model);
      end
      st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-     LI.cur=st2; st1{1}=st2;
-     cntc.set(st1);
+     LI.cur=st2; li{1}=st2;
+     % sdtweb cntc set.traj
+     cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
     end % icase j1
    else
     error('Trajectory must be define first')
@@ -16207,7 +16211,7 @@ cntc : interface between SDT and CONTACT
   end
 
 
-  function []= SDTLoop(RC)
+  function [out]= SDTLoop(RC)
    %% #SDTLoop -2
   % CNTC script, wheel/rail position ->   
   % initialize 
@@ -16241,52 +16245,24 @@ snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr
          'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r 
          }
          [cnllab unl0 vnllab snllab]
+end
+persistent NL
+if isempty(NL)
+ NL=struct;
+ NL.unl=zeros(12,1,3); 
+% NL.unllab= {'f_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'pitch_ws';'yaw_ws'; %Mw
+ NL.vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMw
+         '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
+ NL. snllab= {'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w';
+     'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'};  
 
-    
-
+end
+if nargin==0
+ out=NL;return 
 end
  
    LI=cntc.call;
    
-  if RC.j1==1
-   RT.ProjectWd=sdtu.f.firstdir({'C:\Users\0021221S.COMMUN\MATLAB\Code_Cntc\Manchester'
-    cntc.help('@examples')});
-   RT.flags=d_cntc('nmap.Global_flags');
-   ModelStr={'initout{}'
-    'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
-    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
-    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
-    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
-    'Rolling{StepSize WRCn, dqrel 1}'
-    'Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05, nomrad 0}'
-    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
-   RT.Model=ModelStr;
-   % Wheel/Rail trajectory definition
-   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mw
-    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';      %vMw
-    '0';'dyrail' ;'dzrail' ;'drollr';'0';'0' ; % Mr 
-    '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
-   RT.Traj=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
-    'Y',[]);
-   RT.Traj.Y=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
-    RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
-    RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
-   RT.Traj.X{1}=(1:size(RT.Traj.Y,1))';
-  else
-    ModelStr={'initout{}'
-     'Solver{GauSei maintain}'
-    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
-    'Friction{FrcLaw Maintain}'
-    'wheelsetDim{Ewheel NewFlexVelPos}'
-    'Track{Design NewDevia}'
-    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
-    'Rolling{StepSize WRCn, dqrel 1}'};
-     RT.Traj.Y(RC.j1,:)=[RC.Mw(1);RC.Mw(2);RC.Mw(3);RC.Mw(4);RC.Mw(5);RC.Mw(6); ...
-     RC.vMw(1);RC.vMw(2);RC.vMw(3);RC.vMw(4);RC.vMw(5);RC.vMw(6);
-     RC.Mr(2);RC.Mr(3);RC.Mr(4);RC.vMr(2);RC.vMr(3);RC.vMr(4)]';
-  end
 
    % Launch initialisation
    cntc.init; LI=cntc.call; LI.ProjectWd=RT.ProjectWd;
