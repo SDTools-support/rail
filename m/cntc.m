@@ -80,7 +80,8 @@ cntc : interface between SDT and CONTACT
     if ~isempty(LI.libname)||libisloaded(LI.libname)
      cntc.closelibrary;
     end
-    evalin('base','LI=[]')
+    evalin('base','LI=[]');LI=[];
+    LI=cntc.call;
    else
     disp('Error : LI is already empty')
    end
@@ -7480,7 +7481,7 @@ cntc : interface between SDT and CONTACT
    coords = [xw; yw; zw];
 
    % form transformation matrices and vectors from rw/ws to tr coordinates
-
+   % Rotation Th_w_tr=(meta.roll_w,meta.yaw_w,0)=(macro.roll_ws,macro.yaw_ws,0)
    R_w_tr = cntc.rotx(sol.meta.roll_w*180/pi) * cntc.rotz(sol.meta.yaw_w*180/pi);
    o_w_tr = [sol.meta.x_w; sol.meta.y_w; sol.meta.z_w];
 
@@ -7538,14 +7539,55 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function bas=getBas(qM)
-    %% getBas marker DOF to SDT basis 
+    %% #getBas marker DOF to SDT basis -2
     R=cntc.rotx(qM(4)*180/pi) * cntc.rotz(qM(5)*180/pi) * cntc.roty(qM(6)*180/pi); 
     bas=[1 0 0 reshape(qM(1:3),1,3) R(:)'];
     if nargout==0
       sdtu.fe.genSel(struct('bas',bas),struct('cf',gcf))
     end
+  end
+
+  function R=BasisChange(vec)
+   %% #BasisChange do the basis transformation -2
+   %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a> xxxEB link
+   %  to word not pdf
+
+   LI=cntc.call;
+   param=struct('rnom',LI.wheelsetDim.nomrad,'fbdist',LI.wheelsetDim.fbdist, ...
+    'fbpos',LI.wheelsetDim.fbpos,'yr_tr',LI.Track.raily0,'zr_tr',LI.Track.railz0, ...
+    'cant',LI.Track.cant);
+   state= LI.Traj.Y(j1,:); 
+   
+   
+   % rail to track
+   Nr_tr=[0 param.yr_tr param.zr_tr];
+
+   Or_tr=Nr_tr+[0 state.Y()]
+   
+   Mr_tr=struct('Or_tr',[state.x_ws])
+
+
+   % Wheelset to track
+   Nws_tr=[0 0 -param.rnom];
+
+   % wheel to wheelset
+   Nw_ws=[0 param.fbdist/2+param.fbpos param.rnom];
+
+   % Contact patch to wheel
+
+   % Contact patch to rail
+
 
   end
+  function R=getRot(qM)
+   %% #getRot calculate 3d rotation matrix -2
+   cx=cosd(qM(4));sx=sind(qM(4));cy=cosd(qM(5));
+   sy=sind(qM(5));cz=cosd(qM(6));sz=sind(qM(6));
+   R=[cz*cy            -sz      cz*sy;
+      cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
+      cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy];
+  end
+
   function [ rot ] = rotx(roll_deg)
    % #rotx -2
 
@@ -14434,6 +14476,7 @@ cntc : interface between SDT and CONTACT
    sol.meta.xcp_w    = cp_pos(10);
    sol.meta.ycp_w    = cp_pos(11);
    sol.meta.zcp_w    = cp_pos(12);
+   sol.meta.deltcp_w    = cp_pos(14);
    sol.meta.rnom_whl =  500;
    sol.meta.rnom_rol = 1000;
    sol.meta.npatch   = cntc.getnumcontactpatches(ire);
@@ -15822,7 +15865,7 @@ cntc : interface between SDT and CONTACT
 
 
   %------------------------------------------------------------------------------------------------------------
-  function [ rvalues]=getwheelsetvelocity(ire)
+  function [ rvalues]=getwheelsetvelocity(ire,LI)
    % [ rvalues ] = cntc.getwheelsetvelocity(ire)
    %
    % return the wheelset velocity a w/r contact problem (module 1 only)
@@ -15846,7 +15889,13 @@ cntc : interface between SDT and CONTACT
    % category 2: m=1, wtd    - no icp needed
    % #getwheelsetvelocity
 
-
+   l1={1, 'VS_WS'  ,'[mm/s]' ,'s-velocity of the wheelset center of mass along the track center line'
+    2, 'VY_WS'     ,'[mm/s]' ,'velocity in lateral y-direction of the wheelset center of mass (track coordinates)'
+    3, 'VZ_WS'     ,'[mm/s]' ,'velocity in vertical z-direction of the wheelset center of mass (track coordinates)'
+    4, 'VROLL_WS'  ,'[mm/s]' ,'wheelset roll velocity, angular velocity with respect to the track plane'
+    5, 'VYAW_WS'   ,'[mm/s]' ,'wheelset yaw velocity, angular velocity with respect to the track center line x_tr'
+    6, 'VPITCH_WS' ,'[mm/s]' , 'wheelset pitch velocity, i.e. angular velocity about the wheelset axle'
+    };l1(:,2)=lower(l1(:,2));
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -15858,6 +15907,10 @@ cntc : interface between SDT and CONTACT
    cntc.call('cntc.getwheelsetvelocity', ire, lenarr, p_values);
 
    rvalues = p_values.value;
+
+   if nargin==2
+    setCMacro(LI,rvalues,ire,LI.cur.j1);
+   end
 
   end % cntc.getwheelsetvelocity
 
@@ -15904,7 +15957,7 @@ cntc : interface between SDT and CONTACT
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
-      LI.Cmacro.rowM=sdtu.ivec('ColList', {}); %dDQ
+      LI.Cmacro.rowM=sdtu.ivec('ColList', {'lab'}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
       LI.Cmacro.X={{},[],LI.Traj.X{1}};
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
@@ -15961,11 +16014,9 @@ cntc : interface between SDT and CONTACT
        cntc.getcreepages(ire, icp, LI);
        cntc.getcontactforces(ire, icp,LI);
        cntc.getwheelsetposition(ire,LI);
+       cntc.getwheelsetvelocity(ire,LI);
        cntc.getparameters(ire, icp, LI);% get material / kinematic parameters needed
        cntc.getpotcontact(ire, icp,LI);
-       cntc.getnumelements(ire,icp,LI);
-       
-
 
        % itask   = 1; iswheel = 0; isampl=0; iparam=[iswheel, isampl]; rparam=[];
        % RailProfil = cntc.getprofilevalues(ire, itask, iparam, rparam);
@@ -16254,34 +16305,6 @@ end
    LI.Fmacro.Pos_r=zeros(6,1);
    LI.Fmacro.Pos_r(1:4)=cntc.getMacro({'xcp_w','ycp_w','zcp_w','deltcp_w'},RC.j1);
 
-  if 1==2
-   Owd_isys=T1*unl; % O wheel deformed in isys basis
-   Owsd_isys=T2*unl; % O wheelset deformed in isys basis
-   % speed component
-   Vwd_isys=T1*vnl;
-   Vwsd_isys=T2*vnl;
-   % Basis change
-   Owd_ws=Ow+R*Owd_isys;
-   Owsd_ws=Ows+R*Owsd_isys;
-   % speed component
-   Vwd_ws=T1*vnl;
-   Vwsd_ws=T2*vnl;
-
-   %flexibilities calculations
-   flex = (Owd_ws-Owsd_ws)-(Ow-Ows);
-   Vflex = (Vwd_ws-Vwsd_ws);
-
-   l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
-    'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
-    'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
-    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
-   C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
-    'Y',[]);
-   C1.X=[Owsd_ws(1);Owsd_ws(2);Owsd_ws(3);Owsd_ws(4);Owsd_ws(5);Owsd_ws(6); ...
-    Vwsd_ws(1);Vwsd_ws(2);Vwsd_ws(3);Vwsd_ws(4);Vwsd_ws(5);Vwsd_ws(6); ...
-    flex(1); flex(2); flex(3); flex(4); flex(5); flex(6); ...
-    Vflex(1); Vflex(2); Vflex(3); Vflex(4); Vflex(5); Vflex(6)];
-  end
   end
 
   %% #SDTUI user interface  ----------------------------------------------- -2

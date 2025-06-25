@@ -139,7 +139,7 @@ C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,5)=2000; % set vs
 nmap('ODG_traj')=C1;
 
-%  Benchmark
+%  Benchmark, leftparam
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [ ... 
    [ 0 : 0.5 : 10 ];
    [ 0 : 0.0012 : 0.024 ];
@@ -160,7 +160,7 @@ C1.Y(1:end,6)=0.5; %set penetration
 nmap('BenchManchester_Traj')=C1;
 
 %  TestPen
-C1=struct('X',{{[],{'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [[1,2,3,6]]');
+C1=struct('X',{{[],{'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [[1,1,2,2,3,3,6,6]]');
 C1.X{1}=(1:size(C1.Y,1))';
 nmap('TestPen_Traj')=C1;
 
@@ -205,14 +205,37 @@ C1.Y(2,:)=[0,3,0.4,0,0,0,...
 C1.X{1}=(1:size(C1.Y,1))';
 nmap('TestParam_Traj1')=C1;
 
+%  TestParamFlex
+l1={'z_ws' ;'dywhl'};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[[0.4,0.4,0.4,0.4];[-10,-5,0,5]]'); % rotation angle [rad] (pdf page 36)
+C1.X{1}=(1:size(C1.Y,1))';
+nmap('TestParam_flex1')=C1;
+
+%test translation flexibility
+l1={'z_ws';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww'};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[[0.4 0.4 0.4]; [0 1 1]; [0 1 1]; [0 1 1]; [0 0 0.0175]; [0 0 0.0175]]'); % rotation angle [rad] (pdf page 36)
+C1.X{1}=(1:size(C1.Y,1))';
+nmap('TestParam_flex2')=C1;
+
+%test rotation flexibility
+l1={'z_ws';'drollw' ;'dyaww' ;'dpitchw'};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[[0.4 0.4]; [0 0.00175]; [0 0.00175]; [0 0.00175]]'); % rotation angle [rad] (pdf page 36)
+C1.X{1}=(1:size(C1.Y,1))';
+nmap('TestParam_flex3')=C1;
+
 %  TestParam 2
 l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
     'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
-    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'};
+    'vxwhl';'vywhl';'vzwhl';'vrollw' ;'vyaww' ;'vpitchw'
+    'dyrail';'dzrail';'drollr';'vyrail';'vzrail';'vrollr'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[]); % rotation angle [rad] (pdf page 36)
-C1.Y=zeros(3,24);
+C1.Y=zeros(1,30);
+
 C1.Y(2,14)=-10; 
 C1.Y(3,14)=10; 
 C1.Y(:,3)=2; %set penetration
