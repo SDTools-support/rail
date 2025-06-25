@@ -586,6 +586,9 @@ cntc : interface between SDT and CONTACT
     out=f1;
    elseif strcmpi(CAM,'md')
     out=sdtu.f.cffile(sdtu.f.safe('@cntc.m/../../rail/jup/cntc.md'));
+   elseif sdtm.regContains(CAM,'docx','i')
+    f2=sdtu.f.safe(fullfile('@OneDrive/*/sncf_*/doc',regexprep(CAM,'.docx.*','.docx')));
+    sdtu.f.open([f2 regexprep(CAM,'.*docx','')])
    elseif ~isempty(CAM)
        sdtu.f.open([f1 '#' CAM])
    end
@@ -7827,6 +7830,15 @@ cntc : interface between SDT and CONTACT
 
   end
 
+  function out=asTab(varargin)
+   %% #asTab : show results in tables -2
+   PreMarkerTab={'x','vx','Fx';'y','vy','Fy';'z','vz','Fz';
+    'rx','vrx','Mx';'ry','vry','My';'rz','vrz','Mz'};
+   LI=cntc.call;
+
+ 
+  end
+
   function [ opts2 ] = plot2d(sol, opt2)
 
    %
@@ -14059,8 +14071,46 @@ cntc : interface between SDT and CONTACT
 
   %% #get
 
+ function out=getCurve(CAM)
+  %% #getCurve
+  LI=cntc.call;
+  if strcmpi(CAM,'premcp')
+   %% #PreMcp -3
+  PreMCp= {'Mcp_tr:x','xcp_tr';'Mcp_tr:y','ycp_tr';'Mcp_tr:z','zcp_tr';
+ 'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:z','0'
+ 'Mcp_r:x','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
+ 'Mcp_r:rx','deltcp_r';'Mcp_r:ry','0';'Mcp_r:z','0'
+ 'Mcp_w:x','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
+ 'Mcp_w:rx','deltcp_w';'Mcp_w:ry','0';'Mcp_w:z','0'
+ };
+  chan=PreMCp;RO.Type='AtMarker';
+
+  elseif strcmpi(CAM,'prelcp')
+   %% #PreLcp : load = force-moment at contact point -3
+  PreLCp= {'Mcp_tr:Fx','xcp_tr';'Mcp_tr:Fy','ycp_tr';'Mcp_tr:Fz','zcp_tr';
+ 'Mcp_tr:Mx','deltcp_tr';'Mcp_tr:My','0';'Mcp_tr:Mz','0'
+ 'Mcp_r:x','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
+ 'Mcp_r:rx','deltcp_r';'Mcp_r:ry','0';'Mcp_r:z','0'
+ 'Mcp_w:x','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
+ 'Mcp_w:rx','deltcp_w';'Mcp_w:ry','0';'Mcp_w:z','0'
+ };
+  chan=PreLCp;RO.Type='AtMarker';
+  else error('%s not known',CAM)
+  end
+  if strcmpi(RO.type,'AtMarker')
+   C1=LI.Cmacro; 
+   [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
+   C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''),strrep(chan(1:6:end,1),':x',''),C1.X{3}}}, ...
+       'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[]);
+   C2.Y(size(chan,1),size(C2.X{3},1))=0;
+   C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},1));
+   out=C2;
+  end
+ 
+ end
+
   function out=getMacro(varargin)
-   %% getMacro
+   %% #getMacro
    LI=cntc.call;
    [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(:,1));
    out=zeros(length(varargin{1}),length(varargin{2}));
@@ -16116,12 +16166,34 @@ cntc : interface between SDT and CONTACT
    'vMr',[0 0 0 0 0 0], ...
    'vMw',[0 0 0 0 0 0], ...
    'j1',1);
-unlab= {'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mw
-        '0';'dyrail' ;'dzrail' ;'drollr';'0';'0'}; % Mr
-vnlab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vyaw'  ;'vpitch'; %vMw
-         '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
-snllab= { }
 
+if 1==2
+unllab={%Mws-tr
+    % Mw_ws
+    '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
+    }  
+cnllab= { 
+       's_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mws-tr
+        'dxwhl';'dywhl';'dzwhl';'drollw';'dpitchw';'dyaww'   % Mw_ws
+        '0';'dyrail' ;'dzrail' ;'drollr';'0';'0'}; % Mr
+unl0={'0';'0';'-LI.Wheelsetdim.nomrad';'0';'0';'0'  % Nws_tr
+      '0';'LI.Wheelsetdim.leftCoef*(LI.Wheelsetdim.fbdist/2-LI.Wheelsetdim.fbpos)'
+          'LI.Wheelsetdim.nomrad';'0';'0';'0'% Nw_ws
+       '0';'LI.Track.raily0';'LI.Track.railz0';'Track.cant*leftCoef';'0';'0'
+      };
+vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr 
+          'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww' % vMw_ws
+         '0';'vyrail';'vzrail';'vrollr';'0';'0' 
+         };% 
+snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr 
+         'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w' % Mw_w xxx incoherent
+         'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r 
+         }
+         [cnllab unl0 vnllab snllab]
+
+    
+
+end
  
    LI=cntc.call;
    
