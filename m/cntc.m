@@ -5648,8 +5648,7 @@ cntc : interface between SDT and CONTACT
    % RO
    if ~isfield(prf,'isWheel')&&isfield(prf,'is_wheel');prf.isWheel=prf.is_wheel;end
    %leftCoef=sign(.5-double(prf.isLeft));
-   leftCoef=sign(prf.qbas(2)); % right is positive, left negative (z downward)
-   prf.isLeft=leftCoef<0;
+   leftCoef=cntc.leftCoef(prf);
    out1=struct;
    if isfield(prf,'isWheel')&&~prf.isWheel
      %% is rail (~isWheel)
@@ -7540,10 +7539,21 @@ cntc : interface between SDT and CONTACT
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function bas=getBas(qM)
     %% #getBas marker DOF to SDT basis -2
-    R=cntc.rotx(qM(4)*180/pi) * cntc.rotz(qM(5)*180/pi) * cntc.roty(qM(6)*180/pi); 
-    bas=[1 0 0 reshape(qM(1:3),1,3) R(:)'];
-    if nargout==0
+    if isfield(qM,'X')
+     %% history of bases 
+     C1=qM; i1=size(qM.Y,2)*size(qM.Y,3);
+     bas=zeros(i1,15);
+     for j1=1:i1
+       qM=C1.Y(:,j1);
+       bas(j1,:)=[j1 0 0 qM(1:3)' reshape(cntc.getRot(qM),1,[])];
+     end
+
+    else
+     R=cntc.rotx(qM(4)*180/pi) * cntc.rotz(qM(5)*180/pi) * cntc.roty(qM(6)*180/pi); 
+     bas=[1 0 0 reshape(qM(1:3),1,3) R(:)'];
+     if nargout==0
       sdtu.fe.genSel(struct('bas',bas),struct('cf',gcf))
+     end
     end
   end
 
@@ -7578,6 +7588,14 @@ cntc : interface between SDT and CONTACT
    % Contact patch to rail
 
 
+  end
+  function R=getRotRad(qM)
+   %% #getRot calculate 3d rotation matrix -2
+   cx=cos(qM(4));sx=sin(qM(4));cy=cos(qM(5));
+   sy=sin(qM(5));cz=cos(qM(6));sz=sin(qM(6));
+   R=[cz*cy            -sz      cz*sy;
+      cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
+      cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy];
   end
   function R=getRot(qM)
    %% #getRot calculate 3d rotation matrix -2
@@ -7626,7 +7644,21 @@ cntc : interface between SDT and CONTACT
   end % rotz
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+  function coef=leftCoef(LI)
+   %% #leftCoef
+    if isfield(LI,'ProfileY')
+      if ~isfield(LI,'isLeft')
+          warning('Using LI as isLeft not defined')
+          coef=cntc.leftCoef(cntc.call);return
+      elseif LI.isLeft; coef=-1;
+      else; coef=1;
+      end
+    elseif LI.flags.ic_config==0 % left is negative y
+      coef=-1;
+    else;
+      coef=1; 
+    end
+  end
   function [ is_left ] = is_left_side(sol)
    % #is_left_side -2
 
@@ -7679,7 +7711,7 @@ cntc : interface between SDT and CONTACT
      end
     end
    elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
-    %% #cntc.Plot('wheel') wheel profile or 3D wheel model -3
+    %% #Plot.wheel wheel profile or 3D wheel model -3
     LI=cntc.call;
     if contains(Cam,'prw') % cntc.plot('Wheel{prw}')
      gf=findobj(0,'tag','prw','type','figure');if isempty(gf);gf=figure('tag','prw');end
@@ -7736,6 +7768,7 @@ cntc : interface between SDT and CONTACT
     else
      gf=2;figure(gf); plot(LI.prw.ProfileY,LI.prw.ProfileZ,'.');
      theta= pi/180*[0:360];
+     error('Missing coordinate labels')
      % X=(500+LI.prw.ProfileZ).*cos(theta);
      % Y=(500+LI.prw.ProfileZ).*sin(theta);
      % gf=3;
@@ -7766,8 +7799,10 @@ cntc : interface between SDT and CONTACT
     else
      gf=15;
      figure(gf); clf;
+     'xxx cntc.getXYZ'
      plot3(LI.prr.ProfileY*0,LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
      [~,i1]=min(LI.prr.ProfileZ); hold on;
+     'xxx markerlabel'
      Mr_r=[0 LI.prr.ProfileY(i1),LI.prr.ProfileZ(i1) 0 0 0];
      bas=cntc.getBas(Mr_r);
      RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
@@ -7855,7 +7890,39 @@ cntc : interface between SDT and CONTACT
     % wheel profil position
 
     go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
-    
+   elseif comstr(Cam,'mcp')
+    %% #mcp : show marker trajectory
+    C2=cntc.getCurve('MCP'); bas=cntc.getBas(C2);
+    for j1=1:size(C2.X{2},1)
+     figure(100+j1); lab=strrep(C2.X{2}{j1,1},'_','-');
+     r1=bas(j1:size(C2.X{2},1):end,4:6);
+     h=cdm.pline(cdm({r1(:,1),[lab ':x']}), ...
+      cdm({r1(:,2),[lab ':y']}), ...
+      cdm({r1(:,3),[lab ':z']}),cdm({r1(:,3),[lab ':z']}));
+     set(h(1).Parent,'dataAspectRatio',[1 1 1]); axis tight;grid on
+     view(3)
+    end
+
+   elseif comstr(Cam,'lcp')
+    %% #lcp : show force trajectory
+    C2=cntc.getCurve('MCP'); bas=cntc.getBas(C2);
+    C3=cntc.getCurve('LCP');gf=200+(1:size(C2.X{2},1));
+    for j1=1:length(gf)
+     lab=strrep(C2.X{2}{j1,1},'_','-');
+     figure(gf(j1));set(gcf,'name',lab);clf; 
+     r1=struct('vertex',bas(j1:size(C2.X{2},1):end,4:6), ... % contact position
+         'normal',squeeze(C3.Y(1:3,j1,:))');
+     r1.DefLen=5/max(abs(r1.normal(:))); % Scale max at 5 mm
+     h=cdm.pline(cdm({r1.vertex(:,1),[lab ':x']}), ...
+      cdm({r1.vertex(:,2),[lab ':y']}), ...
+      cdm({r1.vertex(:,3),[lab ':z']}),cdm({r1.vertex(:,3),[lab ':z']}));
+     ga=h(1).Parent;set(ga,'dataAspectRatio',[1 1 1]); axis tight;grid on
+     b=cdm.arrowfield(r1,ga);
+     view(3)
+    end
+
+   %%
+   else; error('Not implemented %s',CAM)
    end
   end
 
@@ -14116,7 +14183,7 @@ cntc : interface between SDT and CONTACT
  function out=getCurve(CAM)
   %% #getCurve
   LI=cntc.call;
-  if strcmpi(CAM,'premcp')
+  if strcmpi(CAM,'mcp')
    %% #PreMcp -3
   PreMCp= {'Mcp_tr:x','xcp_tr';'Mcp_tr:y','ycp_tr';'Mcp_tr:z','zcp_tr';
  'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:z','0'
@@ -14125,27 +14192,29 @@ cntc : interface between SDT and CONTACT
  'Mcp_w:x','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
  'Mcp_w:rx','deltcp_w';'Mcp_w:ry','0';'Mcp_w:z','0'
  };
-  chan=PreMCp;RO.Type='AtMarker';
+  chan=PreMCp;RO.type='AtMarker';
 
-  elseif strcmpi(CAM,'prelcp')
+  elseif strcmpi(CAM,'lcp')
    %% #PreLcp : load = force-moment at contact point -3
-  PreLCp= {'Mcp_tr:Fx','xcp_tr';'Mcp_tr:Fy','ycp_tr';'Mcp_tr:Fz','zcp_tr';
- 'Mcp_tr:Mx','deltcp_tr';'Mcp_tr:My','0';'Mcp_tr:Mz','0'
- 'Mcp_r:x','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
+  PreLCp= {'Mcp_tr:Fx','fx_tr';'Mcp_tr:Fy','fy_tr';'Mcp_tr:Fz','fz_tr';
+ 'Mcp_tr:Mx','mx_r_tr';'Mcp_tr:My','my_r_tr';'Mcp_tr:Mz','mz_r_tr'
+ 'Mcp_r:Fx','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
  'Mcp_r:rx','deltcp_r';'Mcp_r:ry','0';'Mcp_r:z','0'
- 'Mcp_w:x','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
- 'Mcp_w:rx','deltcp_w';'Mcp_w:ry','0';'Mcp_w:z','0'
+ 'Mcp_w:Fx','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
+ 'Mcp_w:Mx','deltcp_w';'Mcp_w:ry','0';'Mcp_w:z','0'
  };
-  chan=PreLCp;RO.Type='AtMarker';
-  else error('%s not known',CAM)
+  'xxx check'
+  chan=PreLCp;RO.type='AtMarker';
+  else; error('%s not known',CAM)
   end
   if strcmpi(RO.type,'AtMarker')
    C1=LI.Cmacro; 
    [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
-   C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''),strrep(chan(1:6:end,1),':x',''),C1.X{3}}}, ...
+   C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''),regexprep(chan(1:6:end,1),':[FM]*x',''),C1.X{3}}}, ...
        'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[]);
    C2.Y(size(chan,1),size(C2.X{3},1))=0;
    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},1));
+   C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
    out=C2;
   end
  
@@ -16222,39 +16291,40 @@ cntc : interface between SDT and CONTACT
    'vMw',[0 0 0 0 0 0], ...
    'j1',1);
 
-if 1==2
-unllab={%Mws-tr
-    % Mw_ws
-    '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
-    }  
-cnllab= { 
-       's_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mws-tr
-        'dxwhl';'dywhl';'dzwhl';'drollw';'dpitchw';'dyaww'   % Mw_ws
-        '0';'dyrail' ;'dzrail' ;'drollr';'0';'0'}; % Mr
-unl0={'0';'0';'-LI.Wheelsetdim.nomrad';'0';'0';'0'  % Nws_tr
-      '0';'LI.Wheelsetdim.leftCoef*(LI.Wheelsetdim.fbdist/2-LI.Wheelsetdim.fbpos)'
-          'LI.Wheelsetdim.nomrad';'0';'0';'0'% Nw_ws
-       '0';'LI.Track.raily0';'LI.Track.railz0';'Track.cant*leftCoef';'0';'0'
-      };
-vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr 
-          'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww' % vMw_ws
-         '0';'vyrail';'vzrail';'vrollr';'0';'0' 
-         };% 
-snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr 
-         'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w' % Mw_w xxx incoherent
-         'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r 
-         }
-         [cnllab unl0 vnllab snllab]
-end
 persistent NL
-if isempty(NL)
+if isempty(NL)||nargin==1
  NL=struct;
  NL.unl=zeros(12,1,3); 
 % NL.unllab= {'f_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'pitch_ws';'yaw_ws'; %Mw
- NL.vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMw
-         '0';'vyrail';'vzrail';'vrollr';'0';'0' };% vMr
- NL. snllab= {'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w';
-     'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'};  
+%unllab={%Mws-tr
+%    % Mw_ws
+%    '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
+%    }  
+NL.cnllab= { 
+       's_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mws-tr
+        'dxwhl';'dywhl';'dzwhl';'drollw';'dpitchw';'dyaww'   % Mw_ws
+        '0';'dyrail' ;'dzrail' ;'drollr';'0';'0'}; % Mr
+unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+          'LI.wheelsetDim.nomrad';'0';'0';'0'% Nw_ws
+       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*cntc.leftCoef(LI)';'0';'0'
+      };
+   LI=cntc.call;
+   for j1=1:length(unl0)
+    r2=eval(unl0{j1});
+    if isscalar(r2); NL.unl(j1,1,2)=r2;
+    else; fprintf('Problem %s = %s',unl0{j1},sdtm.toString(r2))
+    end
+   end
+NL.vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr 
+          'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww' % vMw_ws
+         '0';'vyrail';'vzrail';'vrollr';'0';'0' 
+         };% 
+NL.snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr 
+         'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w' % Mw_w xxx incoherent
+         'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r 
+         };
+         [cnllab unl0 vnllab snllab]
 
 end
 if nargin==0
