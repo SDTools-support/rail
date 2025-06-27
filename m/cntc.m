@@ -7557,37 +7557,124 @@ cntc : interface between SDT and CONTACT
     end
   end
 
-  function R=BasisChange(vec)
+  function [Xout]=BasisChange(str,xin, yin, zin)
    %% #BasisChange do the basis transformation -2
    %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a> xxxEB link
    %  to word not pdf
-
    LI=cntc.call;
-   param=struct('rnom',LI.wheelsetDim.nomrad,'fbdist',LI.wheelsetDim.fbdist, ...
-    'fbpos',LI.wheelsetDim.fbpos,'yr_tr',LI.Track.raily0,'zr_tr',LI.Track.railz0, ...
-    'cant',LI.Track.cant);
-   state= LI.Traj.Y(j1,:); 
+   [n,m]=size(yin);
+   if isempty(xin); xin=zeros(1,n*m);end
+
+    unllab={'xw_tr';'yw_tr';'zw_tr';'rollw_tr';'yaww_tr';'0' % xxx Mw_tr
+     %Mws-tr
+     % Mw_ws
+     '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
+     };
+    cnllab= {
+     's_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws'; %Mws-tr
+     'dxwhl';'dywhl';'dzwhl';'drollw';'dpitchw';'dyaww'   % Mw_ws
+     '0';'dyrail' ;'dzrail' ;'drollr';'0';'0' % Mr_tr
+     'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'%Mcp_w 
+     'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'}; %Mcp_r
+
+    unl0lab={'0';'0';'-LI.Wheelsetdim.nomrad';'0';'0';'0'  % Nws_tr
+     '0';'LI.Wheelsetdim.leftCoef*(LI.Wheelsetdim.fbdist/2-LI.Wheelsetdim.fbpos)'
+     'LI.Wheelsetdim.nomrad';'0';'0';'0'% Nw_ws
+     '0';'LI.Track.raily0';'LI.Track.railz0';'-Track.cant*leftCoef';'0';'0'% Nr_tr
+     '0';'0';'0';'0';'0';'0'%Mcp_w
+     '0';'0';'0';'0';'0';'0'%Mcp_r
+     };
+    vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr
+     'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww' % vMw_ws
+     '0';'vyrail';'vzrail';'vrollr';'0';'0' % Mr_tr
+     '0';'0';'0';'0';'0';'0'%Mcp_w
+     '0';'0';'0';'0';'0';'0'%Mcp_r
+     };%
+    snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr
+     'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w' % Mw_w xxx incoherent
+     'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r
+     '0';'0';'0';'0';'0';'0'%Mcp_w
+     '0';'0';'0';'0';'0';'0'%Mcp_r
+     };
+    j1=12;   LI.leftCoef=-1;
+
+    cnl= [LI.Traj.Y(j1,1:6)'; %Mws-tr
+     LI.Traj.Y(j1,13:18)';   % Mw_ws
+     ;0 ;LI.Traj.Y(j1,25:27)';0;0 % Mr
+     LI.Cmacro.Y(34:36,j1);LI.Cmacro.Y(38,j1);0;0 %Mcp_w
+     LI.Cmacro.Y(29:31,j1);LI.Cmacro.Y(33,j1);0;0]; %Mcp_r
+
+    unl0=[0;0;-LI.wheelsetDim.nomrad;0;0;0;  % Nws_tr
+     0;LI.leftCoef*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos);LI.wheelsetDim.nomrad;0;0;0% Nw_ws
+     0;LI.Track.raily0;LI.Track.railz0;-LI.Track.cant*LI.leftCoef;0;0 % Nr_tr
+     0;0;0;0;0;0
+     0;0;0;0;0;0
+     ];
+    vnl= [ LI.Traj.Y(j1,7:12)'   %vMws-tr
+     LI.Traj.Y(j1,19:24)' % vMw_ws
+     0;LI.Traj.Y(j1,28:30)';0;0
+     0;0;0;0;0;0 %vMcp_w
+     0;0;0;0;0;0 %vMcp_r
+     ];%
+    snl= [0;0;0;0;0;0 % snl Mws_tr
+     LI.Cmacro.Y(20:25,j1) % Mw_w xxx incoherent
+     LI.Cmacro.Y(14:19,j1)% Mr_r
+     0;0;0;0;0;0 %Mcp_w
+     0;0;0;0;0;0 %Mcp_r
+     ];
+     % C=[cnllab cnl unl0lab unl0 vnllab vnl snllab snl];
+
+   if contains(lower(str),'r_tr')
+   %% cntc.plot.RProfile rail profile displacement from rail to track
+   Mrtr=unl0(13:18)+cnl(13:18);  % Formula (Mr_tr)
    
+   xin = reshape(xin, 1, m*n);   yin = reshape(yin, 1, m*n);
+   zin = reshape(zin, 1, m*n);   Xin = [xin; yin; zin];
+   Xout=Mrtr(1:3)*ones(1,n*m)+cntc.getRot(Mrtr)*Xin;% Formula (RtoTr)   
    
-   % rail to track
-   Nr_tr=[0 param.yr_tr param.zr_tr];
 
-   Or_tr=Nr_tr+[0 state.Y()]
+   elseif contains(lower(str),'w_tr')
+   %% cntc.plot.WProfile wheel profile displacement from w to tr
+
+   Mw_ws=unl0(7:12)+cnl(7:12); % Formula (Mw_ws)
+   Mws_tr=unl0(1:6)+cnl(1:6);  % Formula (Mws_tr)
    
-   Mr_tr=struct('Or_tr',[state.x_ws])
+   xin = reshape(xin, 1, m*n);
+   yin = reshape(yin, 1, m*n);
+   zin = reshape(zin, 1, m*n);
+   Xin = [xin; yin; zin];
+
+   % wheel to track word equation (Mw-tr)
+   Rws_tr=cntc.getRot(Mws_tr);Rw_ws=cntc.getRot(Mw_ws);
+   Xout=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m)+Rws_tr*Rw_ws*Xin;
+  
+
+ elseif contains(lower(str),'trajdual2')
+   %% traj duality change the cp from cp basis to tr passing by r and w
+   % cp to tr by w
+   Mcp_w=unl0(19:24)+cnl(19:24); % Formula (Mcp_w)
+   xin = LI.Cmacro.Y(29,:);
+   yin = LI.Cmacro.Y(30,:);
+   zin = LI.Cmacro.Y(31,:);
+   Xin = [xin; yin; zin];
+   [n,m]=size(xin);
+   Rcp_w=cntc.getRot(Mcp_w);
+   Xout=Mcp_w(1:3)*ones(1,n*m)+Rcp_w*Xin; %
+   figure(30);plot3(Xout(1),Xout(2),Xout(3));
+   hold on; figure(30);plot3(Xout(1),Xout(2),Xout(3));
 
 
-   % Wheelset to track
-   Nws_tr=[0 0 -param.rnom];
+   
+   Mw_ws=unl0(7:12)+cnl(7:12); % Formula (Mw_ws)
+   xin = LI.Cmacro.Y(29,:);
+   yin = LI.Traj.Y(30,:);
+   zin = LI.Traj.Y(31,:);
+   Xin = [xin; yin; zin];
 
-   % wheel to wheelset
-   Nw_ws=[0 param.fbdist/2+param.fbpos param.rnom];
+   Rcp_r=cntc.getRot(Mcp_r);Rr_tr=cntc.getRot(Mr_tr);
+   Xout=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m)+Rws_tr*Rw_ws*Xin;
 
-   % Contact patch to wheel
-
-   % Contact patch to rail
-
-
+   end
   end
   function R=getRotRad(qM)
    %% #getRot calculate 3d rotation matrix -2
@@ -7599,8 +7686,9 @@ cntc : interface between SDT and CONTACT
   end
   function R=getRot(qM)
    %% #getRot calculate 3d rotation matrix -2
-   cx=cosd(qM(4));sx=sind(qM(4));cy=cosd(qM(5));
-   sy=sind(qM(5));cz=cosd(qM(6));sz=sind(qM(6));
+   % [angle]=rad
+   cx=cos(qM(4));sx=sin(qM(4));cy=cos(qM(5));
+   sy=sin(qM(5));cz=cos(qM(6));sz=sin(qM(6));
    R=[cz*cy            -sz      cz*sy;
       cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
       cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy];
@@ -7766,7 +7854,12 @@ cntc : interface between SDT and CONTACT
      'position the Contact line'
 
     else
-     gf=2;figure(gf); plot(LI.prw.ProfileY,LI.prw.ProfileZ,'.');
+     Xtr=cntc.BasisChange('w_tr',[],LI.prw.ProfileY,LI.prw.ProfileZ);
+     gf=2;figure(gf); plot3(Xtr(1,:),Xtr(2,:),Xtr(3,:),'.');
+     xlabel('xtr');ylabel('ytr');zlabel('ztr');
+     %why is it needed to reverse Y abscisse ?
+     set(gca,'DataAspectRatio',[1 1 1]);axis equal;
+
      theta= pi/180*[0:360];
      error('Missing coordinate labels')
      % X=(500+LI.prw.ProfileZ).*cos(theta);
@@ -7778,8 +7871,9 @@ cntc : interface between SDT and CONTACT
     %% #plot.rail plot rail profile or 3D rail model -3
 
     LI=cntc.call;
-
+ 
     if isfield(LI.prr,'nslc')
+     % Variable profile
      want_rail=1;xrange=[-26,26];dx_true=1;
      opt.rw_surfc='both'; %'both' for track coordinates
      % opt.rw_surfc='prr'; %'both' for rail coordinates
@@ -7797,21 +7891,27 @@ cntc : interface between SDT and CONTACT
      set(go,'CData',color);
 
     else
-     gf=15;
-     figure(gf); clf;
-     'xxx cntc.getXYZ'
-     plot3(LI.prr.ProfileY*0,LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
+     % Constant profile
+     gf=15; figure(gf); clf;
+     R1.XYZ=[LI.prr.ProfileY*[0 1],LI.prr.ProfileZ]; R1.bas='r';
+     Xtr=cntc.BasisChange('tr',R1);
+     
+     plot3(Xtr(1,:),Xtr(2,:),Xtr(3,:),'.',DisplayName='Rail profile');
+
      [~,i1]=min(LI.prr.ProfileZ); hold on;
      'xxx markerlabel'
      Mr_r=[0 LI.prr.ProfileY(i1),LI.prr.ProfileZ(i1) 0 0 0];
      bas=cntc.getBas(Mr_r);
      RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
          'arProp',{{'linewidth',2}},'DefLen',10);
-     sel=sdtu.fe.genSel(struct('bas',bas),RB);
-     xlabel('xr');ylabel('yr');zlabel('zr');hold off;
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
+     %sel=sdtu.fe.genSel(struct('bas',bas),RB); %doesn't work
+     xlabel('xtr');ylabel('ytr');zlabel('ztr');hold off;
+     %why is it needed to reverse Y abscisse ? 
+     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');axis equal;
      iimouse('on')
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
+     
+     % plot3(LI.prr.ProfileY*0,LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
 
     end
 
