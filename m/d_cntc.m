@@ -176,6 +176,7 @@ end
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,3)=2000; % set vs [mm/s]
 C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+% C1.Y(:,5)=0.3; ;'z_ws','mm',[]
 nmap('WheelFlat_Traj')=C1;
 
 %  TimeTest

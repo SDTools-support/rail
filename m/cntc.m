@@ -7565,7 +7565,7 @@ cntc : interface between SDT and CONTACT
    % Xin : Input structure
 
    LI=cntc.call;
-   NL=cntc.SDTLoop(struct('j1',12,'do','back'));j1=12;
+   NL=cntc.SDTLoop(struct('j1',Xin.j1,'do','back'));j1=Xin.j1;
    [{''} NL.cnl.X{2}(:,1)';NL.cnl.X{1}(:,1) num2cell(NL.cnl.Y(:,:,j1)+reshape(NL.unl(:,:,2),6,[]))]
    [n,m]=size(Xin.XYZ(:,:,1));
    %Definition of the transformation tr1 tr2
@@ -7588,10 +7588,10 @@ cntc : interface between SDT and CONTACT
    Mw_ws=NL.cnl.Y(:,2,j1)+NL.unl(7:12,2);
    Mws_tr=NL.cnl.Y(:,1,j1)+NL.unl(1:6,2);  % Formula (Mws_tr)
    
-   Ow_ws=Mw_ws(1:3); Ows=Mws_tr(1:3);
+   Ow_ws=Mw_ws(1:3); Ows_tr=Mws_tr(1:3);
    Rw_ws=cntc.getRot(Mw_ws);Rws_tr=cntc.getRot(Mws_tr);
    
-   O_des=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m);
+   O_des=Ows_tr*ones(1,n*m)+Rws_tr*Ow_ws*ones(1,n*m);
    R_des=Rws_tr*Rw_ws;
    if contains(NL.cnl.X{2}(:,1),'tr_w')
     O_des=-O_des;R_des=R_des';
@@ -7821,7 +7821,8 @@ cntc : interface between SDT and CONTACT
     else
      % Constant profile
      gf=15; figure(gf); clf;
-     R1=struct('XYZ',reshape([LI.prr.ProfileY*[0 1],LI.prr.ProfileZ],[],1,3),'bas','r');
+     R1=struct('XYZ',reshape([LI.prr.ProfileY*[0 1],LI.prr.ProfileZ],[],1,3), ...
+      'bas','r','j1',1);
 
      Xtr=cntc.BasisChange('tr',R1);
      
@@ -16335,7 +16336,7 @@ if isempty(NL)||nargin==1
      '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
      };
  NL.cnllab= {
-     's_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'pitch_ws';'yaw_ws' %Mws-tr
+     '0' ;'y_ws' ;'z_ws' ;'roll_ws';'0';'yaw_ws' %Mws-tr
      'dxwhl';'dywhl';'dzwhl';'drollw';'dpitchw';'dyaww'   % Mw_ws
      '0';'dyrail' ;'dzrail' ;'drollr';'0';'0' % Mr_tr
      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'%Mcp_w 
