@@ -14250,7 +14250,7 @@ cntc : interface between SDT and CONTACT
   if strcmpi(CAM,'mcp')
    %% #PreMcp -3
   PreMCp= {'Mcp_tr:x','xcp_tr';'Mcp_tr:y','ycp_tr';'Mcp_tr:z','zcp_tr';
- 'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:z','0'
+ 'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:rz','0'
  'Mcp_r:x','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
  'Mcp_r:rx','deltcp_r';'Mcp_r:ry','0';'Mcp_r:z','0'
  'Mcp_w:x','xcp_w';'Mcp_w:y','ycp_w';'Mcp_w:z','zcp_w';
