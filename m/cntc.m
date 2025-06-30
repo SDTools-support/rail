@@ -7565,42 +7565,58 @@ cntc : interface between SDT and CONTACT
    % Xin : Input structure
 
    LI=cntc.call;
-   NL=cntc.SDTLoop(struct('j1',Xin.j1,'do','back'));j1=Xin.j1;
-   [{''} NL.cnl.X{2}(:,1)';NL.cnl.X{1}(:,1) num2cell(NL.cnl.Y(:,:,j1)+reshape(NL.unl(:,:,2),6,[]))]
-   [n,m]=size(Xin.XYZ(:,:,1));
+   NL=cntc.SDTLoop(struct('do','back'));
+  % [{''} NL.cnl.X{2}(:,1)';NL.cnl.X{1}(:,1) num2cell(NL.cnl.Y(:,:,j1)+reshape(NL.unl(:,:,2),6,[]))]
    %Definition of the transformation tr1 tr2
-   tr1=append('M',Xin.bas,'-',des);tr2=append('M',des,'-',Xin.bas);
+   if strcmpi(Xin.bas,des);Xout=Xin; return;end
+
+   tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
    i1=contains(NL.cnl.X{2}(:,1),tr1);
    i2=contains(NL.cnl.X{2}(:,1),tr2);
    if any(i1) 
-    % Direct transformation
-   ind=find(i1);
-   qbas=NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2);
-   O_des=qbas(1:3); R_des=cntc.getRot(qbas);
+     % Direct transformation
+    ind=find(i1);
+    qbas=NL.cnl.Y(:,ind,:)+NL.unl((ind-1)*6+(1:6),2);
+    O_des=squeeze(qbas(1:3,:));
+    for j1=1:size(qbas,3)
+     R_des(:,:,j1)=cntc.getRot(qbas(:,1,j1));
+    end
    elseif any(i2) 
     % inversed Direct transformation
-   ind=find(i2);
-   qbas=(NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2));
-   O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
+    dbstack; keyboard; 
+    ind=find(i2);
+    qbas=(NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2));
+    O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
    elseif contains(tr1,'w-tr')|contains(tr2,'tr-w') 
     % Composed transformation w_tr
+
+    Mw_ws=NL.cnl.Y(:,2,:)+NL.unl(7:12,2);
+    Mws_tr=NL.cnl.Y(:,1,:)+NL.unl(1:6,2);  % Formula (Mws_tr)
    
-   Mw_ws=NL.cnl.Y(:,2,j1)+NL.unl(7:12,2);
-   Mws_tr=NL.cnl.Y(:,1,j1)+NL.unl(1:6,2);  % Formula (Mws_tr)
-   
-   Ow_ws=Mw_ws(1:3); Ows_tr=Mws_tr(1:3);
-   Rw_ws=cntc.getRot(Mw_ws);Rws_tr=cntc.getRot(Mws_tr);
-   
-   O_des=Ows_tr*ones(1,n*m)+Rws_tr*Ow_ws*ones(1,n*m);
-   R_des=Rws_tr*Rw_ws;
-   if contains(NL.cnl.X{2}(:,1),'tr_w')
-    O_des=-O_des;R_des=R_des';
-   end
-   else error('Tranformation not found')
+    i1=contains(NL.cnl.X{2}(:,1),'tr_w');
+    O_des=Mws_tr(1:3,:);
+    for j1=1:size(O_des,2)
+     Rws_tr=cntc.getRot(Mws_tr(:,j1));
+     Rw_ws=cntc.getRot(Mw_ws(:,j1));
+     O_des(:,j1)=O_des(:,j1)+Rws_tr*Mw_ws(1:3,j1);
+     if i1;R_des(:,:,j1)=(Rws_tr*Rw_ws)'; % tr_w rather than w_tr
+     else; R_des(:,:,j1)=Rws_tr*Rw_ws;
+     end
+    end
+    if i1; O_des=-O_des;end
+
+   else; error('Tranformation not found')
    end
    Xout=Xin;
    % X_ORX transform equation
-   Xout.XYZ= reshape(reshape(Xin.XYZ,[],3)*R_des'+O_des',size(Xin.XYZ));
+   if numel(R_des)==9
+    Xout.XYZ= reshape(reshape(Xin.XYZ,[],3)*R_des'+O_des',size(Xin.XYZ));
+   else
+    for j1=1:size(O_des,2)
+     Xout.XYZ(j1,:,:)=  ...
+      permute(R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 1 2])+O_des(:,j1),[2 3 1]);
+    end
+   end
    Xout.bas=des;
    
   end
@@ -7920,6 +7936,22 @@ cntc : interface between SDT and CONTACT
     % wheel profil position
 
     go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
+   elseif comstr(Cam,'plot3')
+    %% #plot3 : show trajectory
+   
+    [~,RO]=sdtm.urnPar(CAM,'{}{M%s,gf%i}');
+    if ~isfield(RO,'gf');RO.gf=figure;end
+    figure(RO.gf);clf(RO.gf);hold on;
+
+    while carg<=nargin
+     R1=varargin{carg};carg=carg+1;
+     R2=cntc.BasisChange(RO.M,R1); % Transform to desired marker
+     plot3(R2.XYZ(:,:,1),R2.XYZ(:,:,2),R2.XYZ(:,:,3),'DisplayName',[R1.name R1.bas '_' R2.bas]);
+
+    end
+    xlabel(['x' RO.M]);ylabel(['y' RO.M]);zlabel(['z' RO.M]);
+    set(gca,'DataAspectRatio',[1 1 1])
+
    elseif comstr(Cam,'mcp')
     %% #mcp : show marker trajectory
     C2=cntc.getCurve('MCP'); bas=cntc.getBas(C2);
@@ -14242,19 +14274,16 @@ cntc : interface between SDT and CONTACT
           error('%s not known',CAM)
   end
   if strcmpi(RO.type,'AtMarker')
-   C1=LI.Cmacro; 
-   [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
+   C1=LI.Cmacro;  %% values in Cmacro 
    C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''),regexprep(chan(1:6:end,1),':[FM]*x',''),C1.X{3}}}, ...
        'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[]);
+   C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
+   [i1,i2]=ismember(chan(:,2),C3.X{2}(:,1));
+   C2.Y(i1,:)=C3.Y(1:size(C3.X{1},1),i2(i1))';
+
+   [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
    C2.Y(size(chan,1),size(C2.X{3},1))=0;
    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},1));
-
-   if ~all(i1)
-    % add values not in Cmacro are found in Traj chan(~i1,:)
-    C1=LI.Traj; 
-    [i1,i2]=ismember(chan(:,2),C1.X{2}(:,1));
-    C2.Y(i1,:)=C1.Y(1:size(C1.X{1},1),i2(i1))';
-   end
    C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
    out=C2;
   end
