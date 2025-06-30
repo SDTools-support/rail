@@ -7561,77 +7561,47 @@ cntc : interface between SDT and CONTACT
    %% #BasisChange do the basis transformation -2
    %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a> xxxEB link
    %  to word not pdf
+   % des : desired basis
+   % Xin : Input structure
+
    LI=cntc.call;
-   NL=cntc.SDTLoop(struct('j1',12,'do','back'));
-
-j1=1;
+   NL=cntc.SDTLoop(struct('j1',12,'do','back'));j1=12;
    [{''} NL.cnl.X{2}(:,1)';NL.cnl.X{1}(:,1) num2cell(NL.cnl.Y(:,:,j1)+reshape(NL.unl(:,:,2),6,[]))]
-
-   O_des =xxx; 
-   R_des=xxx;
-   if contains(lower(str),'r_tr')
-   %% cntc.plot.RProfile rail profile displacement from rail to track
-
-
-
-   Mrtr=unl0(13:18)+cnl(13:18);  % Formula (Mr_tr)
+   [n,m]=size(Xin.XYZ(:,:,1));
+   %Definition of the transformation tr1 tr2
+   tr1=append('M',Xin.bas,'-',des);tr2=append('M',des,'-',Xin.bas);
+   i1=contains(NL.cnl.X{2}(:,1),tr1);
+   i2=contains(NL.cnl.X{2}(:,1),tr2);
+   if any(i1) 
+    % Direct transformation
+   ind=find(i1);
+   qbas=NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2);
+   O_des=qbas(1:3); R_des=cntc.getRot(qbas);
+   elseif any(i2) 
+    % inversed Direct transformation
+   ind=find(i2);
+   qbas=(NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2));
+   O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
+   elseif contains(tr1,'w-tr')|contains(tr2,'tr-w') 
+    % Composed transformation w_tr
    
-   xin = reshape(xin, 1, m*n);   yin = reshape(yin, 1, m*n);
-   zin = reshape(zin, 1, m*n);   Xin = [xin; yin; zin];
-   Xout=Mrtr(1:3)*ones(1,n*m)+cntc.getRot(Mrtr)*Xin;% Formula (RtoTr)   
+   Mw_ws=NL.cnl.Y(:,2,j1)+NL.unl(7:12,2);
+   Mws_tr=NL.cnl.Y(:,1,j1)+NL.unl(1:6,2);  % Formula (Mws_tr)
    
-
-   elseif contains(lower(str),'w_tr')
-   %% cntc.plot.WProfile wheel profile displacement from w to tr
-
-   Mw_ws=unl0(7:12)+cnl(7:12); % Formula (Mw_ws)
-   Mws_tr=unl0(1:6)+cnl(1:6);  % Formula (Mws_tr)
+   Ow_ws=Mw_ws(1:3); Ows=Mws_tr(1:3);
+   Rw_ws=cntc.getRot(Mw_ws);Rws_tr=cntc.getRot(Mws_tr);
    
-   xin = reshape(xin, 1, m*n);
-   yin = reshape(yin, 1, m*n);
-   zin = reshape(zin, 1, m*n);
-   Xin = [xin; yin; zin];
-
-   % wheel to track word equation (Mw-tr)
-   Rws_tr=cntc.getRot(Mws_tr);Rw_ws=cntc.getRot(Mw_ws);
-
-   Ow_tr=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m);
-   Rw_tr=Rws_tr*Rw_ws;
-
-   Xout=Ow_tr+Rw_tr*Xin;
-  
-
- elseif contains(lower(str),'trajdual2')
-   %% traj duality change the cp from cp basis to tr passing by r and w
-   % cp to tr by w
-   Mcp_w=unl0(19:24)+cnl(19:24); % Formula (Mcp_w)
-   xin = LI.Cmacro.Y(29,:);
-   yin = LI.Cmacro.Y(30,:);
-   zin = LI.Cmacro.Y(31,:);
-   Xin = [xin; yin; zin];
-   [n,m]=size(xin);
-   Rcp_w=cntc.getRot(Mcp_w);
-   Xout=Mcp_w(1:3)*ones(1,n*m)+Rcp_w*Xin; %
-   figure(30);plot3(Xout(1),Xout(2),Xout(3));
-   hold on; figure(30);plot3(Xout(1),Xout(2),Xout(3));
-
-
-   
-   Mw_ws=unl0(7:12)+cnl(7:12); % Formula (Mw_ws)
-   xin = LI.Cmacro.Y(29,:);
-   yin = LI.Traj.Y(30,:);
-   zin = LI.Traj.Y(31,:);
-   Xin = [xin; yin; zin];
-
-   Rcp_r=cntc.getRot(Mcp_r);Rr_tr=cntc.getRot(Mr_tr);
-   Xout=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m)+Rws_tr*Rw_ws*Xin;
-
+   O_des=Mws_tr(1:3)*ones(1,n*m)+Rws_tr*Mw_ws(1:3)*ones(1,n*m);
+   R_des=Rws_tr*Rw_ws;
+   if contains(NL.cnl.X{2}(:,1),'tr_w')
+    O_des=-O_des;R_des=R_des';
    end
-
+   else error('Tranformation not found')
+   end
    Xout=Xin;
-   % X_ORX transform equation 
-   Xout.XYZ= reshape(reshape(Xin.XYZ,[],3)*R_des'+O_des(:)',size(Xin.XYZ));
-   Xout.bas=des; 
+   % X_ORX transform equation
+   Xout.XYZ= reshape(reshape(Xin.XYZ,[],3)*R_des'+O_des',size(Xin.XYZ));
+   Xout.bas=des;
    
   end
   function R=getRotRad(qM)
@@ -7855,7 +7825,7 @@ j1=1;
 
      Xtr=cntc.BasisChange('tr',R1);
      
-     plot3(Xtr(1,:),Xtr(2,:),Xtr(3,:),'.',DisplayName='Rail profile');
+     plot3(Xtr.XYZ(:,1),Xtr.XYZ(:,2),Xtr.XYZ(:,3),'.',DisplayName='Rail profile');
 
      [~,i1]=min(LI.prr.ProfileZ); hold on;
      'xxx markerlabel'
@@ -7863,7 +7833,7 @@ j1=1;
      bas=cntc.getBas(Mr_r);
      RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
          'arProp',{{'linewidth',2}},'DefLen',10);
-     %sel=sdtu.fe.genSel(struct('bas',bas),RB); %doesn't work
+     % sel=sdtu.fe.genSel(struct('bas',bas),RB); %doesn't work
      xlabel('xtr');ylabel('ytr');zlabel('ztr');hold off;
      %why is it needed to reverse Y abscisse ? 
      set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');axis equal;
