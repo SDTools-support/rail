@@ -512,8 +512,10 @@ cntc : interface between SDT and CONTACT
    end
    if nargin==0
     out=LI;return;
-   elseif nargin==1&&isa(varargin{1},'vhandle.uo')&&isfield(varargin{1},'callLog')
-    LI=varargin{1};return
+   elseif nargin==1&&isa(varargin{1},'vhandle.uo')&& ...
+           (isfield(varargin{1},'callLog')||isfield(varargin{1},'Solver'))
+    LI=varargin{1}; if nargout>0;out=LI;end
+    return
    end
    CAM=varargin{1};
    if strcmpi(CAM,'callLog')
@@ -7788,7 +7790,38 @@ cntc : interface between SDT and CONTACT
            Y,(Z+LI.wheelsetDim.nomrad).*sin(X)), ...
           'Traj',LI.Traj);
      cntc.asFeplot(RP)
-     
+if 1==2
+ %% first attempt at interpolant
+ r1=struct('rtz',cat(3,LI.prw.zsurf, LI.prw.xsurf,LI.prw.ysurf), ...
+      'orig',[0 0 -LI.wheelsetDim.nomrad],'c_rect_cyl',[0 0 -1;1 0 0;0 1 0]','r0',LI.wheelsetDim.nomrad);
+ % z by teta grid
+ [t,i1]=sort(squeeze(r1.rtz(:,1,2))');[z,i2]=sort(squeeze(r1.rtz(1,:,3)));
+ r1.tlim=t([1 end]);r1.zlim=z([1 end]);
+ [t,z]=ndgrid(t,z);
+ r1.r_tz = griddedInterpolant(t,z,r1.rtz(i1,i2,1));
+
+ 
+ [t,z]=ndgrid(linspace(0,20*pi/180,30),linspace(-69,59,20));t0=t;
+ fs=fe_range('gridface',size(t));
+ r2=struct('rtz',cat(3,r1.r_tz(t,z),t,z), ...
+      'orig',[0 0 -LI.wheelsetDim.nomrad],'c_rect_cyl',[0 0 -1;1 0 0;0 1 0]','r0',LI.wheelsetDim.nomrad);
+ n2=sdtu.fe.cyl2rect(r2);
+ figure(2);go=patch('vertices',n2,'faces',fs,'facecolor', ...
+     'interp','facevertexcdata',reshape(r2.rtz(:,:,1),[],1));
+ r0=squeeze(r2.rtz(1,:,1));
+ for j1=1:36
+   t=t0+j1/180*pi;t(t>pi)=t(t>pi)-2*pi;
+   r=r1.r_tz(t,z)-r0;r=r(:);
+   set(go,'facevertexcdata',r);r=[min(r) max(r)]; if diff(r);clim(r);end
+   drawnow;
+ end
+ fecom('shownodemark',n2)
+
+
+end
+
+     try
+      %%xxx delete Gaetan ?
      color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
        set(go,'CData',color);  hold on;
     
@@ -7809,6 +7842,7 @@ cntc : interface between SDT and CONTACT
      LI.flags.iwhe
      'xxx animate'
      'position the Contact line'
+     end
     end
     
     if comstr(Cam,'mcalc');[CAM,Cam]=comstr(CAM,6);
@@ -7851,7 +7885,7 @@ cntc : interface between SDT and CONTACT
      % color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
      % set(go,'CData',color);
 
-    else
+    elseif isfield(LI.prw,'ProfileY')
      R1=struct('XYZ',[[0,1]*LI.prw.ProfileY,LI.prw.ProfileZ],'bas','w');
      Xtr=cntc.BasisChange('w_tr',R1);
      gf=2;figure(gf); plot3(Xtr(1,:),Xtr(2,:),Xtr(3,:),'.');
