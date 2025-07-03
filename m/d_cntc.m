@@ -102,7 +102,7 @@ cinM.add={
 
 % vhandle.uo('',C3.info,rail19('nmap.Map:Cin'))
 
-%% Global flags 
+%% #GlobalFlags 
 %CNTC.un_cntc=1934;
 nmap('Global_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
@@ -121,25 +121,91 @@ nmap('Global_flags')=vhandle.uo([],{ ...
   'ire', 1, 'experiment called iwhe in the example'
   'iwhe',1, '1/2 Left/right wheel'});
 
-%% Trajectory 
-%Classic
+%% #CNTCModel
+% #Mod_CsteProf -2
+nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+    'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+    'Rolling{StepSize WRCn, dqrel 1}'
+   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
+    };
+
+% #Mod_GaugePos -2
+nmap('Mod_GaugePos')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+    'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+    'Rolling{StepSize WRCn, dqrel 1}'
+   ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   ', nomrad 490, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
+    };
+
+% #Mod_Wheelflat -2
+nmap('Mod_Wheelflat')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+   'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+   'Bound{Cond Force, fz 125000}'
+   'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+   'Rolling{StepSize WRCn, dqrel 1}'
+  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+   'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
+   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'};
+
+% #Mod_VarProf
+nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+   'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+   'Bound{Cond Force, fz 125000}'
+   'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+   'Rolling{StepSize WRCn, dqrel 1}'
+   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+   'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
+
+% #Mod_FBound
+nmap('Mod_FBound')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+   'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+   'Bound{Cond Force, fz 125000}'
+   'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+   'Rolling{StepSize WRCn, dqrel 1}'
+  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+   'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+   'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
+
+%% #Trajectory 
+% #Traj_Classic -2
 LI=cntc.call;
 
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
    [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,5)=2000; % set vs
-nmap('Classic_traj')=C1;
+nmap('Traj_Classic')=C1;
 
-%ODG
+% #Traj_ODG -2
 % Vs=89000mm/s ; Vpitch = 
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
    [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,5)=2000; % set vs
-nmap('ODG_traj')=C1;
+nmap('Traj_ODG')=C1;
 
-%  Benchmark, leftparam
+% #Traj_Benchmark -2
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [ ... 
    [ 0 : 0.5 : 10 ];
    [ 0 : 0.0012 : 0.024 ];
@@ -157,14 +223,14 @@ C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(1:end,5)=2000; % set vs
 C1.Y(1:end,6)=0.5; %set penetration
-nmap('BenchManchester_Traj')=C1;
+nmap('Traj_BenchManchester')=C1;
 
-%  TestPen
+%  #Traj_TestPen -2
 C1=struct('X',{{[],{'z_ws'}}},'Xlab',{{'Step','Comp'}},'Y', [[1,1,2,2,3,3,6,6]]');
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestPen_Traj')=C1;
+nmap('Traj_TestPen')=C1;
 
-%  Wheelflat
+%  #Traj_Wheelflat -2
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
 C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
@@ -177,9 +243,9 @@ C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,3)=2000; % set vs [mm/s]
 C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
 % C1.Y(:,5)=0.3; ;'z_ws','mm',[]
-nmap('WheelFlat_Traj')=C1;
+nmap('Traj_WheelFlat')=C1;
 
-%  TimeTest
+%  #Traj_TimeTest -2
 C1=struct('X',{{[],{'pitch_ws','rad',[];'s_ws','mm',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
  'Xlab',{{'Step','Comp'}},'Y', ...
  -pi/180*[0:720]'); % rotation angle [rad] (pdf page 36)
@@ -189,9 +255,10 @@ if isfield(LI,'wheelsetDim')
 end
 C1.Y(:,3)=2000; % set vs [mm/s]
 C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
-nmap('TimeTest_Traj')=C1;
+nmap('Traj_TimeTest')=C1;
 
-%  TestParam 1
+%  #Traj_TestParam -2
+%  #Traj_TestParam1 -3
 l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
     'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
@@ -204,30 +271,43 @@ C1.Y(2,:)=[0,3,0.4,0,0,0,...
            1,2,1,0,0,0,...
            0,0,0,0,0,0];
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestParam_Traj1')=C1;
+nmap('Traj_TestParam1')=C1;
 
-%  TestParamFlex
+%  #Traj_TestParamFlex1  -3
 l1={'z_ws' ;'dywhl'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[[0.4,0.4,0.4,0.4];[-10,-5,0,5]]'); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestParam_flex1')=C1;
+nmap('Traj_TestParamFlex1')=C1;
 
-%test translation flexibility
+%  #Traj_TestParamFlex2  -3
 l1={'z_ws';'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[[0.4 0.4 0.4]; [0 1 1]; [0 1 1]; [0 1 1]; [0 0 0.0175]; [0 0 0.0175]]'); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestParam_flex2')=C1;
+nmap('Traj_TestParamFlex2')=C1;
 
-%test rotation flexibility
+%  #Traj_TestParamFlex3  -3
 l1={'z_ws';'drollw' ;'dyaww' ;'dpitchw'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[[0.4 0.4]; [0 0.00175]; [0 0.00175]; [0 0.00175]]'); % rotation angle [rad] (pdf page 36)
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestParam_flex3')=C1;
+nmap('Traj_TestParamFlex3')=C1;
 
-%  TestParam 2
+%  #Traj_TestParam3 -3
+l1={ 'z_ws';'y_ws';'yaw_ws';'dywhl';'dyaww' ;};
+C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
+ 'Y',[]); % rotation angle [rad] (pdf page 36)
+C1.Y=zeros(8,5);
+C1.Y(:,2)=[-1,0,1,5,0,0,0,0] ;
+C1.Y(:,3)=[-0.0175,0,0.0175,0.035,0,0,0,0] ;
+C1.Y(:,4)=[0,0,0,0,-1,0,1,5] ;
+C1.Y(:,5)=[0,0,0,0,-0.0175,0,0.0175,0.035] ;
+C1.Y(:,1)=0.4; %set penetration
+C1.X{1}=(1:size(C1.Y,1))';
+nmap('Traj_TestParam3')=C1;
+
+%  #Traj_TestParam2  -3
 l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'vs'   ;'vy'   ;'vz'   ;'vroll'  ;'vyaw'  ;'vpitch';...
     'dxwhl';'dywhl';'dzwhl';'drollw' ;'dyaww' ;'dpitchw'; ...
@@ -235,13 +315,10 @@ l1={'s_ws' ;'y_ws' ;'z_ws' ;'roll_ws';'yaw_ws';'pitch_ws';...
     'dyrail';'dzrail';'drollr';'vyrail';'vzrail';'vrollr'};
 C1=struct('X',{{[],l1}},'Xlab',{{'Step','Comp'}}, ...
  'Y',[]); % rotation angle [rad] (pdf page 36)
-C1.Y=zeros(1,30);
-
-C1.Y(2,14)=-10; 
-C1.Y(3,14)=10; 
-C1.Y(:,3)=2; %set penetration
+C1.Y=zeros(1,30); C1.Y(2,14)=-10; 
+C1.Y(3,14)=10; C1.Y(:,3)=2; %set penetration
 C1.X{1}=(1:size(C1.Y,1))';
-nmap('TestParam_Traj2')=C1;
+nmap('Traj_TestParam2')=C1;
 
 %% #nmap.Cst : constants to be reused
 nmap('Ctc21')=struct('delta',20,'Fl',1e6,'Kc',-2.3e9);
