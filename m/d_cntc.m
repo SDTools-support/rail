@@ -106,7 +106,7 @@ cinM.add={
 %CNTC.un_cntc=1934;
 nmap('Global_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
-  'ic_config',0,'Configuration of the problem; 0 for left side, 1 for right side'
+  'ic_config',0,'Configuration of the problem; 0 for left side, 1 for right side' 
   'ic_tang',3,'Tangential problem to be solved, T=3: steady state rolling --> G=0 GauSei'
   'ic_pvtime',2,['Relation of the current to the previous case or' ...
   ' previous time instance; P=2: no previous time'] 
@@ -131,8 +131,8 @@ nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
    ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
        ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
     'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1., smooth 0.}'
+    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1., smooth 0.}'
     };
 
 % #Mod_GaugePos -2
