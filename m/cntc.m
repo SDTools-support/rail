@@ -7637,26 +7637,39 @@ cntc : interface between SDT and CONTACT
 
   end
 
-  function PointChange(des,Fin)
-   %% #cntc.PointChange load displacement to des point
-   % Distance between 2 points calculation
+  function LoadDisp(des,Fin)
+   %% #cntc.LoadDisp load displacement to des point
+   
+   LI=cntc.call;
+   NL=cntc.SDTLoop(struct('do','back'));
 
-   % parse input marker output marker
-   tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
-   i1=contains(NL.cnl.X{2}(:,1),tr1);
-   i2=contains(NL.cnl.X{2}(:,1),tr2);
+
+   Or=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
+   
+   qbas=NL.cnl.Y(:,ind,:)+NL.unl((ind-1)*6+(1:6),2);
+
+   X=cntc.BasisChange('w',R1);
+
+   Ow=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
+   X=cntc.BasisChange('w',R1);
+
+
+   str=[Fin.APt '-' des];
+   if strcmpi(Xin.bas,des);Xout=Xin; return;
+   elseif strcmpi(str,'Mw-Mr')
+   % Displacement of contact point in tr marker
+    
+   % Distance between 2 points calculation
    
    % Different transformations
-   if strcmpi(Xin.bas,des);Xout=Xin; return;
-   elseif strcmpi([Xin.bas '-' des])
-    % Direct transformation
     ind=find(i1);
     qbas=NL.cnl.Y(:,ind,:)+NL.unl((ind-1)*6+(1:6),2);
     O_des=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
     for j1=1:size(qbas,3)
+     R1=struct('XYZ',d,'bas','w','name','Mcp'); 
      R_des(:,:,j1)=cntc.getRot(qbas(:,1,j1));
     end
-   elseif any(i2)
+   elseif strcmpi(Fin.APt,'Mr')
     % inversed Direct transformation
     %xxxgae improve
     dbstack; keyboard;
@@ -7959,7 +7972,7 @@ cntc : interface between SDT and CONTACT
      C1=cntc.getCurve('mcp');
      R1=struct('XYZ',permute(C1.Y(1:3,2,:),[3 2 1]),'bas','r','name','Mcp');
      cntc.plot('plot3{Mtr,gf15}',R1); setlines;view(3);
-
+     comgui('ImWrite',15,'TrajOnRail.png');
     else
      % Constant profile
      [~,i1]=min(LI.prr.ProfileZ);
@@ -7987,10 +8000,9 @@ cntc : interface between SDT and CONTACT
     cntc.plot('WheelMCalc{Mtr}');
     XYZ=reshape(X.XYZ,[size(X.XYZ,[1 3]) size(X.theta)]);
     go=plot3(X.XYZ(j1,:,1),X.XYZ(j1,:,2),X.XYZ(j1,:,3));
-
     xlabel(['x' X.bas]);ylabel(['y' X.bas]);zlabel(['z' X.bas]);
-
-
+   
+    comgui('ImWrite',15,'WheelOnRail.png');
 
    elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
     %% #cntc.plot('cmacro'), plot time variation of Cmacor variable -3
