@@ -152,7 +152,6 @@ nmap('Mod_GaugePos')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
 nmap('Mod_Wheelflat')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
-   'Bound{Cond Force, fz 125000}'
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
    'Rolling{StepSize WRCn, dqrel 1}'
   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
@@ -172,7 +171,7 @@ nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxou
        ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}' };
+   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
 
 % #Mod_FBound
 nmap('Mod_FBound')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
@@ -233,7 +232,7 @@ nmap('Traj_TestPen')=C1;
 %  #Traj_Wheelflat -2
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
-C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
+C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[];'z_ws','[mm]',[]}}}, ...
  'Xlab',{{'Step','Comp'}},'Y',[]);
  C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
 if isfield(LI,'wheelsetDim')
@@ -242,7 +241,18 @@ end
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,3)=2000; % set vs [mm/s]
 C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
-% C1.Y(:,5)=0.3; ;'z_ws','mm',[]
+
+% z_ws curve found with load boundary conditions fz=125000 N
+C1.Y(:,5)=[0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287, ...
+ 0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,...
+ 0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,...
+ 0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,...
+ 0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3283,...
+ 0.3303,0.3346,0.3416,0.3507,0.3599,0.3703,0.3809,0.3954,0.4145,0.4377,0.4646,...
+ 0.4962,0.5309,0.5663,0.6002,0.6323,0.6594,0.6798,0.6934,0.7000,0.6987,0.6890,...
+ 0.6720,0.6478,0.6170,0.5832,0.5489,0.5163,0.4857,0.4578,0.4332,0.4125,0.3971,...
+ 0.3831,0.3707,0.3585,0.3483,0.3411,0.3357,0.3336,0.3324,0.3314,0.3306,0.3299,0.3295];
+
 nmap('Traj_WheelFlat')=C1;
 
 %  #Traj_TimeTest -2
