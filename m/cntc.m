@@ -14527,16 +14527,18 @@ cntc : interface between SDT and CONTACT
       '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
       };
      NL.unl.X{1}={'x0';'y0';'z0';'rx0';'ry0';'rz0'};
-     NL.unl.X{2}={'Mws-tr';'Mw-ws';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
+     NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
      NL.unl.X{3}={'unl';'unl0';'0'}; %to change '0'
      NL.unl.Y=zeros(6,6,3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
-     NL.cnllab= {'0' ;'y_ws' ;'z_ws' ;'roll_ws';'0';'yaw_ws' %Mws-tr
-      'dxwhl';'dywhl';'dzwhl';'drollw';'0';'dyaww'   % Mw_ws
-      '0';'dyrail' ;'dzrail' ;'drollr';'0';'0' % Mr_tr
-      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'%Mcp_w
-      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0' %Mcp_r
-      's_ws';'0';'0';'0';'0';'0'};%Mtr_isys
+     NL.cnllab= {
+      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; 'pitch_ws'; 'yaw_ws' %Mws-tr
+      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc_ws
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mw-wc
+      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' % Mr_tr
+      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
+      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
+      's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_isys
 
      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
@@ -14588,7 +14590,7 @@ cntc : interface between SDT and CONTACT
     %% #PreLcp : load = force-moment at contact point -3
     PreLCp= {'Mcp_r:Fx','fx_r';'Mcp_r:Fy','fy_r';'Mcp_r:Fz','fz_r';
      'Mcp_r:Mx','mx_r_r';'Mcp_r:My','my_r_r';'Mcp_r:Mz','mz_r_r'
-     'Mcp_w:Fx','fx_w';'Mcp_w:Fy','fx_w';'Mcp_w:Fz','fx_w';
+     'Mcp_w:Fx','fx_w';'Mcp_w:Fy','fy_w';'Mcp_w:Fz','fz_w';
      'Mcp_w:Mx','mx_w_w';'Mcp_w:My','my_w_w';'Mcp_w:Mz','mz_w_w'
      };
     chan=PreLCp;RO.type='AtMarker';
