@@ -5556,11 +5556,29 @@ cntc : interface between SDT and CONTACT
 
   end % show_profiles
 
-  function  asFeplot(RO)
+  function  asFeplot(RO,cf)
    %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))     -2
 
    d1=[];mo1=[];
-   if isfield(RO,'li')
+   if ischar(RO)
+     %% commands  cntc.asFeplot('viewdef',cg)
+     %set(findobj(cf.opt(1),'tag','iivn2'),'callback',';iimouse view3;');
+     if strncmpi(RO,'viewdef',7)
+      if mean(cf.mdl.Node(:,6))<0 % left
+       set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 -7400 -500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[-7400 0 -500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[-9400 -9400 -3500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn4'),'callback',{@iimouse,'view[-00 -00 9500   0 0 -500  1 0 0 NaN]'});
+      else % Right wheel default views
+       set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 7400 -500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[7400 0 -500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[9400 9400 -3500   0 0 -500  0 0 -1 NaN]'});
+       set(findobj(cf.opt(1),'tag','iivn4'),'callback',{@iimouse,'view[-00 -00 9500   0 0 -500  1 0 0 NaN]'});
+      end
+     else; error('%s',CAM)
+     end
+     return
+   elseif isfield(RO,'li')
     if size(RO.li,1)>3&&strncmpi(RO.li{4,2},'radius',5)
      %% wheel to nominal + deviation
      Z=max(RO.li{4,1},[],1);dZ=RO.li{4,1}-Z;
@@ -5622,13 +5640,7 @@ cntc : interface between SDT and CONTACT
     RO.cv=[ -2362 2102 -2174 206.7 -745.1 -299.9 0.27 -0.35 -0.90 NaN];
    end
    % pos targ up angle
-   if mean(mo1.Node(:,6))<0 % left
-    set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 -7400 -500   0 0 -500  0 0 -1 NaN]'});
-    set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[-7400 0 -500   0 0 -500  0 0 -1 NaN]'});
-    set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[-9400 -9400 -3500   0 0 -500  0 0 -1 NaN]'});
-    set(findobj(cf.opt(1),'tag','iivn4'),'callback',{@iimouse,'view[-00 -00 9500   0 0 -500  1 0 0 NaN]'});
-   end
-   %set(findobj(cf.opt(1),'tag','iivn2'),'callback',';iimouse view3;');
+   cntc.asFeplot('viewdef',cf)
    %fecom view1
    % xxx need to revise rotations camrotate
    if isfield(RO,'ShowBas')
