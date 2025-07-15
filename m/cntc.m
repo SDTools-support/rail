@@ -7571,23 +7571,24 @@ cntc : interface between SDT and CONTACT
    end
   end
 
-  function [Xout]=BasisChange(des,Xin,M)
+  function [Xout]=BasisChange(des,Xin,Marker)
    %% #BasisChange do the basis transformation -2
    %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a> xxxEB link
    %  to word not pdf
    % des : desired basis
    % Xin : Input structure
    % Xin.XYZ stuctured as snapshots*point/line*3 coords
-   % M define the transformation at one timestep
-   % If M defined do the transformation for M given 
+   % Marker define the transformation at one timestep
+   % If Marker is defined do the transformation for Marker given 
 
    Xin.bas=lower(Xin.bas);des=lower(des);
    LI=cntc.call;
    if nargin<3
     Bas=cntc.getBasis;
+    Bas=Bas.M;
    else
     Xin.dim=size(Xin.XYZ);
-    Bas=M; Xin.XYZ=reshape(Xin.XYZ,1,[],3);
+    Bas=Marker.M; Xin.XYZ=reshape(Xin.XYZ,1,[],3);
    end
    % parse input marker output marker
    tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
@@ -7595,49 +7596,14 @@ cntc : interface between SDT and CONTACT
    i2=contains(Bas.X{2}(:,1),tr2);
    if strcmpi(Xin.bas,des);Xout=Xin; return;end
    % qbas extraction for all timestep
-
    if any(i1)    % Direct transformation
-    ind=find(i1); qbas=Bas.Y(:,ind,:);
-    O_des=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
-    for j1=1:size(qbas,3)
-     R_des(:,:,j1)=cntc.getRot(qbas(:,1,j1));
-    end
+    ind=find(i1); O_des=Bas.Y(1:3,ind,:);    
+    R_des=reshape(Bas.Y(4:12,ind,:),[3 3 size(Bas.X{3},1)]);
    elseif any(i2)    % inversed Direct transformation
     %xxxgae improve
     dbstack; keyboard;
     ind=find(i2);  qbas=Bas.Y(:,ind,:);
     O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
-   elseif contains(tr1,'w-tr')|contains(tr1,'tr-w')
-    % Composed transformation w_tr
-    i3=contains(Bas.X{2},'Mw-ws'); Mw_ws=Bas.Y(:,i3,:);
-    i4=contains(Bas.X{2},'Mws-tr'); Mws_tr=Bas.Y(:,i4,:);  
-    O_des=Mws_tr(1:3,:);
-    for j1=1:size(O_des,2)
-     Rws_tr=cntc.getRot(Mws_tr(:,j1));
-     Rw_ws=cntc.getRot(Mw_ws(:,j1));
-     O_des(:,j1)=O_des(:,j1)+Rws_tr*Mw_ws(1:3,j1);
-     if i1;R_des(:,:,j1)=(Rws_tr*Rw_ws)'; % tr_w rather than w_tr
-     else; R_des(:,:,j1)=Rws_tr*Rw_ws;
-     end
-    end
-    % Inverse tranformation
-    if contains(tr1,'tr-w'); O_des=-O_des;R_des=R_des'; end
-    
-   elseif contains(tr1,'isys')
-    % Transformation to tr
-    if ~isempty(M);
-     X=cntc.BasisChange('tr',Xin,M); % xxxgae doesn't keep first Xin in memory...
-     Xin.bas='tr';    Xin.XYZ=X.XYZ;
-    else;  Xin=cntc.BasisChange('tr',Xin); end
-    %Transformation to isys
-    i3=contains(Bas.X{2},'Mtr-isys'); qbas=Bas.Y(:,i3,:);
-    O_des=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
-    for j1=1:size(qbas,3)
-     R_des(:,:,j1)=cntc.getRot(qbas(:,1,j1));
-    end
-
-    % Inverse tranformation
-    if ~contains(des,'isys'); O_des=-O_des;R_des=R_des'; end
    elseif contains(tr1,'wc-w')|contains(tr2,'w-wc')
     % xxxEB wcyl-w
     TYR=Xin.XYZ;Xout=Xin;Xout.bas=des;
@@ -7652,7 +7618,7 @@ cntc : interface between SDT and CONTACT
    Xout=Xin;
     for j1=1:size(Xin.XYZ,1)
      Xout.XYZ(j1,:,:)=  ...
-      (R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 2 1])+squeeze(O_des(:,j1,:)))';
+      (R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 2 1])+squeeze(O_des(:,:,j1)))';
      % Xout2.XYZ(j1,:,:)=  ...
      %  permute(R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 1 2])+O_des(:,j1)),[2 3 1]);
     end
@@ -7701,14 +7667,6 @@ cntc : interface between SDT and CONTACT
    end
    end
 
-  function R=getRotRad(qM)
-   %% #getRot calculate 3d rotation matrix -2
-   cx=cos(qM(4));sx=sin(qM(4));cy=cos(qM(5));
-   sy=sin(qM(5));cz=cos(qM(6));sz=sin(qM(6));
-   R=[cz*cy            -sz      cz*sy;
-    cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
-    cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy];
-  end
   function R=getRot(qM)
    %% #getRot calculate 3d rotation matrix -2
    % [angle]=rad
@@ -8059,8 +8017,7 @@ cntc : interface between SDT and CONTACT
      % Rail and wheel profile research
      RO.list{1}=cntc.plot('rail',RO);
      RO.list{2}=cntc.plot('WheelMCalc',RO);
-     M=cntc.getBasis;
-     M.Y=M.Y(:,:,RO.j1); RO.M=M;
+     RO.Marker=cntc.getBasis(RO.j1);
      cntc.plot('surf',RO);
 
     % dimT=strcmpi(cdm.XlabString(C1),'iTime');
@@ -8144,7 +8101,7 @@ cntc : interface between SDT and CONTACT
 
     go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
    elseif comstr(Cam,'plot3')
-    %% #plot3 : show trajectory -3
+    %% #plot.plot3 : show trajectory -3
 
     [~,RO]=sdtm.urnPar(CAM,'{}{M%s,gf%i}');
     if ~isfield(RO,'gf');RO.gf=figure;end
@@ -8200,16 +8157,16 @@ cntc : interface between SDT and CONTACT
       X=RO.list{j1};
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=RO.M.Y(5,strcmpi(RO.M.X{2},'Mws-tr'))+ ...
-              RO.M.Y(5,strcmpi(RO.M.X{2},'Mw-ws'));
+        ry_wc=RO.Marker.Rot.Y(2,strcmpi(RO.Marker.Rot.X{2},'Mws-tr')')+ ...
+              RO.Marker.Rot.Y(2,strcmpi(RO.Marker.Rot.X{2},'Mwc-ws')');
         % ry_wc is the angle that allows the wheel to rotate in the grid 
         X=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','wc');
        end
-       X.XYZ=sdtu.fe.cyl2rect(X);X.bas='w';
+       X.XYZ=sdtu.fe.cyl2rect(X);X.bas='wc';
       end
-      if isfield(RO,'M')
-       X=cntc.BasisChange(RO.bas,X,RO.M);
+      if isfield(RO,'Marker')
+       X=cntc.BasisChange(RO.bas,X,RO.Marker);
        X.XYZ=reshape(X.XYZ,X.dim);
       end
       go(j1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),'EdgeColor','none');
@@ -8225,7 +8182,6 @@ cntc : interface between SDT and CONTACT
    end
   end
 
-  
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function interpWR()
    %% #cntc.interpWR wheel rail interpolation 
@@ -14539,46 +14495,49 @@ cntc : interface between SDT and CONTACT
       '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
       };
      NL.unl.X{1}={'x0';'y0';'z0';'rx0';'ry0';'rz0'};
-     NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
+     NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      NL.unl.X{3}={'unl';'unl0';'0'}; %to change '0'
-     NL.unl.Y=zeros(6,6,3); % xxxgae unl timestep ?
+     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {
       '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; 'pitch_ws'; 'yaw_ws' %Mws-tr
-      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc_ws
-      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mw-wc
-      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' % Mr_tr
+      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc-ws
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mw-wc  xxxgae dpitchw ???
+      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
       'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
-      's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_isys
+      's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_gl
 
      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      'LI.wheelsetDim.nomrad';'0';'0';'0'% Nw_ws
+      'LI.wheelsetDim.nomrad';'0';'0';'0'% Nwc_ws
+      '0';'0';'0';   '0'; '0';  '0'   % Mw-wc
       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'
       '0';'0';'0';'0';'0';'0'%Mcp_w
       '0';'0';'0';'0';'0';'0'%Mcp_r
-      '0';'0';'0';'0';'0';'0'};%Mtr_isys
-     LI=cntc.call;r1=zeros(36,1);
+      '0';'0';'0';'0';'0';'0'};%Mtr_gl
+     LI=cntc.call;r1=zeros(42,1);
      for j1=1:length(unl0)  % Fill unl0 from LI content
       r2=eval(unl0{j1});
       if isscalar(r2); r1(j1)=r2;
       else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
       end
      end
-     NL.unl.Y(1:6,1:6,2)=reshape(r1,[6 6]);
+     NL.unl.Y(1:6,1:7,2)=reshape(r1,[6 7]);
      NL.vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr
-      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww' % vMw_ws
-      '0';'vyrail';'vzrail';'vrollr';'0';'0' % Mr_tr
-      '0';'0';'0';'0';'0';'0'%Mcp_w
-      '0';'0';'0';'0';'0';'0'%Mcp_r
-      '0';'0';'0';'0';'0';'0'};%Mtr_isys
-     NL.snllab= {'0';'0';'0';'0';'0';'0' % snl Mws_tr
-      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws' % Mw_ws xxx incoherent
-      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'% Mr_r
-      '0';'0';'0';'0';'0';'0'%Mcp_w
-      '0';'0';'0';'0';'0';'0'%Mcp_r
-      '0';'0';'0';'0';'0';'0'};%Mtr_isys
+      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwc_ws
+      '0';'0';'0';   '0'; '0';  '0'                            % vMw-wc
+      '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr_tr
+      '0';'0';'0';'0';'0';'0'                                  %vMcp_w
+      '0';'0';'0';'0';'0';'0'                                  %Mcp_r
+      '0';'0';'0';'0';'0';'0'};                                %vMtr_gl
+     NL.snllab= {'0';'0';'0';'0';'0';'0'                        % snl Mws_tr
+      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mwc_ws xxx incoherent
+      '0';'0';'0';   '0'; '0';  '0'                            % Mw-wc
+      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
+      '0';'0';'0';'0';'0';'0'                                  %Mcp_w
+      '0';'0';'0';'0';'0';'0'                                  %Mcp_r
+      '0';'0';'0';'0';'0';'0'};                                %Mtr_gl
     end
     if isempty(str)
      out=NL;return
@@ -14588,13 +14547,13 @@ cntc : interface between SDT and CONTACT
      out=NL;  % NL.unl(:,:,2)=unl0
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     out.cnl.X{2}={'Mws-tr';'Mw-ws';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
+     out.cnl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      out.vnl=cntc.getCurve(NL.vnllab);
      out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
-     out.vnl.X{2}={'Mws-tr';'Mw-ws';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
+     out.vnl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      out.snl=cntc.getCurve(NL.snllab);
      out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
-     out.snl.X{2}={'Mws-tr';'Mw-ws';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-isys'};
+     out.snl.X{2}={'Mws-tr';'Mwc-ws';'Mw-wc';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      return
     end
 
@@ -14628,13 +14587,94 @@ cntc : interface between SDT and CONTACT
 
   end
 
-  function out=getBasis()
+  function out=getBasis(t)
    %% #cntc.getBasis return qbas for all marker used 
    NL=cntc.getCurve('NL','back');
    qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 size(NL.cnl.X{3},1)]);
-   C1=struct('X',{{NL.cnl.X{1}(:,1),NL.cnl.X{2}(:,1),(1:size(NL.cnl.Y,3))'}}, ...
-    'Xlab',{{'Comp','Bas','Step'}},'Y',qbas);
-   out=C1;
+   if nargin==0; t=(1:size(qbas,3))';  end %if one step needed
+   C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
+    [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'}], t}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+   C2=struct('X',{{{'rx';'ry';'rz'}, NL.cnl.X{2}, t}},...
+    'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+   C2.Y=qbas(4:6,:,t); % save rotations 
+   C1.Y=zeros([12 size(qbas,2)+5 size(t,1)]);
+   C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,t);
+   for j1=1:size(t,1) %time loop
+    for m=1:size(qbas,2) % marker loop
+     R=cntc.getRot(qbas(:,m,j1));
+     C1.Y(4:12,m,j1)=R(:);
+    end
+     %Mw-tr
+     Ow_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
+      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mw-wc'),j1);
+     
+     Rw_tr= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mw-wc'),j1),[3 3]);
+     C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
+     C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
+
+     %Mw-gl
+     Ow_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
+      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
+      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
+      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mw-wc'),j1);
+     
+     Rw_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mw-wc'),j1),[3 3]);
+     C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
+     C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
+
+     %Mr-gl
+     Or_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
+     
+     Rr_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
+     C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
+     C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
+
+     %Mwc-gl
+     Owc_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
+      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
+     
+     Rwc_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
+     C1.Y(1:3,size(qbas,2)+4,j1)= Owc_gl;
+     C1.Y(4:12,size(qbas,2)+4,j1)= Rwc_gl(:);
+
+     %Mwc-tr
+     Owc_tr= C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
+     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
+      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
+     
+     Rwc_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
+            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
+     C1.Y(1:3,size(qbas,2)+5,j1)= Owc_tr;
+     C1.Y(4:12,size(qbas,2)+5,j1)= Rwc_tr(:);
+
+   end
+   RO.Rot=C2; % rotation angles
+   RO.M=C1; % transformation matrix 
+   out=RO;
   end
 
   function out=getMacro(varargin)
