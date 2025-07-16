@@ -7603,8 +7603,8 @@ cntc : interface between SDT and CONTACT
    % parse input marker output marker
    Xin.bas=lower(Xin.bas);des=lower(des);
    tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
-   i1=contains(Bas.X{2}(:,1),tr1);
-   i2=contains(Bas.X{2}(:,1),tr2);
+   i1=strcmpi(Bas.X{2}(:,1),tr1);
+   i2=strcmpi(Bas.X{2}(:,1),tr2);
    if strcmpi(Xin.bas,des);Xout=Xin; return;end
    % qbas extraction for all timestep
    if any(i1)    % Direct transformation
@@ -7634,6 +7634,7 @@ cntc : interface between SDT and CONTACT
      % Xout2.XYZ(j1,:,:)=  ...
      %  permute(R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 1 2])+O_des(:,j1)),[2 3 1]);
     end
+    Xout.XYZ=reshape(Xout.XYZ,Xin.dim);
    else
     vect = @(x)[0 -x(3) +x(2) ;x(3) 0 -x(1);-x(2) x(1) 0];
     for j1=1:size(Xin.FxyzMxyz,1) 
@@ -7820,7 +7821,7 @@ cntc : interface between SDT and CONTACT
       R1.r_tz = griddedInterpolant(t,z,R1.RTZ(i1,i2,1));
 
       [t1,z1]=ndgrid(RO.prw.t(:)*pi/180,z(1,RO.prw.is)); %prepare view grid
-      R1.tcsc={t1,z1};
+      R1.tcsc={t1,z1};R1.bas=RO.prw.bas;
 
      else
       % now extrude along theta (t field)
@@ -7829,7 +7830,9 @@ cntc : interface between SDT and CONTACT
        reshape(repmat(LI.prw.ProfileY(RO.prr.is)',length(RO.prr.t),1),size(x,1),size(x,2))),'bas','r','name','Rail');
       warning('verify Gaetan')
      end
-     R1=sdth.sfield('addmissing',R1,RO.prr); % add field missing from RO.prr to R1
+     if isfield(RO,'prr')
+      R1=sdth.sfield('addmissing',R1,RO.prr); % add field missing from RO.prr to R1
+     end
      R1.orig=[0;0;-LI.wheelsetDim.nomrad]; 
      R1.c_rect_cyl=[0 0 1;1 0 0;0 1 0]'; % xxx flip
      
@@ -8037,10 +8040,33 @@ cntc : interface between SDT and CONTACT
     %cntc.plot('both')
      if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
      % Rail and wheel profile research
-     RO.list{1}=cntc.plot('rail',RO);
-     RO.list{2}=cntc.plot('WheelMCalc',RO);
-     RO.Marker=cntc.getBasis(RO.j1);
-     cntc.plot('surf',RO);
+     if isfield(RO,'list')
+      for j1=1:length(RO.list)
+        X=RO.list{j1}; 
+        if ~isfield(X,'from');error('Not implemented')
+        elseif strcmpi(X.from,'prr')
+          X=cntc.plot('rail',struct('prr',X));
+        elseif strcmpi(X.from,'prw')
+          X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
+        elseif strcmpi(X.from,'bas')
+          RO=cntc.getBasis(RO);
+          ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
+          r1=RO.M.Y(:,ind)';
+          X=struct('bas',[(1:size(r1,1))' ones(size(r1,1),1)*[1 0] r1], ...
+              'name',{RO.M.X{2}(ind)});
+        else; error('Not implemented')
+        end
+        RO.list{j1}=X;
+      end
+     else
+      RO.list{1}=cntc.plot('rail',RO);
+      RO.list{2}=cntc.plot('WheelMCalc',RO);
+      RO.Marker=cntc.getBasis(RO.j1);
+     end
+     if isfield(RO,'gf')
+      cntc.plot('surf',RO);
+     else; out=RO;
+     end
 
     % dimT=strcmpi(cdm.XlabString(C1),'iTime');
     % C1.Y=C1.Y(:,:,RO.j1);
@@ -8176,28 +8202,64 @@ cntc : interface between SDT and CONTACT
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
      for j1=1:length(RO.list)
+      %% loop on animations
       X=RO.list{j1};
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=RO.Marker.Rot.Y(2,strcmpi(RO.Marker.Rot.X{2},'Mws-tr')')+ ...
-              RO.Marker.Rot.Y(2,strcmpi(RO.Marker.Rot.X{2},'Mwc-ws')');
-        % ry_wc is the angle that allows the wheel to rotate in the grid 
-        X=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
-        'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','wc');
+        ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
+              RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mwc-ws')');
+        % ry_wc is the angle that allows the wheel to rotate in the grid
+        % (thus x1 is in w frame and not wc) 
+        if strcmpi(X.bas,'w')
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
+         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
+        else
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
+         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
+        end
        end
-       X.XYZ=sdtu.fe.cyl2rect(X);X.bas='wc';
+       X1.XYZ=sdtu.fe.cyl2rect(X1);
+       if ~strcmpi(X1.bas,X.bas);  
+        X.XYZ=X1.XYZ;X.bas=X1.bas;   % X1=cntc.BasisChange(X.bas,X1,RO);
+       else; X.XYZ=X1.XYZ;
+       end
+       
       end
-      if isfield(RO,'Marker')
-       X=cntc.BasisChange(RO.bas,X,RO.Marker);
+      if ~isfield(X,'XYZ')
+        if isfield(X,'bas')&&size(X.bas,2)==15; 
+          st=regexprep(X.name,'-.*','');
+          cellfun(@(x)['v1',x],st,'uni',0)
+          RB=struct('cf',gf,'ga',ga,'text',[], ...
+           'arProp',{{'linewidth',2}},'DefLen',40);
+          if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
+          RB.text= cellfun(@(x)['O',x(2:end)],st,'uni',0);RB.text{1,4}='';
+           sel=sdtu.fe.genSel(sdtm.rmfield(X,'name'),RB);
+        end
+        continue;
+      end
+      if isfield(RO,'Marker'); error('Obsolete use RO.M/RO.Rot')
+      elseif isfield(RO,'M')
+       X=cntc.BasisChange(RO.bas,X,RO);
        X.XYZ=reshape(X.XYZ,X.dim);
       end
-      go(j1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),'EdgeColor','none');
+      if size(X.XYZ,2)==1
+       if ~isfield(X,'prop');X.prop={};end
+       go(j1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
+      else
+       if ~isfield(X,'prop');X.prop={'EdgeColor','none'};end
+       go(j1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
+      end
+      ga=go(j1).Parent;
+      if j1==1
+       xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
+      end
      end
 
-    xlabel(['x' X.bas]);ylabel(['y' X.bas]);zlabel(['z' X.bas]);
      set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
+     set(gf,'tag','feplot');
+     %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
      view(3)
 
    else; error('Not implemented %s',CAM)
@@ -14611,19 +14673,23 @@ cntc : interface between SDT and CONTACT
 
   end
 
-  function out=getBasis(t)
+  function out=getBasis(it)
    %% #cntc.getBasis return qbas for all marker used 
    NL=cntc.getCurve('NL','back');
-   qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 size(NL.cnl.X{3},1)]);
-   if nargin==0; t=(1:size(qbas,3))';  end %if one step needed
+   if nargin==0; it=1:size(NL.cnl.Y,3);
+   elseif isfield(it,'j1')
+    RO=it;it=RO.j1;
+   end
+   qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
+   if nargin==0; it=(1:size(qbas,3))';  end %if one step needed
    C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-    [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'}], t}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
-   C2=struct('X',{{{'rx';'ry';'rz'}, NL.cnl.X{2}, t}},...
+    [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+   C2=struct('X',{{{'rx';'ry';'rz'}, NL.cnl.X{2}, it}},...
     'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
-   C2.Y=qbas(4:6,:,t); % save rotations 
-   C1.Y=zeros([12 size(qbas,2)+5 size(t,1)]);
-   C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,t);
-   for j1=1:size(t,1) %time loop
+   C2.Y=qbas(4:6,:,:); % save rotations 
+   C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]);
+   C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
+   for j1=1:size(it,1) %time loop
     for m=1:size(qbas,2) % marker loop
      R=cntc.getRot(qbas(:,m,j1));
      C1.Y(4:12,m,j1)=R(:);
@@ -14638,11 +14704,13 @@ cntc : interface between SDT and CONTACT
      %+reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
      % reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Ow_wc;
 
-     Ow_wc=-Rw_wc*C1.Y(1:3,strcmpi(C1.X{2},'Mwc-w'),j1); % wrong
+     iwc_w=strcmpi(C1.X{2},'Mwc-w');
+     Ow_wc=-Rw_wc*C1.Y(1:3,iwc_w,j1); % wrong
+     Ow_wc=(Rw_wc-eye(3))*Owc_ws; C1.Y(1:3,iwc_w,j1)= Ow_wc; % Correct
      Ow_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
      +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Rw_wc*Owc_ws;% inconsistent Owc_ws not Ow_wc
-     
+
      Rw_wc=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-w'),j1),[3 3])';
      Rw_tr= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
             reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Rw_wc;
@@ -14700,6 +14768,7 @@ cntc : interface between SDT and CONTACT
      C1.Y(1:3,size(qbas,2)+5,j1)= Owc_tr;
      C1.Y(4:12,size(qbas,2)+5,j1)= Rwc_tr(:);
 
+     1;
    end
    RO.Rot=C2; % rotation angles
    RO.M=C1; % transformation matrix 
