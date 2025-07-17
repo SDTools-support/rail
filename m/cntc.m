@@ -7881,7 +7881,6 @@ cntc : interface between SDT and CONTACT
       [t,z]=ndgrid(t,z);
       r1.r_tz = griddedInterpolant(t,z,r1.rtz(i1,i2,1));
 
-
       [t,z]=ndgrid(linspace(0,20*pi/180,30),linspace(-69,59,20));t0=t;
       fs=fe_range('gridface',size(t));
       r2=struct('rtz',cat(3,r1.r_tz(t,z),t,z), ...
@@ -7897,14 +7896,11 @@ cntc : interface between SDT and CONTACT
        drawnow;
       end
       fecom('shownodemark',n2)
-
-
      end
 
      try
-      %%xxx delete Gaetan ?
       color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
-      set(go,'CData',color);  hold on;
+      set(go,'CData',color);  
 
       [~,i2]=ismember({'xcp_w';'ycp_w';'zcp_w'},LI.Cmacro.X{1});
       coord=LI.Cmacro.Y(i2,:); coord(3,:)=coord(3,:)-460;
@@ -8088,66 +8084,8 @@ cntc : interface between SDT and CONTACT
      %ci=iiplot(2);
      %iicom(ci,'curveinit','Efforts',LI.Cmacro);
      cdm.urnVec(LI.Cmacro,sprintf('{x,iTime}{y,"#%s"}{gf100}',RO.sel));
-
-
-     if 1==2
-      ci=iiplot(25);
-      iicom(ci,'curveinit','Cmacro',LI.Cmacro);
-      % Plot the forces in different basis
-      C1=fe_def('subchcurve',LI.Cmacro,{'comp', [1:24]});
-      iicom(ci,'curveinit','Efforts',C1);
-      iicom(ci,'ch',{'comp',{'fx_tr','fx_ws','fx_r','fx_w'}})
-
-      % Plot the forces in different basis
-      C2=fe_def('subchcurve',LI.Cmacro,{'comp', [25:39]});
-      ci=iiplot(3);
-      iicom(ci,'curveinit','Efforts2',C2);
-      iicom(ci,'ch',{'comp',{'xcp_tr','xcp_r','xcp_w'}})
-
-      % Plot the forces in different basis
-      C3=fe_def('subchcurve',LI.Cmacro,{'comp',[40:77]});
-      ci=iiplot(4);
-      iicom(ci,'curveinit','Efforts3',C3);
-     end
     end
-   elseif comstr(Cam,'poswheelrail');[CAM,Cam]=comstr(CAM,7);
-    %% #cntc.plot('PosWheelRail') -3
-    % rail profil
-    LI=cntc.call;
-    RO=struct('gauge_y',-LI.Track.gaugwd/2, ...
-     'gauge_z',0, ...
-     'cant',-LI.Track.cant, ...
-     'yw',LI.wheelsetDim.fbpos-LI.wheelsetDim.fbdist/2, ...
-     'zw',LI.wheelsetDim.nomrad);
-    gf=figure(55);clf;
-    % track center
-    plot(0,0,'+','MarkerSize',10,'DisplayName','Otr'); hold on;
-    % Rail origin xxx
-    plot(RO.gauge_y,0,'+','MarkerSize',10,'DisplayName','Or');
-    % wheel origin
-    plot(RO.yw,RO.zw,'+','MarkerSize',10);
-    axis equal; set(gca,'ydir','reverse');xlabel('ytr');ylabel('ztr');
-
-    % rail position
-    R_r  = cntc.rotx(sol.meta.roll_r*180/pi);
-    o_r  = [-sol.meta.s_ws; sol.meta.y_r; sol.meta.z_r];
-
-    % xppr=LI
-    m = size(xr,1); n = size(xr,2);
-    xprr = reshape(x, 1, m*n);
-    yprr = reshape(yr, 1, m*n);
-    zprr = reshape(zr, 1, m*n);
-    coords = [xr; yr; zr];
-
-    coords = o_r * ones(1,m*n) + R_r * coords;
-    go=plot(LI.prr.ProfileY,-LI.prr.ProfileZ);
-
-
-    Rz = makehgtform('zrotate',RO.cant,'translate',[RO.gauge_y,0,0]);
-
-    % wheel profil position
-
-    go=plot(LI.prw.ysurf(1,:),-LI.prw.zsurf(1,:)); %
+   
    elseif comstr(Cam,'plot3')
     %% #plot.plot3 : show trajectory -3
 
@@ -14594,7 +14532,7 @@ cntc : interface between SDT and CONTACT
 
      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      'LI.wheelsetDim.nomrad';'0';'0';'0'% Nwc_ws
+      'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
       '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'
       '0';'0';'0';'0';'0';'0'%Mcp_w
@@ -14694,81 +14632,53 @@ cntc : interface between SDT and CONTACT
      R=cntc.getRot(qbas(:,m,j1));
      C1.Y(4:12,m,j1)=R(:);
     end
-     %Mw-tr
-     Rw_wc=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-w'),j1),[3 3])';
+     %% Origins and rotation matrices definition
+     Ows_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1);
+     Rws_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3]);
+
      Owc_ws=C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
+     Rwc_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
 
-     %Ow_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
-     %+reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
-     % C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1) ...
-     %+reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-     % reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Ow_wc;
-
+     % We need Mw-wc but have Mwc-w
+     Rwc_w=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-w'),j1),[3 3]);
+     Rw_wc=Rwc_w';
      iwc_w=strcmpi(C1.X{2},'Mwc-w');
-     Ow_wc=-Rw_wc*C1.Y(1:3,iwc_w,j1); % wrong
      Ow_wc=(Rw_wc-eye(3))*Owc_ws; C1.Y(1:3,iwc_w,j1)= Ow_wc; % Correct
-     Ow_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-     reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Rw_wc*Owc_ws;% inconsistent Owc_ws not Ow_wc
 
-     Rw_wc=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-w'),j1),[3 3])';
-     Rw_tr= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Rw_wc;
+     Or_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
+     Rr_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
+
+     Otr_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1);
+     Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3]);
+
+     %% Tranformation composed basis
+     %Mw-tr
+     Ow_tr=Ows_tr+Rws_tr*Rwc_ws*Rw_wc*Owc_ws;  
+     Rw_tr=Rwc_ws*Rws_tr*Rw_wc;
+
      C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
      C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
-
-     %Mw-gl
-     Ow_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
-      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
-      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Ow_wc;
-     
-     Rw_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3])*Rw_wc;
-     C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
-     C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
-
      %Mr-gl
-     Or_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
-     
-     Rr_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
+     Or_gl=Otr_gl+Rtr_gl*Or_tr;
+     Rr_gl=Rtr_gl*Rr_tr;
      C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
      C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
-
+     %Mw-gl
+     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*Owc_ws+Rtr_gl*Rws_tr*Rwc_ws*Ow_wc;
+     Rw_gl=Rtr_gl*Rws_tr*Rwc_ws*Rw_wc;
+     C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
+     C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
      %Mwc-gl
-     Owc_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])*...
-      reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
-     
-     Rwc_gl= reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
+     Owc_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*Owc_ws;
+     Rwc_gl=Rtr_gl*Rws_tr*Rwc_ws;
      C1.Y(1:3,size(qbas,2)+4,j1)= Owc_gl;
      C1.Y(4:12,size(qbas,2)+4,j1)= Rwc_gl(:);
-
      %Mwc-tr
-     Owc_tr= C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1) ...
-     +reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])*...
-      C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
-     
-     Rwc_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3])* ...
-            reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
+     Owc_tr=Ows_tr+Rws_tr*Owc_ws;
+     Rwc_tr=Rws_tr*Rwc_ws;
      C1.Y(1:3,size(qbas,2)+5,j1)= Owc_tr;
      C1.Y(4:12,size(qbas,2)+5,j1)= Rwc_tr(:);
 
-     1;
    end
    RO.Rot=C2; % rotation angles
    RO.M=C1; % transformation matrix 
