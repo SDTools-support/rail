@@ -8061,6 +8061,7 @@ cntc : interface between SDT and CONTACT
      end
      if isfield(RO,'gf')
       cntc.plot('surf',RO);
+      if nargout>0;out=RO;end
      else; out=RO;
      end
 
@@ -8180,7 +8181,7 @@ cntc : interface between SDT and CONTACT
        X=cntc.BasisChange(RO.bas,X,RO);
        X.XYZ=reshape(X.XYZ,X.dim);
       end
-      if size(X.XYZ,2)==1
+      if size(X.XYZ,2)==1||size(X.XYZ,1)==1
        if ~isfield(X,'prop');X.prop={};end
        go(j1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
       else
@@ -9454,7 +9455,7 @@ cntc : interface between SDT and CONTACT
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
-   % #plot_2dspline
+   % #plot_2dspline -2
    if (nargin<1 | isempty(slcs))
     slcs = struct();
    end
@@ -9719,7 +9720,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  %% #plot_low_level_methods
+  %% #plot_low_level_methods -2
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -10589,7 +10590,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % determine version information on the Matlab graphics system
-   % #plotstrs
+   % #plotstrs -3
 
    % construct a local struct "myopt" in which default values are filled in for all available options.
 
@@ -14612,7 +14613,7 @@ cntc : interface between SDT and CONTACT
   end
 
   function out=getBasis(it)
-   %% #cntc.getBasis return qbas for all marker used 
+   %% #getBasis return qbas for all marker used -2
    NL=cntc.getCurve('NL','back');
    if nargin==0; it=1:size(NL.cnl.Y,3);
    elseif isfield(it,'j1')
@@ -14686,7 +14687,7 @@ cntc : interface between SDT and CONTACT
   end
 
   function out=getMacro(varargin)
-   %% #getMacro
+   %% #getMacro : get macro field content -2
    LI=cntc.call;
    [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(:,1));
    out=zeros(length(varargin{1}),length(varargin{2}));
@@ -14706,7 +14707,7 @@ cntc : interface between SDT and CONTACT
 
    % category 6: m=*, cp     - require icp>0, default 1
 
-   % #getcalculationtime
+   % #getcalculationtime -2
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -14798,7 +14799,7 @@ cntc : interface between SDT and CONTACT
    % Copyright 2008-2023 by Vtech CMCC.
    %
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
-   % #getcontactlocation
+   % #getcontactlocation -2
 
    l1={
     1,'XCP_TR','mm','x-position of the contact reference point in track coordinates'
@@ -14879,7 +14880,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
-   % #getcontactpatchareas
+   % #getcontactpatchareas -2
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -14919,7 +14920,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
-   % #getcpresults
+   % #getcpresults -2
 
 
    if (nargin<1 | isempty(ire))
@@ -15079,7 +15080,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
-   % #getcreepages
+   % #getcreepages -2
 
    l1={1,'vx','-','Creepage in x-direction'
     2,'vy','-','Creepage in y-direction'
@@ -15130,7 +15131,7 @@ cntc : interface between SDT and CONTACT
    % Licensed under Apache License v2.0.  See the file "LICENSE.txt" for more information.
 
    % category 6: m=*, cp     - require icp>0, default 1
-   % #getdisplacements
+   % #getdisplacements -2
 
    if (nargin<1 | isempty(ire))
     ire = 1;
@@ -18882,8 +18883,38 @@ cntc : interface between SDT and CONTACT
   end % subs_getresults
 
   %------------------------------------------------------------------------------------------------------------
+  function out=nmap(varargin)
 
+    [key,nmap,uo,carg]=sdtm.stdNmapArgs(varargin,'',1);
 
+ nmap('Interact.Surf')={ ...
+  'Key.controlc{comgui(ImWrite-clipboard),"Copy image to clipboard"}'
+  'Key.i{iimouse(resetviewreset),"reset view"}'
+  'Key.c{iimouse(cursor),"Init cursor"}'
+  'Key.u{iimouse(viewh-10),"rotate along horizontal axis"}'
+  'Key.U{iimouse(viewh+10),"rotate along horizontal axis"}'
+  'Key.v{iimouse(viewv-10),"rotate along vertical axis"}'
+  'Key.V{iimouse(viewv+10),"rotate along vertical axis"}'
+  'Key.w{iimouse(views-10),"rotate along sight axis"}'
+  'Key.W{iimouse(views+10),"rotate along sight axis"}'
+  'Key.1{iimouse(view 0 0),"Base view"}'
+  'Key.2{iimouse(view2),"Base view"}'
+  'Key.3{iimouse(view3),"Base view"}'
+  'Key.4{iimouse(view 90 0),"Base view"}'
+  'Key.5{iimouse(viewCv),"Display current view"}'
+  'Key.6{iimouse(cvspin),"Base view"}'
+  'Key.?{iimouse(InteractList),"List Events"}'
+  'Box.@ga{ ,"base SDT zoom on axes"}'
+};
+ %RT=struct('nmap',nmap);d_doe('nmap','TV.Hoff');RT.nmap('CurExp')=li;
+ % sdtm.stdNmapOut('call')
+ if nargout==1;out=sdtm.stdNmapOut(nmap,key,nargout,CAM);
+ elseif nargout>1;[out,out1,out2]=sdtm.stdNmapOut(nmap,key,nargout,CAM);
+ else; sdtm.stdNmapOut(nmap,key,nargout,CAM);
+ end
+ %% #Nmap.End
+  
+  end
   function out=autoGen(varargin)
    %% #autoGen automated generation from initial files
 
