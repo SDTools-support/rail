@@ -141,10 +141,13 @@ nmap('Mod_GaugePos')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
     'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
     'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
     'Rolling{StepSize WRCn, dqrel 1}'
-   ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
-   ', nomrad 490, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    % ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   % ', nomrad 490, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
     'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-    'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
+    % 'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
     };
 

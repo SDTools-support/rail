@@ -501,9 +501,9 @@ cntc : interface between SDT and CONTACT
    persistent LI callLog
 
    if isempty(LI)
-    if evalin('base','exist(''LI'',''var'')')
+    if evalin('caller','exist(''LI'',''var'')')
      %% use base workspace version if exists
-     LI=evalin('base','LI');
+     LI=evalin('caller','LI');
     else
      % Initialize if does not exist
      LI=vhandle.uo([]); assignin('base','LI',LI);
@@ -7631,10 +7631,8 @@ cntc : interface between SDT and CONTACT
     for j1=1:size(Xin.XYZ,1)
      Xout.XYZ(j1,:,:)=  ...
       (R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 2 1])+squeeze(O_des(:,:,j1)))';
-     % Xout2.XYZ(j1,:,:)=  ...
-     %  permute(R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 1 2])+O_des(:,j1)),[2 3 1]);
     end
-    Xout.XYZ=reshape(Xout.XYZ,Xin.dim);
+    if isfield(Xin,'dim');  Xout.XYZ=reshape(Xout.XYZ,Xin.dim); end;
    else
     vect = @(x)[0 -x(3) +x(2) ;x(3) 0 -x(1);-x(2) x(1) 0];
     for j1=1:size(Xin.FxyzMxyz,1) 
@@ -7647,47 +7645,6 @@ cntc : interface between SDT and CONTACT
    Xout.bas=des;
 
   end
-
-  function LoadDisp(des,Fin)
-   %% #cntc.LoadDisp load displacement to des point
-   
-   LI=cntc.call;
-   NL=cntc.getCurve('NL','back');
-
-   % Tranformation of origins into a common marker
-   ind=find(contains(NL.cnl.X{2},{'Mr-tr' 'Mw-ws'}));
-   Or=struct('XYZ',NL.cnl.Y(1:3,ind(1),:)+NL.unl((ind(1)-1)*6+(1:3),2),'bas','tr');
-   Or.XYZ=permute(Or.XYZ,[3 2 1]);
-   Ow=struct('XYZ',NL.cnl.Y(1:3,ind(2),:)+NL.unl((ind(2)-1)*6+(1:3),2),'bas','ws');   
-   Ow.XYZ=permute(Ow.XYZ,[3 2 1]);
-   Ow=cntc.BasisChange('tr',Ow);
-   % Difference vector between 2 points 
-   dist=Or.XYZ-Ow.XYZ;
-
-   str=[Fin.APt '-' des];
-   if strcmpi(Xin.bas,des);Xout=Xin; return;
-   elseif strcmpi(str,'Mw-Mr')
-   % Displacement of contact point in tr marker
-    
-   % Distance between 2 points calculation
-   
-   % Different transformations
-    ind=find(i1);
-    qbas=NL.cnl.Y(:,ind,:)+NL.unl((ind-1)*6+(1:6),2);
-    O_des=repmat(qbas(1:3,:), [1,1,size(Xin.XYZ,2)]);
-    for j1=1:size(qbas,3)
-     R1=struct('XYZ',d,'bas','w','name','Mcp'); 
-     R_des(:,:,j1)=cntc.getRot(qbas(:,1,j1));
-    end
-   elseif strcmpi(Fin.APt,'Mr')
-    % inversed Direct transformation
-    %xxxgae improve
-    dbstack; keyboard;
-    ind=find(i2);
-    qbas=(NL.cnl.Y(:,ind,j1)+NL.unl((ind-1)*6+(1:6),2));
-    O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
-   end
-   end
 
   function R=getRot(qM)
    %% #getRot calculate 3d rotation matrix -2
@@ -8007,17 +7964,32 @@ cntc : interface between SDT and CONTACT
     elseif contains(Cam,'cptraj')
      % plot.rail.CPTraj
      % cntc.plot('rail{CPTraj}')
+      RP=struct('list',{{
+      struct('from','prr','x',-100:5:100,'is',1:50:801,'bas','r', ...
+        'prop',{{'EdgeColor','Interp','FaceColor','none'}})}});
 
      cntc.plot('rail{Mtr}');
+     cntc.plot('surf')
      C1=cntc.getCurve('mcp');
      R1=struct('XYZ',permute(C1.Y(1:3,2,:),[3 2 1]),'bas','r','name','Mcp');
+
      cntc.plot('plot3{Mtr,gf15}',R1); setlines;view(3);
+    elseif contains(Cam,'gaugepoint')
+     qbas=cntc.getBasis;
+     RO.XYZ=[([0 1]'*LI.prr.ProfileY')' LI.prr.ProfileZ];
+     RO.bas='r';des='tr'
+     Xr_tr=cntc.BasisChange(des,RO);
+     R=qbas.M;XYZcant=R*XYZ';
+     figure;plot(XYZ(:,2),XYZ(:,3));set(gca,'DataAspectRatio',[1 1 1],'YDir','reverse');
+ 
+    
     else
      % Constant profile
      [~,i1]=min(LI.prr.ProfileZ);
-     'xxx markerlabel'
      Mr_r=[0 LI.prr.ProfileY(i1),LI.prr.ProfileZ(i1) 0 0 0];
      bas=cntc.getBas(Mr_r);
+     if ~isfield(RO,'gf'); gf=1;end
+
      RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
       'arProp',{{'linewidth',2}},'DefLen',10);
      % sel=sdtu.fe.genSel(struct('bas',bas),RB); %doesn't work
@@ -8077,7 +8049,7 @@ cntc : interface between SDT and CONTACT
      % cntc.plot('cmacro{index}',{str})
      l1=varargin{carg}; carg=carg+1;
      LI=cntc.call;
-     v1=cellfun(@(x) find(strcmpi(x,LI.Cmacro.X{1})),{'rollr_tr'})
+     v1=cellfun(@(x) find(strcmpi(x,LI.Cmacro.X{1})),{'rollr_tr'});
     else
      % if any(v1); error('Missing parameter');end
      [~,RO]=sdtm.urnPar(CAM,'{sel%s}{}');
@@ -8133,8 +8105,72 @@ cntc : interface between SDT and CONTACT
      b=cdm.arrowfield(r1,ga);
      view(3)
     end
+   
+   elseif comstr(Cam,'prof')
+     %% #plot.prof
+      RO=varargin{carg};carg=carg+1; 
+     if ~isfield(RO,'gf');RO.gf=1;end
+     gf=RO.gf; figure(RO.gf); clf; hold on;
+     for j1=1:length(RO.list)
+      %% loop on animations
+      X=RO.list{j1};
+      if isfield(X,'RTZ'); % RTZ_wc
+       if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
+        ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
+              RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mwc-ws')');
+        % ry_wc is the angle that allows the wheel to rotate in the grid
+        % (thus x1 is in w frame and not wc) 
+        if strcmpi(X.bas,'w')
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
+         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
+        else
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
+         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
+        end
+       end
+       X1.XYZ=sdtu.fe.cyl2rect(X1);
+       if ~strcmpi(X1.bas,X.bas);  
+        X.XYZ=X1.XYZ;X.bas=X1.bas;   % X1=cntc.BasisChange(X.bas,X1,RO);
+       else; X.XYZ=X1.XYZ;
+       end
+       
+      end
+      if ~isfield(X,'XYZ')
+        if isfield(X,'bas')&&size(X.bas,2)==15; 
+          st=regexprep(X.name,'-.*','');
+          cellfun(@(x)['v1',x],st,'uni',0)
+          RB=struct('cf',gf,'ga',ga,'text',[], ...
+           'arProp',{{'linewidth',2}},'DefLen',40);
+          if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
+          RB.text= cellfun(@(x)['O',x(2:end)],st,'uni',0);RB.text{1,4}='';
+           sel=sdtu.fe.genSel(sdtm.rmfield(X,'name'),RB);
+        end
+        continue;
+      end
+      if isfield(RO,'Marker'); error('Obsolete use RO.M/RO.Rot')
+      elseif isfield(RO,'M')
+       X=cntc.BasisChange(RO.bas,X,RO);
+       X.XYZ=reshape(X.XYZ,X.dim);
+      end
+      if size(X.XYZ,2)==1
+       if ~isfield(X,'prop');X.prop={};end
+       go(j1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
+      else
+       if ~isfield(X,'prop');X.prop={'EdgeColor','none'};end
+       go(j1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
+      end
+      ga=go(j1).Parent;
+      if j1==1
+       xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
+      end
+     end
 
-    %%
+     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
+     %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
+     sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
+     set(gf,'tag','feplot');
+     %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
+     view(3)
    elseif comstr(Cam,'surf')
      %% #plot.surf 
      RO=varargin{carg};carg=carg+1; 
@@ -16720,7 +16756,7 @@ cntc : interface between SDT and CONTACT
        'wheelsetDim{Ewheel NewFlexVelPos}'
        };
       for i1=1:size(RT.Model)
-       st3=RT.Model{i1};
+       st3=RT.Model;
        if comstr(st3,'PotCntc')
         list{end+1}=st3;
        elseif comstr(st3,'Rolling')
