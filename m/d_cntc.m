@@ -151,11 +151,23 @@ nmap('Mod_GaugePos')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
     };
 
-% #Mod_Wheelflat -2
-nmap('Mod_Wheelflat')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+% #Mod_WheelflatPBound penetration boundary condition -2
+nmap('Mod_WheelflatPB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+   'Rolling{StepSize WRCn, dqrel 1}'
+  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
+   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+   'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
+   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'};
+% #Mod_WheelflatFBound force boundary condition -2
+nmap('Mod_WheelflatFB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
+   'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
+   'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
+   'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
+   'Bound{Cond Force, fz 125000}'
    'Rolling{StepSize WRCn, dqrel 1}'
   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
    ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
@@ -176,29 +188,23 @@ nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxou
    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
 
-% #Mod_FBound
-nmap('Mod_FBound')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
-   'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
-   'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
-   'Bound{Cond Force, fz 125000}'
-   'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
-   'Rolling{StepSize WRCn, dqrel 1}'
-  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
-   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-   'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-   'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
-
 %% #Trajectory 
-% #Traj_Classic -2
 LI=cntc.call;
 
+% #Traj_Sin -2
+C1=struct('X',{{[],{'y_ws';'s_ws'}}},'Xlab',{{'Step','Comp'}},'Y', []);
+C1.Y=zeros(100,2);
+C1.Y(:,2)=linspace(0,1000,100);
+C1.Y(:,1)=5*cos(pi/50*C1.Y(:,2));
+C1.X{1}=(1:size(C1.Y,1))';
+nmap('Traj_Sin')=C1;
+
+% #Traj_Classic -2
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
    [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,5)=2000; % set vs
 nmap('Traj_Classic')=C1;
-
 % #Traj_ODG -2
 % Vs=89000mm/s ; Vpitch = 
 C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
@@ -257,6 +263,20 @@ C1.Y(:,5)=[0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287,0.3287
  0.3831,0.3707,0.3585,0.3483,0.3411,0.3357,0.3336,0.3324,0.3314,0.3306,0.3299,0.3295];
 
 nmap('Traj_WheelFlat')=C1;
+
+%  #Traj_BasisDemo wheelflat with positiv wheel rotation-2
+% C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
+%  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
+C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
+ 'Xlab',{{'Step','Comp'}},'Y',[]);
+ C1.Y(:,2)=pi/180*linspace(20,-50,100)'; % rotation angle [rad] (pdf page 36)
+if isfield(LI,'wheelsetDim')
+ C1.Y(:,1)=C1.Y(:,2)*LI.wheelsetDim.nomrad;
+end
+C1.X{1}=(1:size(C1.Y,1))';
+C1.Y(:,3)=2000; % set vs [mm/s]
+C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+nmap('Traj_BasisDemo')=C1;
 
 %  #Traj_TimeTest -2
 C1=struct('X',{{[],{'pitch_ws','rad',[];'s_ws','mm',[];'vs','mm/s',[];'vpitch','rad/s',[]}}}, ...
