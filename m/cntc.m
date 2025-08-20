@@ -7585,7 +7585,8 @@ cntc : interface between SDT and CONTACT
   
    % One timestep only
    if nargin>2;
-    Bas=cntc.getBasis(it); Bas=Bas.M;
+    Xin.j1=it;
+    Bas=cntc.getBasis(Xin);Bas=Bas.M;
    else 
     Bas=cntc.getBasis; Bas=Bas.M;
    end
@@ -7635,7 +7636,7 @@ cntc : interface between SDT and CONTACT
      R=R_des(:,:,j1);
      tr=[R zeros(3);
          vect(O_des(:,:,j1)) R];
-     Xout.FxyzMxyz(j1,:)= Xin.FxyzMxyz(j1,:)*tr';
+     Xout.FxyzMxyz(j1,:)= Xin.FxyzMxyz(j1,:)*tr'; % (Load_Trans)
     end
    end
    Xout.bas=des;
@@ -7648,7 +7649,7 @@ cntc : interface between SDT and CONTACT
    sy=sin(qM(5));cz=cos(qM(6));sz=sin(qM(6));
    R=[cz*cy            -sz      cz*sy;
     cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
-    cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy];
+    cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy]; % 3D_Rot_Mat
   end
 
   function [ rot ] = rotx(roll_deg)
@@ -8018,7 +8019,6 @@ cntc : interface between SDT and CONTACT
          else
           error('Missing curve name')
          end
-
          i1=contains(C1.X{2},'Mcp_tr');
          if any(i1)
           X.XYZ=permute(C1.Y(1:3,i1,:),[3 2 1]);
@@ -8035,11 +8035,18 @@ cntc : interface between SDT and CONTACT
           else
            ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
           end
-          r1=zeros(size(RO.M.Y(:,ind),2)+1,size(RO.M.Y(:,ind),1));
-          r1(1,[4 8 12])=1; % add the gl or tr marker 
-          r1(2:end,:)=RO.M.Y(:,ind)';
-          X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-              'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]});
+          if isfield(X,'Orig')
+           r1=zeros(size(RO.M.Y(:,ind),2)+1,size(RO.M.Y(:,ind),1));
+           r1(1,[4 8 12])=1; % add the gl or tr marker
+           r1(2:end,:)=RO.M.Y(:,ind)';
+           X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
+            'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]});
+          else
+           r1=zeros(size(RO.M.Y(:,ind),2),size(RO.M.Y(:,ind),1));
+           r1(:,:)=RO.M.Y(:,ind)';
+           X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
+            'name',{[RO.M.X{2}(ind)]});
+          end
         else; error('Not implemented')
         end
         RO.list{j1}=X;
@@ -8204,12 +8211,11 @@ cntc : interface between SDT and CONTACT
       X=RO.list{i1};
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
-              RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mwc-ws')');
+        ry_wc=cntc.getBasis('roll');ry_wc=ry_wc.M;
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
         if strcmpi(X.bas,'w')
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc(RO.j1),X.tcsc{2}),X.tcsc{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
          X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
@@ -8249,7 +8255,6 @@ cntc : interface between SDT and CONTACT
       elseif isfield(RO,'j1')
        if ~strcmpi(X.from,'traj') % no need in case traj
         X=cntc.BasisChange(RO.bas,X,RO.j1);
-        X.XYZ=reshape(X.XYZ,X.dim);
        end
       end
       if size(X.XYZ,2)==1||size(X.XYZ,1)==1
@@ -10226,7 +10231,7 @@ cntc : interface between SDT and CONTACT
     roll  = rot(1);
     yaw   = rot(2);
     pitch = rot(3);
-    rot   = cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch);
+    rot   = cntc.rotx(roll) * cntc.rotz(yaw) * cntc.roty(pitch); % (3D_Rot_Mat_Def) 
    end
    ivec = rot(:,1);
    jvec = rot(:,2);
@@ -14692,24 +14697,24 @@ cntc : interface between SDT and CONTACT
   function out=getBasis(it)
    %% #getBasis return qbas for all marker used -2
    NL=cntc.getCurve('NL','back');
-   if nargin==0; it=1:size(NL.cnl.Y,3);
-   elseif isfield(it,'j1')
-    RO=it;it=RO.j1;
-   end
-   qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
-   if nargin==0; it=(1:size(qbas,3))';  end %if one step needed
-   C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-    [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
-   m1=strcmpi(NL.cnl.X{2},'Mwc-ws');m2= strcmpi(NL.cnl.X{2},'Mwc-w');
-   roll=squeeze(qbas(5,m1,:)+qbas(5,m2,:));
-   C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]);
-   C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
-   for j1=1:size(it,1) %time loop
-    for m=1:size(qbas,2) % marker loop
-     R=cntc.getRot(qbas(:,m,j1));
-     C1.Y(4:12,m,j1)=R(:);
-    end
-
+   if nargin==0; it=(1:size(NL.cnl.Y,3))';cntc.getBasis(it);end %case it is a timestep
+   if ischar(it)&&comstr(it,'roll') % rolling calculation
+    qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
+    roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'Mwc-ws'),:)+ ...
+     qbas(5,strcmpi(NL.cnl.X{2},'Mwc-w'),:)); % (Rolling_wheel)
+    C1=roll; % rotation angles
+   else 
+    if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
+    qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
+    C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
+     [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+    C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
+    C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
+    for j1=1:size(it,1) %time loop
+     for m=1:size(qbas,2) % marker loop
+      R=cntc.getRot(qbas(:,m,j1));
+      C1.Y(4:12,m,j1)=R(:);
+     end
      %% Origins and rotation matrices definition
      Ows_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1);
      Rws_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3]);
@@ -14731,7 +14736,7 @@ cntc : interface between SDT and CONTACT
 
      %% Tranformation composed basis
      %Mw-tr
-     Ow_tr=Ows_tr+Rws_tr*Rwc_ws*Rw_wc*Owc_ws;  
+     Ow_tr=Ows_tr+Rws_tr*Rwc_ws*Rw_wc*Owc_ws;
      Rw_tr=Rwc_ws*Rws_tr*Rw_wc;
      C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
      C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
@@ -14744,7 +14749,7 @@ cntc : interface between SDT and CONTACT
      Or_gl=Otr_gl+Rtr_gl*Or_tr;
      Rr_gl=Rtr_gl*Rr_tr;
      C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
-     C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);     
+     C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
      %Mwc-gl
      Owc_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*Owc_ws;
      Rwc_gl=Rtr_gl*Rws_tr*Rwc_ws;
@@ -14761,12 +14766,12 @@ cntc : interface between SDT and CONTACT
      C1.Y(1:3,size(qbas,2)+6,j1)= Ows_gl;
      C1.Y(4:12,size(qbas,2)+6,j1)= Rws_gl(:);
 
+    end
    end
-   RO.Rot=roll; % rotation angles
-   RO.M=C1; % transformation matrix 
+   RO.M=C1;
    out=RO;
   end
-  
+
   function out=getMacro(varargin)
    %% #getMacro : get macro field content -2
    LI=cntc.call;
