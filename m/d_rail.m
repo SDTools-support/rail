@@ -18,7 +18,48 @@ end
 if comstr(Cam,'script');[CAM,Cam]=comstr(CAM,7);
 %% 
 
-sdtweb('_link','sdtweb(''t_exp19'',''ref'')');
+if comstr(Cam,'dv1')
+ %% #TutoDvbeam: d_rail('ScriptDv1'); 
+%% Step1: initialize interface
+wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
+dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
+
+
+% Step2 : mesh 
+RA=struct('ArmType','MainMono'); % standard monoblock parameters
+RS=struct('SubType','Ballast'); % just ballast
+RR=struct('RedType','Modal'); % default reduction parameters
+SliceCfg={'Slice',struct('Arm',RA,'Sub',RS,'half',1);
+          'Reduce',RR}; % format the SliceCfg for a half track
+      
+% define track parameters and place sensors
+Sens={'s1(10:11):Bal:Sleeper:z'}; % define sensors
+TrackCfg=struct('type','GenTrack','nb_slices',40,'Sens',{{Sens{:}}});
+
+% Define the simulation to be done on the track model
+SimuCfg={'Impact',struct('xload',7.2,'weight',10e-3);... % 10 kg at x=7.2m
+         'Time',struct('tf',.8)}; % impact simulation
+Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
+             'TrackCfg',{{'T1',TrackCfg}}, ...
+             'SimuCfg',{{'S1',SimuCfg}}); % format the range
+dyn_solve('RangeLoop -reset',Range); % build the model and store in the interface
+dyn_post('PostRecept'); % calculate transfer at sensors and plot
+
+%%
+
+l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
+   'Time',struct('NeedV',1,'NeedA',1,'dt',1e-4)}; % time integration par.
+Range=struct('SimuCfg',{{'S1',l1}});
+dyn_solve('RangeLoop',Range);
+
+dyn_post('ViewRestAll -light'); % display deformation animation
+
+
+%% EndTuto
+
+else;
+        sdtweb('_link','sdtweb(''t_exp19'',''ref'')');
+end
 
 elseif comstr(Cam,'solve');[CAM,Cam]=comstr(CAM,6);
 
