@@ -3,9 +3,10 @@ function [out,out1]=d_rail(varargin)
 % d_rail: meshing utilities for rail applications
 %
 % <a href="matlab:d_rail('nmap')">List configurations</a>
+% <a href="matlab:d_rail('MeshDb')">Mesh database</a>
 
 %  Etienne Balmes, Guillaume Vermot des Roches
-% Copyright SDTools & SNCF I&R, 2019-2024
+% Copyright SDTools & SNCF I&R, 2019-2025
 
 %#ok<*ASGLU,*NASGU,*NOSEM,*NBRAK>
 obj=[];evt=[];
@@ -175,7 +176,7 @@ if comstr(Cam,'db');
  end
  if ~isKey(dbM,'U30.ra')
    %% rail sections 
-   f2=rail19('wd','mat/U30_Sections.mat'); 
+   f2=d_rail('wd','U30_Sections.mat'); 
    r1=load(f2);
    if isfield(r1,'sections')
     r2=[reshape(r1.sections.keys,[],1) reshape(r1.sections.values,[],1)];
@@ -226,7 +227,7 @@ elseif comstr(Cam,'pad')
 %% #MeshPad
 if comstr(Cam,'pada2')
  %% #MeshPadA2 from STL geom quater mesh for faster validation -3
- mo1=fe_gmsh('read D:\sdtdata\rail19\mat\vv16191_2D3.msh');
+ mo1=fe_gmsh(['read' d_rail('wd','vv16191_2D3.msh')]);
  mo1.Elt=feutil('selelt eltname==tria|eltname==quad',mo1);
  mo1.Node(:,5)=0;mo1.Node(:,5:7)=mo1.Node(:,[5 7 6]);
  mo1=feutil('extrude 3 .03 0 0',mo1);
@@ -237,7 +238,7 @@ if comstr(Cam,'pada2')
  out=mo1; 
 elseif comstr(Cam,'pada')
  %% #MeshPadA from STL geom -3
- mo1=fe_gmsh('read D:\sdtdata\rail19\mat\vv16191_2D.msh');
+ mo1=fe_gmsh(['read' d_rail('wd','vv16191_2D.msh')]);
  mo1.Elt=feutil('selelt eltname==tria|eltname==quad',mo1);
  mo1.Node(:,5)=0;mo1.Node(:,5:7)=mo1.Node(:,[5 7 6]);
  mo1=feutil('extrude 18 .01 0 0',mo1);
@@ -310,7 +311,7 @@ elseif comstr(Cam,'wheelcut')
    mo1.Elt=feutil('selelt proid1 8 & withnode{setname sectors} & selface & innode{setname profile}',mo1);
    mo1.Node=feutil('getnodegroupall',mo1);
    if ~isfield(r1,'profile')
-     load('mat/ProfWheel_U30_24.mat','n1');
+     load(d_rail('wd','ProfWheel_U30_24.mat'),'n1');
      n1(:,3)=0;n1=[n1(:,2) n1(:,3) -n1(:,1)];figure(1);plot(n1(:,1),n1(:,3))
      r1.profile=n1;% [r theta z] 
    end
@@ -616,15 +617,17 @@ out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
 
 
 elseif comstr(Cam,'railfromcontour')
- %% d_rail('MeshFromContour');
+ %% d_rail('MeshRailFromContour');
+ %% ToDo25  sdtweb d_visco 'nl_mesh contour'
  if carg>nargin;f1='@d_rail.m/Rail_UIC60.stp';
  else; f1=varargin{carg};carg=carg+1;
  end
  if carg<=nargin;RO=varargin{carg};
  else
-    RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v1');
+    RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v 1');
  end
  mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
+ mo2=nl_mesh('contourFrom',f1); 
  if nargout==0;
    feplot(mo1);fecom shownodemark groupall
  end
@@ -1029,7 +1032,7 @@ elseif comstr(Cam,'raildist');
  if isa(varargin{carg},'vhandle.nmap');projM=varargin{carg};carg=carg+1;end
  if ~isKey(projM,'RailDist')||isempty(projM('RailDist'))
   %d_rail('MeshRailDist',projM)   
-  f2=rail19('wd','mat/Profil_RAIL.blk');mo2=nasread(f2);
+  f2=d_rail('wd','Profil_RAIL.blk');mo2=nasread(f2);
   mo2.Node=feutil('getnodeGroupall',mo2);
   n1=mo2.Node(:,5:7); mo2.Elt(end+1,1:2)=[5094 5141];
   mo2.orig=min(n1);mo2.orig(2)=max(n1(:,2));n2=repmat(mo2.orig,size(n1,1),1);
@@ -1057,7 +1060,7 @@ elseif comstr(Cam,'unis');
  %% #MeshUniS : load uniaxial mesh test (from sdtweb t_ident secmodtest)
  %     [mo1,RO]=dfr_ident('MatSimo',mo1,RO); %get mat properties set dt
 
- fname=rail19('pwd','mat/23_HR/UniS_sector.mat');
+ fname=d_rail('wd','UniS_sector.mat');%fname=d_rail('wd','mat/23_HR/UniS_sector.mat');
  load(fname,'mo1')
 
  mo1.Stack{end}.NLdata.f=[20;1000];
@@ -1950,7 +1953,14 @@ nmap('MatDb')=r2;
 %% #end
 elseif comstr(Cam,'wd')
  %% #wd : Resolve fullfile from ProjectWd ----------------------------2
- out=comgui('cd',fullfile(base_wd,varargin{carg:end}));
+ wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections'};
+ if nargin==2&&ischar(varargin{2})
+     out=sdtu.f.find(wd,varargin{2});
+     if iscell(out)&&isscalar(out);out=out{1};end
+ else
+  base_wd=sdtu.f.firstdif(wd);
+  out=comgui('cd',fullfile(base_wd,varargin{carg:end}));
+ end
 elseif comstr(Cam,'pwd')
  %% #pwd : Resolve fullfile from ProjectWd ----------------------------2
  out=comgui('cd',fullfile(sdtroot('PARAM.Project.ProjectWd'),varargin{carg:end}));
@@ -1961,12 +1971,10 @@ elseif comstr(Cam,'jup')
 wd=fullfile(fileparts(which('d_rail')),'../jup');
 
 RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
-      'reset',1,'book',{{'rail'}}); 
-RO.helpDir=sdtu.f.cffile(fileparts(which('feplot')),'helpj');
+      'reset',1,'book','rail'); 
+RO.helpDir=sdtu.f.cffile('@sdt/helpj');
 RO.endCopy='jup{rail}';
 RO=sdtm.jup('build',RO);
-
-
 
 %% #Latex #Tex #Hevea -------------------------------------------------------2
 elseif comstr(Cam,'svg')
@@ -1985,8 +1993,7 @@ wd=pwd;
 st=fullfile(sdtcheck('SDTRootDir'),'tex');
 if exist(st,'dir')
    % keywords, - between, but not at beginning
-   setenv('sdtfun',['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
-      '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'  ]); 
+   setenv('sdtfun',['rail19-d_rail'  ]); 
    wd1=fullfile(fileparts(which('feplot')),'helpnlsim');
    if comstr(Cam,'hevea'); 
      wdh=lat('hevea -module SNCF-DyRail','dyrail');

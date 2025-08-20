@@ -1,11 +1,7 @@
-# rail meshing
+# d_rail meshing demo scripts
 
 This documents meshing scripts related to rail applications
 
-See the table of content below to get started :
-
-```{tableofcontents}
-```
 ## nmap lists contents 
 
 - d_rail('nmap.Map:Bracket')

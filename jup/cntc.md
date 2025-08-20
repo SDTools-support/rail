@@ -1,5 +1,3 @@
-```{include} ./header.md
-```
 
 # Interface between SDT and CONTACT <csection id="cntc">
 

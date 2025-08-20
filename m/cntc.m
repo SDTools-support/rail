@@ -7951,6 +7951,10 @@ cntc : interface between SDT and CONTACT
  
     elseif isfield(RO,'prr') 
      %% Interpolate rail profile
+     if isa(RO.prr.x,'function_handle')
+         'xxx handle function'
+
+     end
      if isfield(LI.prr,'xsurf')
          error('Need implement') 
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail 
@@ -8000,17 +8004,19 @@ cntc : interface between SDT and CONTACT
 
     end
 
-   elseif comstr(Cam,'both');[CAM,Cam]=comstr(CAM,7);
+   elseif comstr(Cam,'both')||comstr(Cam,'list');;[CAM,Cam]=comstr(CAM,5);
     %% #cntc.plot.both plot both wheel and rail in track marker -3
     %cntc.plot('both')
      if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
      % Rail and wheel profile research
      if isfield(RO,'list')
+      
       for j1=1:length(RO.list)
+        %% 
         X=RO.list{j1}; 
         if ~isfield(X,'from');error('Not implemented')
         elseif strcmpi(X.from,'prr')
-          X=cntc.plot('rail',struct('prr',X));
+          X=cntc.plot('rail',struct('prr',X,'q',q));
         elseif strcmpi(X.from,'prw')
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
         elseif strcmpi(X.from,'traj')
@@ -8051,13 +8057,10 @@ cntc : interface between SDT and CONTACT
         end
         RO.list{j1}=X;
       end
-     else
-      RO.list{1}=cntc.plot('rail',RO);
-      RO.list{2}=cntc.plot('WheelMCalc',RO);
-      RO.Marker=cntc.getBasis(RO.j1);
+     else; error('Obsolete'); % Initial case
      end
      if isfield(RO,'gf')
-      cntc.plot('surf',RO);
+      cntc.plot('surf',RO); % sdtweb cntc plot.surf
       if nargout>0;out=RO;end
      else; out=RO;
      end
@@ -8269,13 +8272,19 @@ cntc : interface between SDT and CONTACT
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
      end
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
+     set(gca,'DataAspectRatio',[1 1 1]);
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
      view(3)
-
+     'xxx'
+   elseif comstr(Cam,'color')
+     %% #cntc.plot.color cntc.plot('colorcurve')
+      out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'
+          'curve','x','x','x','x'};
+    'xxx name'
+  
    else; error('Not implemented %s',CAM)
    end
   end
@@ -14594,7 +14603,7 @@ cntc : interface between SDT and CONTACT
       };
      NL.unl.X{1}={'x0';'y0';'z0';'rx0';'ry0';'rz0'};
      NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     NL.unl.X{3}={'unl';'unl0';'0'}; %to change '0'
+     NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {
@@ -14646,6 +14655,7 @@ cntc : interface between SDT and CONTACT
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
      out.cnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
+     out.Cunl=cntc.getCurve(NL.unllab);
      out.vnl=cntc.getCurve(NL.vnllab);
      out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
      out.vnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};

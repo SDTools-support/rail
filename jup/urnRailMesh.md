@@ -1,7 +1,5 @@
 # urn for rail wheel definition
 
-```{tableofcontents}
-```
 
 ## Simple example
 

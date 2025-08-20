@@ -1,10 +1,4 @@
-```{include} ./header.md
-```
-
 # Component map
-
-```{tableofcontents}
-```
 
 Meshing scripts use base components. The list of predefined elements is shown with `d_rail('nmap')`
 
@@ -26,17 +20,18 @@ Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
 
 :::{list-table} Initial database in Map:Sections
 :header-rows: 0
-:widths: auto
+:widths: 100
 *   - ![](../_images/U30_e.png)
     - ![](../_images/U30_ra.png)
     - ![](../_images/U30_ra+be.png)
 :::
-<img src="../_images/U30_ra+e.png" alt="U30_ra+e" width="200"/>
-<img src="../_images/U30_ra+s.png" alt="U30_ra+s" width="200"/>
-<img src="../_images/U30_ra+sbe.png" alt="U30_ra+sbe" width="200"/>
-<img src="../_images/U30_ra+se.png" alt="U30_ra+se" width="200"/>
-<img src="../_images/Wheel.png" alt="Wheel" width="200"/>
-<img src="../_images/WheelCut.png" alt="WheelCut" width="200"/>
+
+<img src="../_images/U30_ra+e.png" alt="U30_ra+e" width="100"/>
+<img src="../_images/U30_ra+s.png" alt="U30_ra+s" width="100"/>
+<img src="../_images/U30_ra+sbe.png" alt="U30_ra+sbe" width="100"/>
+<img src="../_images/U30_ra+se.png" alt="U30_ra+se" width="100"/>
+<img src="../_images/Wheel.png" alt="Wheel" width="100"/>
+<img src="../_images/WheelCut.png" alt="WheelCut" width="100"/>
 
 - Map:Sections contains 
   - U30.ra : 2D section of U30 rail 
@@ -52,37 +47,31 @@ Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
     - ToolTip
     - content
 *   - Ec0
-    - 
-    - {'ra',-300,[],15;
-'ra+s',-127.5,[],15;
-'ra',127.5,[],15;
-'',300,[],15}
+    - rail (no bolt)
+    - {'ra',-300,[],15;'ra+s',-127.5,[],15;'ra',127.5,[],15;'',300,[],15}
+:::
+
+xxx
+
+
+
 *   - Ec41
     - 4 bolts, also called E120
-    - struct('ToolTip','4 bolts, also called E120', ...
-'li',{{'ra+e',-289,[],15;
-'ra+se',-274,[],15;
-'ra+sbe',-259,[],15;
-'ra+se',-211,[],__}})
+    - struct('ToolTip','4 bolts, also called E120', 'li',{{'ra+e',-289,[],15;'ra+se',-274,[],15;'ra+sbe',-259,[],15;'ra+se',-211,[],xxx}})
 *   - Ec42
-    - 
-    - {'ra+e',-289,[],15;
-'ra+e',-274,[],15;
-'ra+be',-259,[],15;
-'ra+e',-211,[],15,__}
+    - xxx
+    - {'ra+e',-289,[],15;'ra+e',-274,[],15;'ra+be',-259,[],15;'ra+e',-211,[],15,xxx}
+  
 *   - Ec61
     - 6 bolts
-    - struct('ToolTip','6 bolts', ...
-'li',{{'ra+e',-459,[],15;
-'ra+e',-444,[],15;
-'ra+be',-429,[],15;
-'ra+e',-381,[],15,__}})
+    - struct('ToolTip','6 bolts','li',{{'ra+e',-459,[],15;'ra+e',-444,[],15;'ra+be',-429,[],15;
+'ra+e',-381,[],15,xxx}})
 *   - Ec62
-    - 
+    - xxx
     - {'ra+e',-459,[],15;
 'ra+e',-444,[],15;
 'ra+sbe',-429,[],15;
-'ra+se',-381,[],15,__}
+'ra+se',-381,[],15,xxx}
 *   - U30.e
     - 
     - 116 Node,81 Elt
@@ -107,7 +96,6 @@ Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
 *   - Wheel
     - 
     - 14560 Node,10488 Elt
-:::
 
 
 ## Rails
