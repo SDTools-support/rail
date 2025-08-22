@@ -7979,8 +7979,8 @@ cntc : interface between SDT and CONTACT
     elseif isfield(RO,'prr') 
      %% Interpolate rail profile
      if isa(RO.prr.x,'function_handle')
-         'xxx handle function'
-
+      NL=cntc.getCurve('NL','back');
+      RO.prr.x=RO.prr.x(NL.cnl.Y(strcmpi(NL.cnl.X{1},'x'),strcmpi(NL.cnl.X{2},'Mtr-gl'),RO.prr.j1));
      end
      if isfield(LI.prr,'xsurf')
          error('Need implement') 
@@ -8038,12 +8038,13 @@ cntc : interface between SDT and CONTACT
      % Rail and wheel profile research
      if isfield(RO,'list')
       
-      for j1=1:length(RO.list)
+      for i1=1:length(RO.list)
         %% 
-        X=RO.list{j1}; 
+        X=RO.list{i1}; X.j1=RO.j1;
         if ~isfield(X,'from');error('Not implemented')
         elseif strcmpi(X.from,'prr')
-          X=cntc.plot('rail',struct('prr',X)); % ,'q',q
+          % X=cntc.plot('rail',struct('prr',X,'q',q)); xxxgae EB why
+          X=cntc.plot('rail',struct('prr',X));
         elseif strcmpi(X.from,'prw')
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
         elseif strcmpi(X.from,'traj')
@@ -8052,9 +8053,9 @@ cntc : interface between SDT and CONTACT
          else
           error('Missing curve name')
          end
-         i1=contains(C1.X{2},'Mcp_tr');
-         if any(i1)
-          X.XYZ=permute(C1.Y(1:3,i1,:),[3 2 1]);
+         i2=contains(C1.X{2},'Mcp_tr');
+         if any(i2)
+          X.XYZ=permute(C1.Y(1:3,i2,:),[3 2 1]);
           X.name='Mcp_tr';X.bas='tr';
           X=cntc.BasisChange(RO.bas,X);
          elseif strcmpi(X.curve,'trajws')
@@ -8082,7 +8083,7 @@ cntc : interface between SDT and CONTACT
           end
         else; error('Not implemented')
         end
-        RO.list{j1}=X;
+        RO.list{i1}=X;
       end
      else; error('Obsolete'); % Initial case
      end
@@ -8258,8 +8259,8 @@ cntc : interface between SDT and CONTACT
         X.XYZ=X1.XYZ;X.bas=X1.bas;   % X1=cntc.BasisChange(X.bas,X1,RO);
        else; X.XYZ=X1.XYZ;
        end
-       
       end
+
       if ~isfield(X,'XYZ')
        if isfield(X,'bas')&&size(X.bas,2)==15;
         st=regexprep(X.name,'-.*','');
@@ -8302,7 +8303,7 @@ cntc : interface between SDT and CONTACT
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
      end
-     set(gca,'DataAspectRatio',[1 1 1]);
+     %set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse'); 'xxxreverse'
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
@@ -8311,8 +8312,7 @@ cntc : interface between SDT and CONTACT
      'xxx'
    elseif comstr(Cam,'color')
      %% #cntc.plot.color cntc.plot('colorcurve')
-      out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'
-          'curve','x','x','x','x'};
+      out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
     'xxx name'
   
    else; error('Not implemented %s',CAM)
