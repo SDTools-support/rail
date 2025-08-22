@@ -2,7 +2,7 @@ function [out,out1]=d_rail(varargin)
 
 % d_rail: meshing utilities for rail applications
 %
-% <a href="matlab:d_rail('nmap')">List configurations</a>
+% <a href="matlab:d_rail('nmap')">List configurations (nmap)</a>
 % <a href="matlab:d_rail('MeshDb')">Mesh database</a>
 
 %  Etienne Balmes, Guillaume Vermot des Roches
@@ -24,6 +24,7 @@ if comstr(Cam,'dv1')
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
 
+%% #TodoEb : debug
 
 % Step2 : mesh 
 RA=struct('ArmType','MainMono'); % standard monoblock parameters
@@ -210,13 +211,10 @@ if comstr(Cam,'db');
  PA=sdtroot('PARAMVh'); 
  if nargin==2&&isa(varargin{2},'vhandle.nmap');PA.nmap=varargin{2}; end
  if ~isfield(PA,'nmap');PA.nmap=vhandle.nmap;end;projM=PA.nmap;
- dbM=useOrDefault(projM,'Map:Sections');
- if ~isKey(dbM,'EC0')
-  m2=rail19('nmap');
-  dbM.append(m2('Map:Bracket'));
- end
+ dbM=useOrDefault(projM,'Map:Sections',[],'d_rail');projM('Map:Sections')=dbM;
+ sliceM=useOrDefault(projM,'Map:Slice',[],'d_rail');projM('Map:Slice')=sliceM;
  if ~isKey(dbM,'U30.ra')
-   %% rail sections 
+   %% rail sections init
    f2=d_rail('wd','U30_Sections.mat'); 
    r1=load(f2);
    if isfield(r1,'sections')
@@ -228,14 +226,14 @@ if comstr(Cam,'db');
     dbM.append(r2)
    end
  end
- if ~isKey(dbM,'WheelCut')
+ if ~isKey(dbM,'WheelCut') % Initialize DB
    d_rail('MeshWheelCut',dbM);
  end
 
  if nargout>0; 
   st=CAM(4:end);
-  if ~isempty(st)&&isKey(dbM,st)
-     out=dbM(st);
+  if ~isempty(st)
+     out=useOrDefault(dbM,st,[],sliceM,'getvalue');
   else
      out=projM;
   end
@@ -500,7 +498,8 @@ elseif comstr(Cam,'trackli');
  if carg<=nargin;RM=varargin{carg};carg=carg+1;
  else; RM=struct; 
  end
- if ~isfield(RM,'projM');projM=d_rail('MeshDb');else; projM=RM.projM;end
+ projM=RM.projM;% Expect projM of experiment
+
 r1=struct('Nb',4,... % Number of bolt
        'Ns',5); % Number of sleepers (doubled by symmetry)
    % 504*2e3+.1 approximately 1 MN/m
@@ -508,11 +507,12 @@ RM=sdth.sfield('addmissing',RM,r1);
 if RM.Ns==1 % Single slice for periodic computations
 elseif isnumeric(RM.Nb); RM.Nb={num2str(RM.Nb),'Air'};
 end
+
 li=[];st1=RM.Nb{1};
-dbM=useOrDefault(projM,'Map:Sections');if isempty(dbM);d_rail('MeshDb',projM);end
-li=useOrDefault(dbM,st1);  % Get Eclisse in database
-if ~iscell(li)&&isfield(li,'li'); li=li.li;end
-if isempty(li)
+
+li=d_rail(['MeshDb.' st1],projM);
+if ischar(li{1})&&strcmpi(li{1},'seclab');li(1,:)=[];end
+if isempty(li)||~iscell(li)
  error('''%s'' obsolete use of unknown Eclisse configuration',st1)
 end
 % switch RM.Nb{1} % Select configuration in rail19('nmap')
@@ -783,7 +783,54 @@ mo1=feutil('extrude 3 5 0 0',mo1);mo1.Elt=feutil('set group 1 matid 104 proid 10
 
 mo2=feutil('addelt',model,mo1.Elt);mo2.Node=mo1.Node;feplot(mo2); fecom showfipro
 out=mo2;
-
+elseif comstr(Cam,'build_sections');
+%% #MeshList.Build_sections (init submodel map if not loaded from Sections.mat) -2 
+ model=varargin{carg};carg=carg+1;
+ RO=sdth.sfield('addselected',RO,model,{'pl','il','unit','Stack'});
+ RO=stack_rm(RO,'','#G.*');RO=stack_rm(RO,'set','');
+ dbM=containers.Map;
+ % xxx u33, u60, u50 rail sections
+ % eu102, 
+ % sdtweb _textag ra+s % should contain more documentation
+ st={'ra+s','selface & innode {x==-1369}','Rail U33 + sleeper'
+     'ra','innode{x<=-1054}&selface&innode{x==-1054}','Rail U33 '
+     'e','innode{x<=-2.5}&selface&innode{x==-2.5}&matid~=1 2 3 8','Eclisse U102'
+     'ra+e','innode{x<=-7.5}&selface&innode{x==-7.5}','Rail + eclisse'
+     'ra+se','innode{x<=-162.2}&selface&innode{x==-162.2}','Rail + sleeper+eclisse'
+     'ra+sbe','innode{x>=-259 & x<=-211}&matid~=1 2 3 8','Rail + sleeper+eclisse bolt'
+     'ra+be','innode{x>=-259 & x<=-211}&matid~=1 2 3 8 & proid~=9 10','Rail+eclisse bolt'
+     };
+ for j2=1:size(st,1)
+  r2=struct('name',st{j2,1},'sel',st{j2,2},'Elt',[]);
+  r2.Elt=feutil(['selelt',r2.sel],model);
+  r2.Node=model.Node;r2.Node=feutil('getnode groupall',r2);
+  r2.Node(:,5)=r2.Node(:,5)-min(r2.Node(:,5));
+  if strcmpi(r2.name,'ra+se')||strcmpi(r2.name,'ra+e')
+   % use the coarse mesh for top  
+   r2.Elt=feutil('removeelt innode {z>58}',r2);
+   r3=dbM('ra');r3.Elt=feutil('selelt innode {z>58}',r3);
+   r3.Node=feutil('getnode groupall',r3);
+   r2=feutil('addtest Merge -noori;',r2,r3);
+  elseif strcmpi(r2.name,'ra+sbe')
+   % use the coarse mesh for top  
+   r2.Elt=feutil('removeelt innode {z>58}',r2);
+   r3=feutil('extrude 0 1 0 0',r3,[0 12 24 36 48]);
+   r2=feutil('addtest Merge -noori;',r2,r3);
+   
+  elseif strcmpi(r2.name,'ra+be')
+   % use the coarse mesh for top  
+   r2.Elt=feutil('removeelt innode {z>58}',r2);
+   
+   r2=feutil('addtest Merge -noori;',r2,r3);
+  end
+  
+  dbM(r2.name)=r2;
+ %% #MeshList.WheelSection : add wheel section to list -3
+ mo2=model;mo2.Elt=feutil('selelt proid 1 8 3',mo2);mo2.Stack=[];
+ mo2.Node=feutil('getnode groupall',mo2);
+ dbM('Wheel')=mo2; 
+ save(f2,'-struct','RO')
+end
 elseif comstr(Cam,'case');[CAM,Cam]=comstr(CAM,5);
 %% #MeshCase : deal with loading strategy xa/u za/u
 model=varargin{carg};carg=carg+1;
@@ -827,66 +874,10 @@ elseif isempty(Cam)&&isfield(varargin{2},'rail')
 %% #MeshList : generic meshing strategy
  li=varargin{carg};carg=carg+1;
  if isfield(li,'rail');RO=li;li=li.Track;else; RO=struct;end
- projM=RO.projM; dbM=projM('Map:Sections');
-if ischar(li)
-switch lower(li)
-case 'wc3'  %% Mesh.wc3 Remeshed short rail
- RO.name='WC3'; li=rail19('nmap','wc3');
-case 'wc4' 
-    otherwise; error('Unknown %s',li);
- end
-end
+ projM=RO.projM; 
 
 %%
-if 1==2 % 
- %% #MeshList.Build_sections (init submodel map if not loaded from Sections.mat) -3 
- model=varargin{carg};carg=carg+1;
- RO=sdth.sfield('addselected',RO,model,{'pl','il','unit','Stack'});
- RO=stack_rm(RO,'','#G.*');RO=stack_rm(RO,'set','');
- dbM=containers.Map;
- % xxx u33, u60, u50 rail sections
- % eu102, 
- % sdtweb _textag ra+s % should contain more documentation
- st={'ra+s','selface & innode {x==-1369}','Rail U33 + sleeper'
-     'ra','innode{x<=-1054}&selface&innode{x==-1054}','Rail U33 '
-     'e','innode{x<=-2.5}&selface&innode{x==-2.5}&matid~=1 2 3 8','Eclisse U102'
-     'ra+e','innode{x<=-7.5}&selface&innode{x==-7.5}','Rail + eclisse'
-     'ra+se','innode{x<=-162.2}&selface&innode{x==-162.2}','Rail + sleeper+eclisse'
-     'ra+sbe','innode{x>=-259 & x<=-211}&matid~=1 2 3 8','Rail + sleeper+eclisse bolt'
-     'ra+be','innode{x>=-259 & x<=-211}&matid~=1 2 3 8 & proid~=9 10','Rail+eclisse bolt'
-     };
- for j2=1:size(st,1)
-  r2=struct('name',st{j2,1},'sel',st{j2,2},'Elt',[]);
-  r2.Elt=feutil(['selelt',r2.sel],model);
-  r2.Node=model.Node;r2.Node=feutil('getnode groupall',r2);
-  r2.Node(:,5)=r2.Node(:,5)-min(r2.Node(:,5));
-  if strcmpi(r2.name,'ra+se')||strcmpi(r2.name,'ra+e')
-   % use the coarse mesh for top  
-   r2.Elt=feutil('removeelt innode {z>58}',r2);
-   r3=dbM('ra');r3.Elt=feutil('selelt innode {z>58}',r3);
-   r3.Node=feutil('getnode groupall',r3);
-   r2=feutil('addtest Merge -noori;',r2,r3);
-  elseif strcmpi(r2.name,'ra+sbe')
-   % use the coarse mesh for top  
-   r2.Elt=feutil('removeelt innode {z>58}',r2);
-   r3=feutil('extrude 0 1 0 0',r3,[0 12 24 36 48]);
-   r2=feutil('addtest Merge -noori;',r2,r3);
-   
-  elseif strcmpi(r2.name,'ra+be')
-   % use the coarse mesh for top  
-   r2.Elt=feutil('removeelt innode {z>58}',r2);
-   
-   r2=feutil('addtest Merge -noori;',r2,r3);
-  end
-  
-  dbM(r2.name)=r2;
- end
- %% #MeshList.WheelSection : add wheel section to list -3
- mo2=model;mo2.Elt=feutil('selelt proid 1 8 3',mo2);mo2.Stack=[];
- mo2.Node=feutil('getnode groupall',mo2);
- dbM('Wheel')=mo2; 
- save(f2,'-struct','RO')
-end
+
 if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
  mo1=[]; 
  for j1=2:size(li,1) 
@@ -897,7 +888,8 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   r1=feutil(sprintf('refineline %g',li{j1,4}),[li{j1,2:3}]);
   if max(abs(r1))>10; RO.unit='MM';else;RO.unit='SI';end
   st=sdth.findobj('_sub:',li{j1,1}); st={st.subs};% Split at :
-  mo2=sprintf('%s.%s',RO.rail,st{1});  mo2=dbM(mo2); %U30.e ...
+  mo2=d_rail(sprintf('MeshDb.%s.%s',RO.rail,st{1}),projM);%U30.e ...
+
   if length(st)>1&&RO.gap.isKey(st{2})
    % change properties for the gap 'ra+e:Air'
    r2=RO.gap(st{2});
@@ -924,9 +916,6 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
   end
  end
  mo1.Node=feutil('getnode groupall',mo1);
- if ~isfield(mo1,'pl')||isempty(mo1.pl)
-  mo2=dbM('Wheel');mo1.pl=mo2.pl;
- end
 
  %%  #MeshList.Contacts -3
  mo1=feutil('joinhexa8',mo1); if ~isfield(mo1,'info');mo1.info=struct;end
@@ -963,7 +952,7 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
    i1=find(strncmpi(RO.Wheel{2},'wref',2));%wref
    if ~isempty(i1);RW.wref=comstr(RO.Wheel{2}{i1}(5:end),1);end
   end
-
+  dbM=projM('Map:Sections');
   if strcmpi(RO.Wheel{1},'wa');RO.Wheel{1}='Wheel';
       error('eb check')
   elseif strcmpi(RO.Wheel{1},'w1');
@@ -1120,7 +1109,7 @@ elseif nargin==3&&isfield(varargin{3},'nmap')
      evt.projM=varargin{3}.nmap;
  end
  RM=nameToMeshRO(CAM,evt);
- out=d_rail('Mesh',RM); % meshlist
+ out=d_rail('Mesh',RM); % sdtweb d_rail meshlist
  % if ishandle(2)
  %   try % Set feplot(2).nmap to experiment
  %    c2=get(2,'userdata');c2.data.nmap=struct('nmap',evt.projM);
@@ -1746,7 +1735,7 @@ projM=d_rail('nmap');
 while carg<=nargin
  tag=varargin{carg};val=[];
  if isKey(projM,tag); val=projM(tag);end
- if isempty(val);cM=projM('Map:Bracket');if isKey(cM,tag);val=cM(tag);end;end
+ if isempty(val);cM=projM('Map:Slice');if isKey(cM,tag);val=cM(tag);end;end
  
 end
 
@@ -1864,6 +1853,18 @@ nmap('UniS')=RT;
 nmap('Ctc21')=struct('delta',20,'Fl',1e6,'Kc',-2.3e9);
 nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
 
+ %% Without eclisse
+ if exist('rail19','file') % Append
+   rail19('nmap',struct('nmap',nmap))
+ end
+ ecM=useOrDefault(nmap,'Map:Slice');
+ li= {'SecLab','xstart','xend','lc';
+     'ra',-300,[],15
+     'ra+s',-127.5,[],15
+     'ra',127.5,[],15
+     '',300,[],15};
+ ecM('Ec0')=li;
+
 %% #nmap.Trk configurations 
   nmap('Trk21ref')=vhandle.nmap.RT({ ...
     'Ref21','U30{5,Gc,tc-350_400}:Ec41{Air}:W2{XaZa}';
@@ -1971,7 +1972,7 @@ r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;
 
 %% IO 
- %% #IO23SCNF: ----2
+ %% #IO23SCNF: sensor configuration for pad testing with SDT ----2
  R2=struct('InCh',...
   struct('ChassisName','','ModID',...
   {'Mod1','Mod1','Mod1','Mod1','Mod2','Mod2','Mod2','Mod2'},...
@@ -2063,7 +2064,6 @@ end
 end
 
 %% #SubFunc
-
 
 function RM=nameToMeshRO(name,evt);
 %% #nameToMeshRO analyze naming nomenclature 

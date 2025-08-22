@@ -29,36 +29,25 @@ The mesh is obtained using by extruding and combining base elements separated by
  `U30{5,Gc,tc-350_400}:Ec41{Air}:W2{XaZa}` (from `rail19('nmap.Trk21ref.Ref21')`) combines
 
 - `U30{5,Gc,tc-350_400}`  corresponds to the base rail nomenclature where 
-  -  `U30` is the [rail](mapRailComp.md#Rails) type 
+  -  `U30` is the [rail](Rails) type 
   -  `Ns=5` is the number of sleepers before and after the gap,  xxxdynavoie {n\_slice} 
   - {s}`Gc` specificity the gradient type {m}`TGrag=c`. See the tag {m}`rail19('Mesh.TGrad')` for implementation. 
   -  {s}`tc-350\_400` t is for top, tc indicates RM.topCoarse=1,  RM.top limits are [-350 500], see \ser{refinerail}
  - `Ec41{Air}` specifies a bracket (*éclisse*) configuration of type `Ec41` with an Air gap. Interpretation of associated configurations in done in {m}`rail19('MailRailDb')`. A list of configurations is given in the {m}`Ec` entries of {m}`rail19('nmap')`. See for example {m}`rail19('nmap.Ec41')` the 4 bolt configuration. See figure \ref{diffeclisse11} for supported list. 
 - `Wa{XaZu}` specifies the wheel type and trajectory nature in horizontal x and vertical z directions. {m}`xa` stands for acceleration trajectory obtained by specifying a distributed load, {m}`xu` stands for an enforced displacement strategy. Possibly use {m}`W0` for a point load, see \ser{WheelTraj}
 
-
+(MeshUrn)=
 ## URN interpretation
 
 Interpretation of the uniform name is performed in `d_rail('nameToMeshRO')`.
 
-When generating the mesh a number of sections are considered (building of sections is done in {m}`rail19('Build\_sections')`) and show in figure~\ref{sections}.
-%
-\begin{itemize}
-\item {s}`ra+s` contains a rail + sleeper cut (thus including the pad mesh)
-\item {s}`ra` rail only 
-\item {s}`ra+e` rail + bracket ({\em éclisse}), {m}`se` sleeper and bracket, {m}`sbe` sleeper, bolt, bracket, {m}`rail+e:Air` rail gap (using Air as material) + bracket.  
-\end{itemize}
+When generating the mesh a number of sections are considered (building of sections is done in {m}`rail19('Build\_sections')`) and shown in [Map:Sections](d_rail.sections).
+- {s}`ra+s` contains a rail + sleeper cut (thus including the pad mesh)
+- {s}`ra` rail only 
+- {s}`ra+e` rail + bracket (fishplate/ *éclisse* ), {m}`se` sleeper and bracket, {m}`sbe` sleeper, bolt, bracket, {m}`rail+e:Air` rail gap (using Air as material) + bracket.  
 
-\begin{figure}[H]
-		\centering
-    	\includegraphics[width=.49\textwidth]{modelschema3}
-       \includegraphics[width=.49\textwidth]{boulon}
-    \caption{Named sections {m}`ra` rail, {m}`e` bracket, {m}`ra+e` ,{m}`ra+se`, {m}`ra+sbe` bolt over a sleeper, {m}`ra+be` bolt not over a sleeper\label{sections}}
-\end{figure}
 
 The simulation configuration nomenclature is currently not used. 
-
-
 
 The material nomenclature can be found using {m}`d_rail('nmap.MatDb')`. The original values are listed below
 
@@ -84,14 +73,16 @@ Entre deux tronçons de rail, au niveau de l'éclisse, il y a un espace vide que
 
 xxx lower position of nodes within gap xxx 
 
-\cssection{Boundary conditions}{bc}
+(bc)=
+## Boundary conditions
 
 Bondary conditions are 
 \begin{enumerate}
 \item {m}`sym} : half track symmetry {s}`y==717.5 -DOF 2` as y=0 corresponds to xxx middle of rail foot ? 
 \end{enumerate}
 
-\cssection{Sample meshing details}{sample}
+(sample)=
+## Sample meshing details
 
 La première étape consiste à créer des sections des différentes pièces présentées sur la figure \ref{sections} avant d'être extrudées à l’aide d’une longueur caractéristique. Elles ont été construites à partir des dimensions exactes pour se rapprocher davantage de la réalité. Pour que les nœuds coïncident parfaitement entre les pièces comme par exemple le rail et les éclisses, des petites zones de transitions ont été mises en place de manière visible sur les extrémités des sections. \\ L’assemblage de l’éclisse avec le rail se fait à l’aide de boulons permettant de fixer ces deux pièces entre elles. La modélisation de ces boulons est primordiale et ne peut pas être négligée. Ces derniers sont des zones volumiques contrairement aux autres et ainsi pour obtenir une pièce initiale incluant les boulons, nous devons faire appel aux autres sections en les extrudant afin créer une pièce volumique illustrée sur la figure \ref{sections}. De plus, il est nécessaire de créer un trou dans l’âme du rail et des éclisses afin de permettre l'assemblage des boulons.\\\\ L'étape suivante est la construction du maillage global. Pour cela, une méthode itérative a été utilisé  extrudant les sections à l’aide de la longueur caractéristique. Les pièces sont appelées en fonction des paramètres d’entrées et assemblées les unes aux autres comme illustré sur la figure \ref{maillagefinale}. Dans la première partie de l’assemblage, nous nous intéressons pas encore à la zone de contact. 
 
@@ -104,8 +95,8 @@ La première étape consiste à créer des sections des différentes pièces pr�
 
 La construction est réalisée étape par étape en s’aidant des sections créées précédemment. Cette stratégie permet d'avoir une flexibilité sur la modification de la taille du maillage en jouant sur la longueur caractéristique, les dimensions de l'éclisse, l'état du rail et le nombre de boulons. L’objectif est de paramétriser le plus possible afin d’avoir une large gamme d'étude par la suite.
 
-
-\cssection{Rail refinement}{refinerail}
+(refinerail)=
+## Rail refinement
 %Mettre la raideur de contact, taille de la surface, de la zone de contact 1.5-2cm de longueur et 1 cm largeur.
 % 
 
@@ -136,22 +127,29 @@ Plus généralement, l’ancien modèle possédait un nombre de nœuds beaucoup 
 
 Après rafinnement, la géométrie réalisée pour le profil de rail ne correspond pas exactement à la réalité.  A cause du maillage, le raffinement de départ est légérement facettisé.  Les points de contact sont sur les facettes et comme illustré sur la figure \ref{profilrail2} la tête du rail est anguleuse et donc contradictoire avec la réalité. \\ Afin de remédier à ce problème, une stratégie a été mise en place consistant à projeter un profil de rail réel sur le maillage. Ce profil est représenté par les points bleus sur la figure \ref{profilrail2}.
 
-\begin{figure}[H]
-		\centering
-    	\includegraphics[width=.3\textwidth]{ligne1}
-       \includegraphics[width=.3\textwidth]{ligne2}
-    \caption{Le profil d'un rail sur le maillage.  \label{profilrail2}}    
-\end{figure}
+````{list-table} Relation between mesh and wheel profile 
+:widths: 40 40 40
+:header-rows: 0
+
+* - ![](../_images/rail_ligne1.png)
+  -
+  - ![](../_images/rail_ligne2.png)
+````
+
+xxx(../_images/rail_ligne1.png)
 
 Dans les zones de départ le maillage grossier est proche du profil avec un écart maximum de 1/10 de millimètre. Une projection orthogonale des nœuds de la surface du maillage raffiné a été faite sur le profil réel. La conséquence de cette approximation est que la hauteur de la surface de contact est faussée  de quelques millimètres.
 
-
-\cssection{Details of bracket configurations}{diffeclisse}
+(diffeclisse)=
+## Details of bracket configurations
 
 Au fil du temps la voie ferrée a subit des transformations et des améliorations sur l'ensemble du territoire. Avec plus de 51 217 kilomètres de voies ferrées en France, il est difficilement possible d'avoir un modèle unique d'éclisse. Elles se différencient généralement de leur taille et du nombre de boulons présents. Généralement, les éclisses possèdent 4 ou 6 boulons comme illustré sur la figure \ref{diffeclisse}. Par contre, la mise en place des traverses autour de l'éclisse peut se différencier d'une éclisse à une autre. Afin d'avoir un large choix d'études, une automatisation a été mise en place dans le code permettant ainsi de passer d'un maillage à un autre avec seulement un appel. Sur la figure \ref{diffeclisse}, nous pouvons voir les différents cas utilisés et leur modèle numérique. Par exemple, le modèle $B41$ correspond à une éclisse possédant 4 boulons avec en dessous la présence de deux traverses proches entre elles.
+
+
 \begin{figure}[H]
     	\centering
-       \includegraphics[width=0.5\textwidth]{diffeclisse1}
+        - ![](../_images/diffeclisse1.png)
+
         \caption{Predefined bracket configurations, {m}`Ec41} (previously B41, E120), {m}`Ec42}, {m}`Ec61}, {m}`Ec62}}
         \label{diffeclisse}
 \end{figure}
@@ -162,13 +160,12 @@ Des études pourront être menées pour voir l'influencer de la présence des tr
 \item l'intercalaire collant n’est pas modélisé car les contraintes de serrage à la fin sont identiques et ce qui importe ce sont les contraintes de serrage incluses dans les contraintes des rails. 
 \end{itemize}
 
-\cssection{Pad models}{PadMesh}
+## Pad models
 
 {m}`PadFuSN\{io4,f0-18\}} xxx 
 
 
-\cssection{Wheel models}{WheelMesh}
-
+## Wheel models
 
 Implemented wheel types are selected by an URN of the type {m}`W2\{xaza,in104\}}
 
@@ -178,8 +175,8 @@ Implemented wheel types are selected by an URN of the type {m}`W2\{xaza,in104\}}
 \item {W2} wheel with gauss to surface contact. 
 \end{itemize}
 
-
-\cssection{Contact models}{Ctc}
+(rail.ctc)=
+## Contact models
 
 Master gauss points of contact elements are positionned on the wheel side with {m}`ProId=3}, to avoid using very fine meshes in explicit dynamics, the surface is refined using a fine integration rule xxx. The surface for potential matching is defined as a set of display elements with  {m}`ProId=2}
 

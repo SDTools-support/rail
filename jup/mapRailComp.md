@@ -2,9 +2,10 @@
 
 Meshing scripts use base components. The list of predefined elements is shown with `d_rail('nmap')`
 
-## Data-base architecture
+ - [Map:Sections](d_rail.sections) contains mesh components that are a combined to form the track
+ - [Map:Slice](d_rail.slice) correspond to 
 
-Current tests done  in {m}`t_exp19('script')`
+Current tests done in {m}`t_exp19('script')`
 
 
 List of contents  <a href="matlab:d_rail('meshdb;')">{m}`d_rail('meshdb')`</a>.
@@ -12,92 +13,65 @@ List of contents  <a href="matlab:d_rail('meshdb;')">{m}`d_rail('meshdb')`</a>.
 Current tests <a href="matlab:sdtweb(t_exp19,'ref')">{m}`t_exp19('ref')`</a>.
 
 
-:::{dropdown} <a href="matlab:d_rail('meshdb;')">![](../_images/run16.png){m}`d_rail('meshdb')`</a>. Expand to display source code.
+<a href="matlab:d_rail('meshdb;')"> .</a>
+
+````{dropdown} <a href="matlab:gartid('tutoBy-s2;')">![](../_images/run16.png)Run </a>. Expand to display source code.
 ```matlab
  d_rail('meshdb')
 ```
-:::
+````
 
-:::{list-table} Initial database in Map:Sections
+
+(d_rail.sections)=
+## Map:Sections map of mesh components
+
+Mesh building is performed by combining a number of mesh components which should be loaded into the project. xxx
+
+````{list-table} Armament labels 
+:widths: 40 20 20 20
 :header-rows: 0
-:widths: 100
-*   - ![](../_images/U30_e.png)
-    - ![](../_images/U30_ra.png)
-    - ![](../_images/U30_ra+be.png)
-:::
 
-<img src="../_images/U30_ra+e.png" alt="U30_ra+e" width="100"/>
-<img src="../_images/U30_ra+s.png" alt="U30_ra+s" width="100"/>
-<img src="../_images/U30_ra+sbe.png" alt="U30_ra+sbe" width="100"/>
-<img src="../_images/U30_ra+se.png" alt="U30_ra+se" width="100"/>
-<img src="../_images/Wheel.png" alt="Wheel" width="100"/>
-<img src="../_images/WheelCut.png" alt="WheelCut" width="100"/>
+* - Rail :2D alone `ra`, with sleeper `ra+s` (optional)
+  - ![](../_images/U30_ra.png)
+  - ![](../_images/U30_ra+s.png)
+  - 
+* - Fishplate no bolt (*éclisse* `e` 2D)
+  - ![](../_images/U30_e.png)
+  - ![](../_images/U30_ra+e.png)
+  - ![](../_images/U30_ra+se.png)
 
-- Map:Sections contains 
-  - U30.ra : 2D section of U30 rail 
-  - U30.ra+s : rail + sleeper 2D section 
-  - Ec41 : list of positions for a Bracket   
-  - xxx 
+* - Fishplate bolt (RD)
+  - ![](../_images/U30_ra+be.png)
+  - ![](../_images/U30_ra+sbe.png)
+  -
+* - Wheel
+  - ![](../_images/Wheel.png)
+  - ![](../_images/WheelCut.png)
+  -
+````
+
+Profiles for [wheel](cntc.prw) and [rail](cntc.prr) profiles can be xxx
+
+(d_rail.slices)=
+## Map:Slices map of pre-mesh slice parameters
 
 
-:::{list-table} Initial database in Map:Sections
-:widths: auto
+````{list-table} Initial database in Map:Slices
+:widths: 10 20 70 
 :header-rows: 1
 *   - key
     - ToolTip
     - content
 *   - Ec0
-    - rail (no bolt)
-    - {'ra',-300,[],15;'ra+s',-127.5,[],15;'ra',127.5,[],15;'',300,[],15}
-:::
-
-xxx
-
-
-
+    - Rail (no bolt)
+    - `{'ra',-300,[],15;'ra+s',-127.5,[],15;'ra',127.5,[],15;'',300,[],15}`
 *   - Ec41
     - 4 bolts, also called E120
-    - struct('ToolTip','4 bolts, also called E120', 'li',{{'ra+e',-289,[],15;'ra+se',-274,[],15;'ra+sbe',-259,[],15;'ra+se',-211,[],xxx}})
-*   - Ec42
-    - xxx
-    - {'ra+e',-289,[],15;'ra+e',-274,[],15;'ra+be',-259,[],15;'ra+e',-211,[],15,xxx}
-  
-*   - Ec61
-    - 6 bolts
-    - struct('ToolTip','6 bolts','li',{{'ra+e',-459,[],15;'ra+e',-444,[],15;'ra+be',-429,[],15;
-'ra+e',-381,[],15,xxx}})
-*   - Ec62
-    - xxx
-    - {'ra+e',-459,[],15;
-'ra+e',-444,[],15;
-'ra+sbe',-429,[],15;
-'ra+se',-381,[],15,xxx}
-*   - U30.e
-    - 
-    - 116 Node,81 Elt
-*   - U30.ra
-    - 
-    - 152 Node,109 Elt
-*   - U30.ra+be
-    - 
-    - 2870 Node,1483 Elt
-*   - U30.ra+e
-    - 
-    - 294 Node,190 Elt
-*   - U30.ra+s
-    - 
-    - 236 Node,184 Elt
-*   - U30.ra+sbe
-    - 
-    - 3290 Node,1783 Elt
-*   - U30.ra+se
-    - 
-    - 378 Node,265 Elt
-*   - Wheel
-    - 
-    - 14560 Node,10488 Elt
+    - `struct('ToolTip','4 bolts, also called E120', 'li',{{'ra+e',-289,[],15;'ra+se',-274,[],15;'ra+sbe',-259,[],15;'ra+se',-211,[],xxx}})`
+````
 
 
+(Rails)=
 ## Rails
 
 - U30 is the rail type (2D section)
@@ -105,11 +79,13 @@ xxx
 - cu : cube representation of rail head, ScldCS xxxeb
 
 
+(Sleepers)=
 ## Sleepers
 
 - xxx
 
 
+(Brackets)=
 ## Brackets
 
 d_rail('nmap.Map:Bracket')

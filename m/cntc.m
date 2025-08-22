@@ -514,6 +514,7 @@ cntc : interface between SDT and CONTACT
     out=LI;return;
    elseif nargin==1&&isa(varargin{1},'vhandle.uo')&& ...
      (isfield(varargin{1},'callLog')||isfield(varargin{1},'Solver'))
+    fprintf('Reset LI in cntc.call\n')
     LI=varargin{1}; if nargout>0;out=LI;end
     return
    end
@@ -1704,7 +1705,17 @@ cntc : interface between SDT and CONTACT
 
   end % eval_1d_spline_deriv
 
-  %% #Load
+  %% #LoadFuns
+  function load(FileName)
+  %% #Load load result from file 
+
+   load(FileName);
+   cntc.call(LI);
+   assignin('base','LI',LI);
+   assignin('caller','LI',LI);
+
+  end
+
   function [ s1, s2, s3, s4, s5, s6, s7, s8, s9, s10 ] = loadcase( expnam, icase, ipatch )
    %
    % [ s1, s2, ... ] = loadcase( expnam, [icase], [ipatch] )
@@ -7609,14 +7620,28 @@ cntc : interface between SDT and CONTACT
    if strcmpi(Xin.bas,des);Xout=Xin; return;end
    % qbas extraction for all timestep
    if any(i1)    % Direct transformation
-    ind=find(i1); O_des=Bas.Y(1:3,ind,:);    
-    R_des=reshape(Bas.Y(4:12,ind,:),[3 3 size(Bas.X{3},1)]);
+    O_des=Bas.Y(1:3,i1,:);    
+    R_des=reshape(Bas.Y(4:12,i1,:),[3 3 size(Bas.X{3},1)]);
    elseif any(i2)    % inversed Direct transformation
-    %xxxgae improve
-    dbstack; keyboard;
-    ind=find(i2);  qbas=Bas.Y(:,ind,:);
-    O_des=-qbas(1:3); R_des=cntc.getRot(qbas)';
-   else; error('Tranformation %s not found',tr1)
+    O_des=-Bas.Y(1:3,i2,:);   
+    R_des=permute(reshape(Bas.Y(4:12,i2,:),[3 3 size(Bas.X{3},1)]),[2 1 3]);
+   else;
+    try
+     st1=['M' Xin.bas,'-'];i1=find(strncmpi(Bas.X{2},st1,length(st1)));
+     st2=['M' des '-' Bas.X{2}{i1(1)}(length(st1)+1:end) ];
+     i2=find(strncmpi(Bas.X{2},st2,length(st2)));
+     i1=i1(1); st1=Bas.X{2}{i1};
+     O_des=Bas.Y(1:3,i1,:);    
+     R_des=reshape(Bas.Y(4:12,i1,:),[3 3 size(Bas.X{3},1)]);
+     for j1=1:size(Bas.Y,3) % Composition with inverse
+      R12=R_des(:,:,j1);
+      R23=reshape(Bas.Y(4:12,i2,j1),3,3)';O23=-R23*Bas.Y(1:3,i2,j1);
+      O_des(:,:,j1)=O23+R23*O_des(:,:,j1);
+      R_des(:,:,j1)=R23*R12;
+     end
+    catch
+       error('Tranformation %s not found',tr1)
+    end
    end
    if isfield(Xin,'XYZ')
     if ~isequal(size(Xin.XYZ,1),size(Bas.X{3},1))
@@ -7631,6 +7656,8 @@ cntc : interface between SDT and CONTACT
     end
     if isfield(Xin,'dim');  Xout.XYZ=reshape(Xout.XYZ,Xin.dim); end;
    else
+    %% Transform moments (default system TM : [N Nm] , [mm,rad]
+    st2=[tr1 '>' tr2];  fprintf('%s : %s\n',st2,sdtm.toString(mean(O_des,3)'))
     vect = @(x)[0 -x(3) +x(2) ;x(3) 0 -x(1);-x(2) x(1) 0];
     for j1=1:size(Xin.FxyzMxyz,1) 
      R=R_des(:,:,j1);
@@ -8016,7 +8043,7 @@ cntc : interface between SDT and CONTACT
         X=RO.list{j1}; 
         if ~isfield(X,'from');error('Not implemented')
         elseif strcmpi(X.from,'prr')
-          X=cntc.plot('rail',struct('prr',X,'q',q));
+          X=cntc.plot('rail',struct('prr',X)); % ,'q',q
         elseif strcmpi(X.from,'prw')
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
         elseif strcmpi(X.from,'traj')
@@ -8209,6 +8236,7 @@ cntc : interface between SDT and CONTACT
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
+     propM=d_cntc('nmap.Map:OProp');
      for i1=1:length(RO.list)
       %% loop on animations
       X=RO.list{i1};
@@ -8262,9 +8290,11 @@ cntc : interface between SDT and CONTACT
       end
       if size(X.XYZ,2)==1||size(X.XYZ,1)==1
        if ~isfield(X,'prop');X.prop={};end
+       if ischar(X.prop);X.prop=propM(X.prop);end
        go(i1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
       else
        if ~isfield(X,'prop');X.prop={'EdgeColor','none'};end
+       if ischar(X.prop);X.prop=propM(X.prop);end
        go(i1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
       end
       ga=go(i1).Parent;
@@ -14675,6 +14705,7 @@ cntc : interface between SDT and CONTACT
      'Mcp_tr:Mx','mx_r_tr';'Mcp_tr:My','my_r_tr';'Mcp_tr:Mz','mz_r_tr'
      };
     chan=PreLCp;RO.type='AtMarker';
+    if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
     elseif strcmpi(CAM,'trajws')
     %% #TrajWS Wheelset Trajectory in gl marker -3
@@ -14687,10 +14718,13 @@ cntc : interface between SDT and CONTACT
    else;
     error('%s not known',CAM)
    end
+   if ~isfield(RO,'name');RO.name='curve';end
    if strcmpi(RO.type,'AtMarker')
     C1=LI.Cmacro;  %% values in Cmacro
-    C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''),regexprep(chan(1:6:end,1),':[FM]*x',''),C1.X{3}}}, ...
-     'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[]);
+    C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ...
+        regexprep(chan(1:6:end,1),':[FM]*x',''),C1.X{3}}}, ...
+     'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[], ...
+     'name',RO.name,'Ylab',1,'DimPos',[3 1 2]);
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
     [i1,i2]=ismember(chan(:,2),C3.X{2}(:,1));
     C2.Y(i1,:)=C3.Y(1:size(C3.X{1},1),i2(i1))';
@@ -14699,6 +14733,11 @@ cntc : interface between SDT and CONTACT
     C2.Y(size(chan,1),size(C2.X{3},1))=0;
     C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},1));
     C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
+    %% attempt at putting clean labels
+    i1=sdtm.regContains(C2.X{1},'F[xyz]$');
+    C2.X{1}(i1,3)={struct('DispUnit','kN','coef',1e-3)};
+    i1=sdtm.regContains(C2.X{1},'M[xyz]$');
+    C2.X{1}(i1,3)={struct('DispUnit','kN.mm','coef',1e-3)};
     out=C2;
    end
 

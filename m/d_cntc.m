@@ -25,6 +25,30 @@ if comstr(Cam,'v1')
 
 sdtweb t_gae24  CNTv1
 'xxx move here'
+elseif comstr(Cam,'profileview')
+%% ProfileView
+
+LI=cntc.call; if ~isfield(LI,'prw');d_cntc('LoadWheelFlat');end
+colM=d_cntc('nmap.Map:Color');
+
+%Show wheel on rail with interpolated surfaces
+RP=struct('list',{{
+   struct('from','prr','x',-100:5:100,'is',1:50:801,'bas','r','prop','WireICol')
+   struct('from','prw','t',-4:2:4,'is',1:50:300,'bas','w','prop','WireICol')
+   struct('from','prw','t',-180:1:180, ...
+   'is',sdtm.indNearest(LI.prw.ysurf(1,:),0),'bas','w','prop','LineK2')
+   struct('from','prw','t',-4:2:4,'is',1:50:300,'bas','wc','prop','WireICol')
+   struct('from','prr','x',-500:5:500,'is',sdtm.indNearest(LI.prr.ProfileS,0),'bas','r','prop','LineK2')
+   struct('from','bas','Orig',[])}},'j1',1,'bas','tr','DefLen',40,'gf',11);
+
+   cntc.plot('list',RP);% 50 is the timestep
+
+RP=struct('list',{{
+    struct('from','prr','x',-100:5:100,'is',1:50:801,'bas','r','prop','RailPro')
+    struct('from','prw','t',-10:2:10,'is',1:50:300,'bas','w','prop','WheelPro')
+    struct('from','bas','bas',{{'w','r','cp'}})}},'j1',1,'bas','tr','DefLen',10,'gf',16);
+ cntc.plot('list',RP);% sdtweb cntc plot.both
+
 
 else;error('Script%s',CAM)
 end
@@ -36,7 +60,16 @@ elseif comstr(Cam,'solve');[CAM,Cam]=comstr(CAM,6);
 elseif comstr(Cam,'load');[CAM,Cam]=comstr(CAM,5);
 %% #Load 
 
-
+if comstr(Cam,'wheelflat')
+%% #LoadWheelFlat : result of WheelFlat example 
+  f1=sdtu.f.safe('@cntc.html/CNTCWheelflat.mat');
+  if exist(f1,'file')
+   cntc.load(f1);
+  elseif exist('t_gae24','file'); t_gae24('cntcWheelFlat')
+  end
+  evalin('caller','LI=cntc.call;');
+else; error('Load%s',CAM)
+end
 
 elseif comstr(Cam,'nmap');
 %% #nmap list of named experiments used for demos and non-regression tests ---
@@ -102,7 +135,23 @@ cinM.add={
 
 % vhandle.uo('',C3.info,rail19('nmap.Map:Cin'))
 
-%% #GlobalFlags 
+%% #Map:Color -2
+colM=vhandle.nmap({'Wheel','#FF6D00';'b','#FF9E00';'c','#00B4D8'; ...
+    'Rail','#0077B6';'e','#023E8A'});
+nmap('Map:Color')=colM;
+
+%% #Map:OProp -2
+propM=vhandle.nmap({ ...
+    'WireICol',{'EdgeColor','Interp','FaceColor','none'};
+    'LineK2',{'color','k','linewidth',2};
+    'RailPro',{'EdgeColor','k','EdgeAlpha',0.3, ...
+          'FaceColor',colM('Rail'),'FaceAlpha',0.5}
+    'WheelPro',{'EdgeColor','k','EdgeAlpha',0.3, ...
+          'FaceColor',colM('Wheel'),'FaceAlpha',0.5}
+    });
+nmap('Map:Oprop')=propM;
+
+%% #GlobalFlags -2
 %CNTC.un_cntc=1934;
 nmap('Global_flags')=vhandle.uo([],{ ...
   'if_units',1934,'Unit system : Contact, SI, Simpack'
@@ -121,7 +170,7 @@ nmap('Global_flags')=vhandle.uo([],{ ...
   'ire', 1, 'experiment called iwhe in the example'
   'iwhe',1, '1/2 Left/right wheel'});
 
-%% #CNTCModel
+%% #CNTCModel -2
 % #Mod_CsteProf -2
 nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
     'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
@@ -175,7 +224,7 @@ nmap('Mod_WheelflatFB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, m
    'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'};
 
-% #Mod_VarProf
+% #Mod_VarProf -2
 nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
@@ -188,7 +237,7 @@ nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxou
    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
 
-%% #Trajectory 
+%% #Trajectory -2
 LI=cntc.call;
 
 % #Traj_Sin -2
@@ -353,7 +402,7 @@ C1.Y(3,14)=10; C1.Y(:,3)=2; %set penetration
 C1.X{1}=(1:size(C1.Y,1))';
 nmap('Traj_TestParam2')=C1;
 
-%% #nmap.Cst : constants to be reused
+%% #nmap.Cst : constants to be reused -3
 nmap('Ctc21')=struct('delta',20,'Fl',1e6,'Kc',-2.3e9);
 nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
 
