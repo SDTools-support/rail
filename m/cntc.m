@@ -7662,7 +7662,7 @@ cntc : interface between SDT and CONTACT
     for j1=1:size(Xin.FxyzMxyz,1) 
      R=R_des(:,:,j1);
      tr=[R zeros(3);
-         vect(O_des(:,:,j1)) R];
+         R*vect(O_des(:,:,j1)) R];
      Xout.FxyzMxyz(j1,:)= Xin.FxyzMxyz(j1,:)*tr'; % (Load_Trans)
     end
    end
@@ -7932,7 +7932,6 @@ cntc : interface between SDT and CONTACT
      xlabel(['x' X.bas]);ylabel(['y' X.bas]);zlabel(['z' X.bas]);
      hold on; plot3(0,0,0,'+','DisplayName','Otr');
      set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
-     %set(go,'edgecolor','none');
      % color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
      % set(go,'CData',color);
 
@@ -8225,8 +8224,6 @@ cntc : interface between SDT and CONTACT
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
      end
-
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
@@ -8241,19 +8238,28 @@ cntc : interface between SDT and CONTACT
      for i1=1:length(RO.list)
       %% loop on animations
       X=RO.list{i1};
-      if isfield(X,'RTZ'); % RTZ_wc
+      if isfield(X,'RTZ'); 
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
         ry_wc=cntc.getBasis('roll');ry_wc=ry_wc.M;
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
-        if strcmpi(X.bas,'w')
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc(RO.j1),X.tcsc{2}),X.tcsc{:}), ...
-         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
+        if strcmpi(X.bas,'w') % RTZ_wc
+         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}-ry_wc(RO.j1),X.tcsc{2}),X.tcsc{:}), ...
+         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w'); 
         else
          X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
         end
        end
+       if isfield(X,'prop'); ic=strcmpi(X.prop,'CData'); %add a colormap for wheel defect
+        if any(ic) %xxxgae
+         rd=X1.rtz;   % damaged radius
+         ru=X.r_tz(X.tcsc{1}(1,:),X.tcsc{2}(1,:)); %undamaged radius r(t=0)
+         cm= sqrt(abs(rd(:,:,1).^2-repmat(ru,[size(rd,1) 1]).^2)); % (CMWheelflat)
+         X.prop{find(ic)+1}=cm;
+        end
+       end
+
        X1.XYZ=sdtu.fe.cyl2rect(X1);
        if ~strcmpi(X1.bas,X.bas);  
         X.XYZ=X1.XYZ;X.bas=X1.bas;   % X1=cntc.BasisChange(X.bas,X1,RO);
@@ -8303,13 +8309,12 @@ cntc : interface between SDT and CONTACT
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
      end
-     %set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse'); 'xxxreverse'
+     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse'); 'xxxreverse'
+     view(3);
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
-     view(3)
-     'xxx'
    elseif comstr(Cam,'color')
      %% #cntc.plot.color cntc.plot('colorcurve')
       out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
@@ -8319,40 +8324,7 @@ cntc : interface between SDT and CONTACT
    end
   end
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  function interpWR()
-   %% #cntc.interpWR wheel rail interpolation 
-   
-   
-   if iswheel
-    
-
-   else 
-    if isfield(LI.prw,'xsurf') %variable profile
-     R1=struct('RTZ',cat(3,LI.prw.zsurf+LI.wheelsetDim.nomrad, ...
-      LI.prw.xsurf,LI.prw.ysurf),'bas','w','name','Wheel');
-
-     [t,i1]=sort(squeeze(R1.RTZ(:,1,2))'); % sort angles
-     [z,i2]=sort(squeeze(R1.RTZ(1,:,3))); % sort y (Z of RTZ) xxx s
-     R1.tlim=t([1 end]);R1.zlim=z([1 end]);
-     [t,z]=ndgrid(t,z);
-     R1.r_tz = griddedInterpolant(t,z,R1.RTZ(i1,i2,1));
-
-     [t1,z1]=ndgrid(RO.prw.t(:)*pi/180,z(1,RO.prw.is)); %prepare view grid
-     R1.tcsc={t1,z1};
-
-    else
-     % now extrude along theta (t field)
-     [x,y]=ndgrid(RO.prw.t(:),LI.prw.ProfileZ(RO.prw.is)+LI.wheelsetDim.nomrad);
-     R1=struct('XYZ',cat(3,y,x, ...
-      reshape(repmat(LI.prw.ProfileY(RO.prr.is)',length(RO.prr.t),1),size(x,1),size(x,2))),'bas','r','name','Rail');
-     warning('verify Gaetan')
-    end
-    R1=sdth.sfield('addmissing',R1,RO.prr); % xxxquoi
-
-   end
-  end
-  
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
   
   function checkXXlab
    LI=cntc.call;
