@@ -177,27 +177,11 @@ nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
     'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
     'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
     'Rolling{StepSize WRCn, dqrel 1}'
-   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
     'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
     'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1., smooth 0.}'
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1., smooth 0.}'
-    };
-
-% #Mod_GaugePos -2
-nmap('Mod_GaugePos')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
-    'Mat{Mater1 0, nu1 0.28, nu2 0.28, g1 82000,g2 82000}'
-    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
-    'PotCntc{PosGrid WR, dx 0.2, ds 0.2, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
-    'Rolling{StepSize WRCn, dqrel 1}'
-    ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
-    % ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
-   % ', nomrad 490, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
-    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
-    'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-    % 'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-    'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
     };
 
 % #Mod_WheelflatPBound penetration boundary condition -2
@@ -206,8 +190,8 @@ nmap('Mod_WheelflatPB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, m
    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
    'Rolling{StepSize WRCn, dqrel 1}'
-  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0}']
    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
    'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'};
@@ -218,8 +202,8 @@ nmap('Mod_WheelflatFB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, m
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
    'Bound{Cond Force, fz 125000}'
    'Rolling{StepSize WRCn, dqrel 1}'
-  ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-   ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0}']
    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
    'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'};
@@ -231,8 +215,8 @@ nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxou
    'Bound{Cond Force, fz 125000}'
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
    'Rolling{StepSize WRCn, dqrel 1}'
-   ['Track{Design NewBoth, gaught -1, raily0 -759.4, railz0 0.2, cant 0.05' ...
-       ',nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
+    ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
+   ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
    'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'};
@@ -290,7 +274,7 @@ nmap('Traj_TestPen')=C1;
 %  #Traj_Wheelflat -2
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
-C1=struct('X',{{[],{'s_ws','mm',[];'pitch_ws','rad',[];'vs','mm/s',[];'vpitch','rad/s',[];'z_ws','[mm]',[]}}}, ...
+C1=struct('X',{{[],{'s_ws','mm';'pitch_ws','rad';'vs','mm/s';'vpitch','rad/s';'z_ws','[mm]'}}}, ...
  'Xlab',{{'Step','Comp'}},'Y',[]);
  C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
 if isfield(LI,'wheelsetDim')

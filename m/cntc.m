@@ -7968,9 +7968,15 @@ cntc : interface between SDT and CONTACT
      RO=struct('list',{{R1,R2}},'j1',50,'bas','tr','DefLen',40,'gf',1);
      cntc.plot('surf',RO);
     elseif contains(Cam,'gaugepoint')
-     qbas=cntc.getBasis;
-     RO.XYZ=[([0 1]'*LI.prr.ProfileY')' LI.prr.ProfileZ];
-     RO.bas='r';des='tr'
+     % (CNTCRail{gaugepoint})
+     LI=cntc.call;
+     t_gae24('CNTCWheelFlat');
+     qbas=cntc.getBasis;qbas=qbas.M;
+     R=reshape(qbas.Y(4:end,strcmpi(qbas.X{2},'Mr-tr'),1),[3 3]);
+     R0.XYZ=reshape((R*[([0 1]'*LI.prr.ProfileY')' LI.prr.ProfileZ]')',[1 size(LI.prr.ProfileY,1) 3]);R0.bas='r';
+     RO.list=R0;
+     cntc.plot('surf',RO);
+     des='tr';
      Xr_tr=cntc.BasisChange(des,RO);
      R=qbas.M;XYZcant=R*XYZ';
      figure;plot(XYZ(:,2),XYZ(:,3));set(gca,'DataAspectRatio',[1 1 1],'YDir','reverse');
@@ -8036,7 +8042,6 @@ cntc : interface between SDT and CONTACT
      if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
      % Rail and wheel profile research
      if isfield(RO,'list')
-      
       for i1=1:length(RO.list)
         %% 
         X=RO.list{i1}; X.j1=RO.j1;
@@ -8064,7 +8069,7 @@ cntc : interface between SDT and CONTACT
         elseif strcmpi(X.from,'bas')
           RO=cntc.getBasis(RO);
           if isfield(X,'bas')
-           ind=contains(RO.M.X{2},strcat(X.bas', ['-' RO.bas]));
+           ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
           else
            ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
           end
@@ -8238,7 +8243,7 @@ cntc : interface between SDT and CONTACT
      for i1=1:length(RO.list)
       %% loop on animations
       X=RO.list{i1};
-      if isfield(X,'RTZ'); 
+      if isfield(X,'RTZ'); %interpolation of the wheel
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
         ry_wc=cntc.getBasis('roll');ry_wc=ry_wc.M;
         % ry_wc is the angle that allows the wheel to rotate in the grid
@@ -11928,7 +11933,26 @@ cntc : interface between SDT and CONTACT
 
     p.ProfileS = cntc.make_arclength(p.ProfileY, p.ProfileZ);
    end % not slices
-
+   
+   if p.is_wheel == 0 % Rail position gauge point calculation (GaugeCalc)
+    %rotate the rail of the cant
+    qbas=zeros(1,6);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);
+    if (~is_slices)
+    XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
+     [1 size(p.ProfileY,1) 3]);
+    % track plan position
+    [zr_g,imin]=min(XYZ(:,:,3)); zr_g=-zr_g; %xxxgae
+    %Gauge point search
+    ind=size(XYZ(XYZ(:,:,2)<-cntc.leftCoef(LI)),2)+ ...
+     sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
+     LI.Track.gaught-zr_g);
+    yr_g=cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2)));
+    Or=struct('yr_g',cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2))), ...
+     'zr_g',zr_g);
+    p.Or_tr=Or;
+    else; error('Not implemented')
+    end
+   end
    p.Fname = fname;
 
   end % read_profile
@@ -14584,7 +14608,7 @@ cntc : interface between SDT and CONTACT
    %% #getCurve 
    LI=cntc.call; 
    if strcmpi(CAM,'mcp')
-    %% #PreMcp -3
+    %% #PreMcp 1st column sdt sensor label, 2nd CNTC output lab -3
     PreMCp= {'Mcp_tr:x','xcp_tr';'Mcp_tr:y','ycp_tr';'Mcp_tr:z','zcp_tr';
      'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:rz','0'
      'Mcp_r:x','xcp_r';'Mcp_r:y','ycp_r';'Mcp_r:z','zcp_r';
@@ -14598,7 +14622,8 @@ cntc : interface between SDT and CONTACT
     persistent NL
     if isempty(NL)||nargin==1
      NL=struct;
-     NL.unllab={'xw_tr';'yw_tr';'zw_tr';'rollw_tr';'yaww_tr';'0' % xxx Mw_tr
+     NL.unllab={% label of cq+unl0
+      'xw_tr';'yw_tr';'zw_tr';'rollw_tr';'yaww_tr';'0' % xxx Mw_tr
       %Mws-tr
       % Mw_ws
       '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
@@ -14608,7 +14633,7 @@ cntc : interface between SDT and CONTACT
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
-     NL.cnllab= {
+     NL.cnllab= {% label of cq 
       '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; 'pitch_ws'; 'yaw_ws' %Mws-tr
       'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc-ws
       '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mwc-w  
@@ -14617,14 +14642,27 @@ cntc : interface between SDT and CONTACT
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
       's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_gl
 
+     if isempty(LI.Track.raily0)
+      % offset in unl = [c]{q} + {unl0}
+      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
+       '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
+       '0';'LI.prr.Or_tr.yr_g';'LI.prr.Or_tr.zr_g';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   
+       '0';'0';'0';'0';'0';'0'%Mcp_w
+       '0';'0';'0';'0';'0';'0'%Mcp_r
+       '0';'0';'0';'0';'0';'0'};%Mtr_gl
+     else
      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
       '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-      '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'
+      '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
       '0';'0';'0';'0';'0';'0'%Mcp_w
       '0';'0';'0';'0';'0';'0'%Mcp_r
       '0';'0';'0';'0';'0';'0'};%Mtr_gl
+     end
+
      LI=cntc.call;r1=zeros(42,1);
      for j1=1:length(unl0)  % Fill unl0 from LI content
       r2=eval(unl0{j1});
@@ -14648,11 +14686,10 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';'0';'0';'0'                                  %Mcp_r
       '0';'0';'0';'0';'0';'0'};                                %Mtr_gl
     end
+
     if isempty(str)
      out=NL;return
-    end
-
-    if strcmp(str,'back') % get trajectories
+    elseif strcmp(str,'back') % get trajectories
      out=NL;  % NL.unl(:,:,2)=unl0
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
@@ -16577,13 +16614,6 @@ cntc : interface between SDT and CONTACT
       ierror = cntc.calculate(iwhe);
       if (ierror~=0), return; end
 
-     case 'stresscalc'
-      %% #set.stresscalc compute subsurface stresses -2
-      error('Implement')
-
-      ierror = cntc.subs_calculate(iwhe);
-      if (ierror~=0), return; end
-
      case 'initout'
       %% #set.initOut Initialize the output -2
       % Fields stored
@@ -16605,23 +16635,6 @@ cntc : interface between SDT and CONTACT
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
       setCMacro;
 
-     case 'getbasis'
-
-      % Initialize the loop
-      if icase==1
-       cntc.set('initout{}');
-      end
-
-      % RB.qbasR_tr= [LI.Traj.Y(:,1),LI.Traj.Y(:,1)];
-
-      RB.qbasWS_tr= LI.Traj.Y(:,1:6);
-      RB.qbasWS_tr(:,3)=LI.Traj.Y(:,3)-LI.wheelsetDim.nomrad;
-
-      dispW_tr= LI.Traj.Y(:,1:6)+LI.Traj.Y(:,13:18);
-      dispW_tr(:,2)=dispW_tr(:,2)-LI.wheelsetDim.fbdist/2+LI.wheelsetDim.fbpos;
-      RB.qbasW_tr=dispW_tr;
-      LI.RB=RB;
-
      case 'getout'
       %% #set.GetOut Get results -2
       if isempty(evt);
@@ -16637,6 +16650,7 @@ cntc : interface between SDT and CONTACT
        LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
       end
 
+      % Definition of LI.Cmacro.X{2} then called ind
       if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
       else      % Need to extend contact dimension
        i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
@@ -16720,7 +16734,6 @@ cntc : interface between SDT and CONTACT
         results{ire}.cp_force.vm_y(icase,icp)  = table(ii_max,2);
         results{ire}.cp_force.vm_z(icase,icp)  = table(ii_max,3);
        end
-
       end
      case 'getsol'
       %% Get sol to understand plot3d (need to disappear for store in SDT directly)
@@ -16730,8 +16743,6 @@ cntc : interface between SDT and CONTACT
 
       sol=cntc.getcpresults(iwhe, 1);
       LI.sol{icase}=sol;
-
-
      case 'mat'
       %% Set material property
       cntc.setmaterialparameters(list{j1}); %config material
@@ -16801,7 +16812,6 @@ cntc : interface between SDT and CONTACT
       else
        cntc.settrackdimensions(iwhe, 2, dev); %  New Devia, deviation definition only
       end
-
     end
    end
   end
@@ -17735,11 +17745,11 @@ cntc : interface between SDT and CONTACT
     if ProfileFname.iswheel == 1
      LI.WheelProfile=ProfileFname;
      LI.prw = cntc.read_profile(LI.WheelProfile.fname, 1, 0);
-     LI.prw.bas='wc';LI.prw.LeftCoef=cntc.leftCoef(LI);
+     LI.prw.bas='Mwc';LI.prw.LeftCoef=cntc.leftCoef(LI);
     else
      LI.RailProfile=ProfileFname;
      LI.prr = cntc.read_profile(LI.RailProfile.fname, 0, 0);
-     LI.prr.bas='g';LI.prw.LeftCoef=cntc.leftCoef(LI);
+     LI.prr.bas='Mr';LI.prw.LeftCoef=cntc.leftCoef(LI);
     end
     fname=sdth.sfield('addselected',struct,ProfileFname,{'fname'});
     iparams=sdth.sfield('addselected',struct,ProfileFname,{'iswheel','notuse','mirrory','mirrorz','errhndl','ismooth'});
@@ -18221,14 +18231,14 @@ cntc : interface between SDT and CONTACT
    % #settrackdimensions(pdf.3.3) -2
 
    if nargin==0||ischar(ire)
-    % package SDT options
+    % settrackdimensions package SDT options 
     DoOpt=['Design(0#vd{0,Maintain,1,NewDim,2,NewDevia,3,NewBoth}#"Track dimension and deviation options")' ...
-     'gaught(#%g#"Height below the track plane at which the gauge width is measured.")' ...
-     'gaugwd(#%g#"Distance between the inner faces of the two rails.")' ...
+     'gaught(#%g#"Height below the track plane at which the gauge width is measured.{$G_ht$,param}")' ...
+     'gaugwd(#%g#"Distance between the inner faces of the two rails.{$G_wd$,param}")' ...
      'gaugsq(#%g#"Reserved for selecting second or further gauge faces instead of the leftmost one")' ...
      'nomrad(#%g#"Nominal radius of the rollers")' ...
      'dyrail(#%g#"Offset Δyrail of the rail profile reference from the design")' ...
-     'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design")' ...
+     'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design{$xxx$,unl}")' ...
      'cant(#%g#"Rail cant")' ...
      'drollr(#%g#"Rotation Δφrail of the rail profile")'...
      'vyrail(#%g#"Velocity vrail  y of the rail origin")' ...
