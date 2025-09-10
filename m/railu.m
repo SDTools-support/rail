@@ -98,6 +98,24 @@ end
 
 end
 
+function   ms=MeshSlice(RO);
+%% #MeshSlice : rail section mesh -3
+ if all(ismember(fieldnames(RO),{'ToolTip','data'}))
+   RO=RO.data; 
+ end
+ if iscell(RO) 
+  %% dynavoie list
+  Range=dyn_solve('Range',struct('SliceCfg',{{'T',RO}}));
+  dyn_solve('RangeLoopReset',Range,struct('ifFail','error'));  
+  if sdtdef('isinteractive')
+   PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
+  end
+ else % rail mesh 
+     error('Not implemented')
+ end
+
+end
+
 
 end % Static
 end
