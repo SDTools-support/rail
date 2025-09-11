@@ -28,22 +28,57 @@ end % methods
 %% #Static / generic methods  ----------------------------------------------
 methods (Static)
 
+function   out=asUo(r1);
+%% #asUo : convert Dynavoie and rail inputs to UO format -3
 
-function   m_rail=rail_section(RO);
-%% #dv_rail_section : rail section mesh -3
 
-RA=struct;
+ if isfield(r1,'ToolTip')&&isfield(r1,'data')
+  r2=r1.data;
+  DefBut=feval(dyn_ui('@genDefBut'));
+  [table,level,loc]=sdtu.ivec.In2Tree(DefBut);
+  cinM=containers.Map(table(:,1),table(:,2));
+  out=sdtm.toCell(r2{2},'flatcell');
+  for j1=1:size(out,1)
+   st2=[r2{1},'.',out{j1,1}];
+   if ~isKey(cinM,st2);
+       st2=[r2{1},'.',regexprep(out{j1,1},'\.','P.','once')];
+   end
+   if isKey(cinM,st2);
+     r3=cinM(st2);
+     if isfield(r3,'ToolTip');out{j1,3}=r3.ToolTip;end
+   end
+   out{j1,1}=[r2{1} '.' out{j1,1}];
+  end
+ end
+ if nargout==0;sdtm.toString(out);clear out;end
+end
+
+function   m_rail=RailSection(RO);
+%% #RailSection : rail section mesh -3
+
+RA=struct;m_rail=[];
 if ischar(RO); 
   nmap=d_rail('nmap');
   if isKey(nmap,RO);RA=nmap(RO);
-  else; nmap=nmap('Map:Sections');
+  elseif contains(RO,'.mat#');
+   % railu.RailSection('U30_Sections.mat#ra')
+   fname=RO(1:find(RO==35,1,'first')-1);tag=RO(length(fname)+2:end);
+   FileName=d_rail('wd',fname);
+   if ~exist(FileName,'file');error('%s not found',FileName);end
+   load(FileName,'sections');
+   if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
+   m_rail=sections(tag);
+   [~,fname,ext]=fileparts(fname); m_rail.name=[fname '_' m_rail.name];
+  else;
+   nmap=nmap('Map:Sections');
    if isKey(nmap,RO);RA=nmap(RO);end
   end
 end
 if isfield(RO,'Arm')
      RA=RO.Arm;
 end
-if isfield(RA,'lar1')
+if isfield(m_rail,'Elt')
+elseif isfield(RA,'lar1')
      % dynavoie coarse rail model
       m_rail=struct('Node',...
      [1   0 0 0      0 -RA.lar1/2 0      % 1   y+1575/2 ?
@@ -86,17 +121,23 @@ if isfield(RA,'lar1')
 else; error('Not implemented')
 end
 
-    % Node with mass element on the middle-top of the rail section  
-    [NodeID,nodes]=feutil(sprintf('findnode y==%.15g & z==%.15g',...
-        0.5*(min(m_rail.Node(:,6))+max(m_rail.Node(:,6))),...
-        max(m_rail.Node(:,7))),m_rail);
-    
-    if isempty(nodes)
-      sdtw('_err','there must be a node on the middle-top of the rail section');
-    end
-
-
+n1=sortrows(m_rail.Node,[6 7]); % bottom left
+i1=feutil('geolinetopo',m_rail,struct('starts',n1(1),'dir',[0 1 0],'cos',.99));
+n1=[n1(1,:);n1(n1(:,1)==i1{1}(end),:)];
+cant=atan2(diff(n1(:,7)),diff(n1(:,6)));rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
+if abs(cant)>1e-4 % Reorient the mesh
+ m_rail.Node(:,6:7)=m_rail.Node(:,6:7)*rot;
 end
+r2=n1(:,6:7)*rot;
+m_rail.Node(:,6:7)=m_rail.Node(:,6:7)+[-mean(r2(:,1)) -max(m_rail.Node(:,7))];
+m_rail.meta=struct('GaugPoint',[NaN NaN],'lar1',diff(r2(:,1)), ...
+    'OrigCant',abs(cant),'hr3',-min(m_rail.Node(:,7)));
+m_rail.meta.OrigCant=abs(cant); 
+% Node with mass element on the middle-top of the rail section  
+n1=feutil('findnode z==',m_rail,0);
+m_rail.meta.TopNodes=n1; 
+
+end % RailSection
 
 function   ms=MeshSlice(RO);
 %% #MeshSlice : rail section mesh -3
@@ -114,6 +155,44 @@ function   ms=MeshSlice(RO);
      error('Not implemented')
  end
 
+end
+
+
+function out=getNmap
+%% #getNMap : implementation of nmap (legacy compatibility)
+persistent gnmap
+if isempty(gnmap)
+  gnmap=vhandle.nmap; 
+  % rails
+  gnmap.append({ ...
+   '60-E1', struct('hr1',11.5,'hr2',51,'hr3',172, ...
+      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail') 
+    '50-E6',struct('hr1',10.2,'hr2',49,'hr3',153, ...
+      'lar1',140,'lar2',15.5,'lar3',65,'ToolTip','Coarse DV Rail')  
+    '46-E2',struct('hr1',10.5,'hr2',47,'hr3',145, ...
+       'lar1',134,'lar2',15,'lar3',62,'ToolTip','Coarse DV Rail');
+      })
+
+  %RO=struct;disp(comstr(RO,-30,struct('NoClip',2)))
+  gnmap.append({ ...
+  'M450',struct('SleeperType','Monoblock','hb',230,'hsb',115,'Ltr',2411,'lab',290,'lsem',220); 
+  'B450',struct('SleeperType','Biblock','hb',240,'hsb',120,'Ltr',2411,'lab',290,'lsem',220,'lob',840,'nent',3);
+  'M240',struct('SleeperType','Monoblock','hb',187,'hsb',93.5,'Ltr',2243,'lab',300,'lsem',170);
+  'Wooden',struct('SleeperType','Monoblock','hb',140,'hsb',70,'Ltr',2600,'lab',240, ...
+      'lsem',240,'Mv201E',12000000000,'Mv201nu',0.45,'Mv201rho',800,'Mv201eta',0.01);
+      })
+
+  gnmap('Map:Arm')=vhandle.nmap( ...
+      {'MainMono',struct('RailName','60-E1','SleeperName','M450') 
+      'MainBi',struct('RailName','60-E1','SleeperName','B450') 
+      'Secondary',struct('RailName','50-E6','SleeperName','M240') 
+      'WoodenTrack',struct('RailName','50-E6','SleeperName','Wooden') 
+      'SlabTrack',struct('RailName','60-E1','SleeperName','None') 
+      'None',struct
+      });
+
+end
+out=gnmap;
 end
 
 

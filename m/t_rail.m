@@ -11,6 +11,8 @@ function [out,out1]=t_rail(varargin)
 %#ok<*ASGLU,*NASGU,*NOSEM,*NBRAK>
 obj=[];evt=[];
 if nargin==0; help t_rail
+ % t_exp19('RefPCIn');
+
     return; 
 else; [CAM,Cam]=comstr(varargin{1},1);carg=2;
 end
@@ -29,9 +31,13 @@ RT.nmap('CurExp')={'MeshCfg{d_rail(Ref21):21ref}','RunCfg{feplot}'};
 sdtm.range(RT)
 fecom showFiPro
 
- railu.rail_section('60-E1')
+railu.RailSection('60-E1')
+railu.RailSection('U30_Sections.mat#ra')
 
 matgui('jpl.asMd')
+
+sdtweb('_link','t_dynavoie(''SliceTest'')')
+
 
 elseif comstr(Cam,'period')
 %% #RefPeriod : reactivate periodic computations on one sleeper

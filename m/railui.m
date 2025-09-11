@@ -84,7 +84,7 @@ if comstr(Cam,'slice');
   elseif strcmpi(st{j1},'InitFrom') % Possible reinit from MeshCfg
    Range=railui('PARAM.Range -safe');
    r1=fe_range('ValCfg',Range,struct('MeshCfg',RO.InitFrom));
-   RO=feval(sdtroot('@sfield'),'AddMissing',RO,r1.MeshCfg);
+   RO=sdth.sfield('AddMissing',RO,r1.MeshCfg);
    RO=feutil('rmfield',RO,'InitFrom');
    
   elseif strcmpi(st{j1},'Cfg') % Display current configuration
@@ -100,7 +100,7 @@ if comstr(Cam,'slice');
     PARAM.Slice=delPar(r1,li); % xxx not clean
 
     DB=UI.DefBut;
-    rSub=feval(sdtroot('@sfield'),'MergeI',DB.Slice.SubP.Gen,DB.Slice.SubP.(['Sub' val]));
+    rSub=sdth.sfield('MergeI',DB.Slice.SubP.Gen,DB.Slice.SubP.(['Sub' val]));
     
     [r1j,r1]=sdt_locale('ButReplace', ...
          struct('Remove','none','Root','Slice','SortCol',sprintf('{''%s''}','Sub'),...
@@ -201,7 +201,7 @@ if comstr(Cam,'slice');
   st2=setdiff(fieldnames(RO),{'TrackType','Save','Track_dim','Cfg'});
   i1=find(~cellfun(@isempty,regexpi(st2,'^Mv\d+','once')));
   if ~isempty(i1) % Missing generic
-   R2=feval(sdtroot('@sfield'),'GetSpecified',RO,st2(i1));
+   R2=sdth.sfield('GetSpecified',RO,st2(i1));
    R3=struct;
    for j1=1:length(i1);
        R3.(R2{j1,1})= ...
@@ -804,7 +804,7 @@ elseif comstr(Cam,'slice'); [CAM,Cam]=comstr(CAM,6);
    DB=UI.DefBut;
    
    curSub=DB.Slice.SubP.Gen.SubType.choices{DB.Slice.SubP.Gen.SubType.value};
-   rSub=feval(sdtroot('@sfield'),'MergeI',DB.Slice.SubP.Gen,DB.Slice.SubP.(['Sub' curSub]));
+   rSub=sdth.sfield('MergeI',DB.Slice.SubP.Gen,DB.Slice.SubP.(['Sub' curSub]));
 
    r1=sdt_locale('butMerge',struct('Root','Slice','List',{ ...
      {'Cfg',DB.Slice.Cfg;...
@@ -1993,7 +1993,7 @@ function r1=genDefBut
  %% cingui('paramprint',struct(st2{j2},r2.(st2{j2})))
  
  r3=sdtroot('paramUI');r2=r3.DefBut.PTree;
- r1.PTree=feval(sdtroot('@sfield'),'AddMissing',r1.PTree,r2);
+ r1.PTree=sdth.sfield('AddMissing',r1.PTree,r2);
  r1.Tab=r3.DefBut.Tab; 
  
 end

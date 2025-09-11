@@ -16891,15 +16891,25 @@ cntc : interface between SDT and CONTACT
   function []=tab()
    % #tab -3
    r1={'Name','level';
-    'Library call',1;'CNTC',2 ; 'ProjectWd',2 ; 'CallLog',2 ; 'libname',2;...
-    'Experiment Definition',1;'flags',2;'global',2;'wheels',2;'Material parameter', ...
-    1;'Bound' ,2; 'Friction',2 ;'Mat',2 ;'Solver Definition',1;'PotCntc',2 ; ...
-    'Rolling',2 ; 'Solver',2;'Geometry Definition',1;'Track',2 ; 'prr' ,2; ...
-    'prw',2 ; 'wheelsetDim' ,2; 'RailProfile',2 ; 'WheelProfile',2;'Loop parameter'...
-    ,1;'cur' ,2; 'Traj',2;'Output',1;'Cfield',2 ; 'Cmacro',2 ; 'sol',2};
+    'Contact model definition',1;'RailProfile',2;'Track',2 ;'WheelProfile',2; 'wheelsetDim' ,2; 
+      'PotCntc',2 ;'Rolling',2 ;
+    'Contact constitutive parameter', 1;'Mat/contact',2 ;'Friction',2 ;
+    'Solver Definition',1; 'Solver',2;'Bound' ,2; 'flags',2; 'CNTC',2 ;    
+    % 'Loop parameter',1;'cur' ,2; 'Traj',2;
+    % 'Output',1;'Cfield',2 ; 'Cmacro',2 ; 'sol',2
+    };
    LI=cntc.call;
    r2=vhandle.tab(r1,LI);r2.name='CNTC';
    asTab(r2)
+
+   st=setdiff(fieldnames(LI),{'Cfield','Cmacro','Traj','prr','prw','sol', ...
+       'GHandle','cur','CNTC','libname'});
+   st1={'RailProfile';'Track';'WheelProfile';'wheelsetDim';'PotCntc';'Rolling';'Mat';'Friction'};
+   st=[st1;setdiff(st,st1)];
+
+   r2=sdth.sfield('addselected',struct,LI,st);
+   vhandle.tab(r2,struct('asTree',1,'name','LI','gf','SDT Root'))
+
    %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
   end
   %------------------------------------------------------------------------------------------------------------
@@ -17055,17 +17065,16 @@ cntc : interface between SDT and CONTACT
   %------------------------------------------------------------------------------------------------------------
   function []=setfrictionmethod(ire, icp, imeth, params)
    % [ ] = cntc.setfrictionmethod(ire, icp, imeth, params)
-   %
    %  imeth          - type of friction law used: 10 * V-digit + 1 * L-digit
    %  params         - depending on method that is used
    %
-   %  L = 0: Coulomb friction,             lparam = [fstat, fkin] (pdf.4.2.1)
+   %  L = 0: Coulomb friction,             lparam = [fstat, fkin] <a href="matlab: cntc.help('subsection.4.2.1')">subsection.4.2.1</a>
    %      1: keep previous parameters,     lparam = [ ]
-   %      2: linear falling friction,      lparam = [fkin, flin1, sabsh1, flin2, sabsh2, memdst, mem_s0] (pdf.4.2.2)
-   %      3: rational falling friction,    lparam = [fkin, frat1, sabsh1, frat2, sabsh2, memdst, mem_s0] (pdf.4.2.2)
-   %      4: exponential falling friction, lparam = [fkin, fexp1, sabsh1, fexp2, sabsh2, memdst, mem_s0] (pdf.4.2.2)
+   %      2: linear falling friction,      lparam = [fkin, flin1, sabsh1, flin2, sabsh2, memdst, mem_s0] <a href="matlab: cntc.help('subsection.4.2.2')">subsection.4.2.2</a>
+   %      3: rational falling friction,    lparam = [fkin, frat1, sabsh1, frat2, sabsh2, memdst, mem_s0] <a href="matlab: cntc.help('subsection.4.2.2')">subsection.4.2.2</a>
+   %      4: exponential falling friction, lparam = [fkin, fexp1, sabsh1, fexp2, sabsh2, memdst, mem_s0] <a href="matlab: cntc.help('subsection.4.2.2')">subsection.4.2.2</a>
    %      5: exponential falling friction, lparam = [fstat, polach_a, polach_b] (pdf.4.2.2)
-   %      6: temperature dep. friction,    lparam = [fref, tref, dfheat, dtheat, memdst, mem_s0](pdf.4.2.3/4.2.4)
+   %      6: temperature dep. friction,    lparam = [fref, tref, dfheat, dtheat, memdst, mem_s0](<a href="matlab: cntc.help('subsection.4.2.3')">4.2.3</a>,<a href="matlab: cntc.help('subsection.4.2.4')">4.2.4</a>)
    %
    %  When V = 0, params = lparam(1:n), with n=2 for L=0, n=7 for L=2--4, n=3 for L=5, n=6 for L=6
    %  When V = 1, params = [ nvf, ...
@@ -17075,7 +17084,7 @@ cntc : interface between SDT and CONTACT
    %
    %  dimensions:  alphvf: [angle],  fstat, fkin, flin1,2, frat1,2, fexp1,2, polach_a, fref, dfheat: [-]
    %               sabsh1,2, mem_s0: [veloc],  memdst: [length],  polach_b [1/veloc],  tref, dtheat [C]
-   %------------------------------------------------------------------------------------------------------------
+   %   
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -17112,6 +17121,7 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire;end
     LI=cntc.call;
     Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    Friction.GHandle.ToolTip=' Friction method <a href="matlab: edit(''cntc.setfrictionmethod'')">m</a>';
 
     switch Friction.FrcLaw
      case 0; params={'fstat','fkin'}; % 0 Coul
@@ -17493,6 +17503,7 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     LI.Bound=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    LI.Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
 
     switch LI.Bound.Cond;
      case 0;  params={'fz'}; % 0 Force
@@ -18221,7 +18232,7 @@ cntc : interface between SDT and CONTACT
    % dimensions: gaught, gaugwd, raily0, railz0, nomrad, dyrail, dzrail [length],    cant, drollr [angle]
    %                                                     vyrail, vzrail [veloc],           vrollr [ang.veloc]
    %                                                kyrail, kzrail [force/length], fyrail, fzrail [force]
-   %------------------------------------------------------------------------------------------------------------
+   % <a href="matlab: cntc.help('section.3.3')">3.3</a>
 
    % Copyright 2008-2023 by Vtech CMCC.
    %
@@ -18239,7 +18250,7 @@ cntc : interface between SDT and CONTACT
      'nomrad(#%g#"Nominal radius of the rollers")' ...
      'dyrail(#%g#"Offset Δyrail of the rail profile reference from the design")' ...
      'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design{$xxx$,unl}")' ...
-     'cant(#%g#"Rail cant")' ...
+     'cant(#%g#"Rail cant  rotation angle (0.05) (rad)")' ...
      'drollr(#%g#"Rotation Δφrail of the rail profile")'...
      'vyrail(#%g#"Velocity vrail  y of the rail origin")' ...
      'vzrail(#%g#"Velocity vrail  z of the rail origin")' ...

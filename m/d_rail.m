@@ -1855,7 +1855,7 @@ nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
 
  %% Without eclisse
  if exist('rail19','file') % Append
-   rail19('nmap',struct('nmap',nmap))
+   r2=rail19('nmap',struct('nmap',nmap));
  end
  ecM=useOrDefault(nmap,'Map:Slice');
  li= {'SecLab','xstart','xend','lc';
@@ -2000,7 +2000,7 @@ elseif comstr(Cam,'wd')
      out=sdtu.f.find(wd,varargin{2});
      if iscell(out)&&isscalar(out);out=out{1};end
  else
-  base_wd=sdtu.f.firstdif(wd);
+  base_wd=sdtu.f.firstdir(wd);
   out=comgui('cd',fullfile(base_wd,varargin{carg:end}));
  end
 elseif comstr(Cam,'pwd')
