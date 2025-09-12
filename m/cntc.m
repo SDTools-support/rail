@@ -8172,7 +8172,7 @@ cntc : interface between SDT and CONTACT
     end
    
    elseif comstr(Cam,'prof')
-     %% #plot.prof
+     %% #plot.prof -2
       RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8235,7 +8235,7 @@ cntc : interface between SDT and CONTACT
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
      view(3)
    elseif comstr(Cam,'surf')
-     %% #plot.surf 
+     %% #plot.surf -2
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8323,6 +8323,9 @@ cntc : interface between SDT and CONTACT
    elseif comstr(Cam,'color')
      %% #cntc.plot.color cntc.plot('colorcurve')
       out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
+      if nargin>1&&isnumeric(varargin{2})
+         out=out{varargin{2}};
+      end
     'xxx name'
   
    else; error('Not implemented %s',CAM)
@@ -17503,7 +17506,7 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     LI.Bound=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    LI.Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
+    Bound=LI.Bound;Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
 
     switch LI.Bound.Cond;
      case 0;  params={'fz'}; % 0 Force

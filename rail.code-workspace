@@ -1,5 +1,13 @@
 {
 	"folders": [
-		{"path": "jup"},{"path": "../sncf_ir/jup"}
+		{
+			"path": "jup"
+		},
+		{
+			"path": "../sncf_ir/jup"
+		},
+		{
+			"path": "../sncf_ir/tex/gaetan"
+		}
 	]
 }

@@ -158,10 +158,10 @@ function   ms=MeshSlice(RO);
 end
 
 
-function out=getNmap
+function out=getNmap(opt)
 %% #getNMap : implementation of nmap (legacy compatibility)
 persistent gnmap
-if isempty(gnmap)
+if isempty(gnmap)||isequal(opt,'reset')
   gnmap=vhandle.nmap; 
   % rails
   gnmap.append({ ...
@@ -190,11 +190,49 @@ if isempty(gnmap)
       'SlabTrack',struct('RailName','60-E1','SleeperName','None') 
       'None',struct
       });
+  propM=vhandle.nmap;
+  gnmap('Map:OProp')=propM;
+  propM.append({'RailGl', struct('ToolTip','Rail surface in Larangian/global/iSys frame', ...
+       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('iSys'),'FaceAlpha',0.3}});
+   'RailTR',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
+       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('r'),'FaceAlpha',0.5}});
+   'WheelW',struct('ToolTip','Wheel surface in Eulerian/w frame', ...
+       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('w'),'FaceAlpha',0.5}});
+   'WheelWc',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
+       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('wc'),'FaceAlpha',0.5}});
+       })
+  propM.append(d_cntc('nmap.Map:OProp'))
+  if isequal(opt,'reset');opt=[];end
+end
+if ~isempty(opt); 
+    out=gnmap(opt);
+else
+ out=gnmap;
+end
+end
+function out=prop(key)
+  %% prop : named properties
+  propM=railu.getNmap('Map:OProp');
+  if nargin==0; asTab(propM)
+  else
+   out=useOrDefault(propM,key,'','','getValue');
+  end
+end
+
+function col=color(tag)
+  %% #color tag based properties
+  col={'WheelE','#FF6D00';'w','#FF6D00';
+       'wc','#FF9E00';'wc','#FF9E00';
+       'isys','#00B4D8';'gl','#00B4D8';
+       'tr','#0077B6';'r','#0077B6';
+       'a','#023E8A'};
+  if nargin==1;
+      i1=find(strncmpi(col,tag,length(tag)),1,'first');
+      if isempty(i1);i1=size(col,1);end
+      col=col{i1,2};
+  end
 
 end
-out=gnmap;
-end
-
 
 end % Static
 end
