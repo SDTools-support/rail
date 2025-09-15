@@ -8021,7 +8021,8 @@ cntc : interface between SDT and CONTACT
      [~,i1]=min(LI.prr.ProfileZ);
      Mr_r=[0 LI.prr.ProfileY(i1),LI.prr.ProfileZ(i1) 0 0 0];
      bas=cntc.getBas(Mr_r);
-     if ~isfield(RO,'gf'); gf=1;end
+     gf=1;
+   %  if ~isfield(RO,'gf'); gf=1;end
 
      RB=struct('cf',gf,'text',{{'or','v1r','v2r','v3r'}}, ...
       'arProp',{{'linewidth',2}},'DefLen',10);
@@ -8032,7 +8033,7 @@ cntc : interface between SDT and CONTACT
      iimouse('on')
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
 
-     % plot3(LI.prr.ProfileY*0,LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
+     plot(LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
 
     end
 
