@@ -11951,8 +11951,7 @@ cntc : interface between SDT and CONTACT
      sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
      LI.Track.gaught-zr_g);
     yr_g=cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2)));
-    Or=struct('yr_g',cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2))), ...
-     'zr_g',zr_g);
+    Or=[0 cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2))) zr_g];
     p.Or_tr=Or;
     else; error('Not implemented')
     end
@@ -14652,7 +14651,7 @@ cntc : interface between SDT and CONTACT
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
        '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-       '0';'LI.prr.Or_tr.yr_g';'LI.prr.Or_tr.zr_g';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   
+       '0';'LI.prr.Or_tr(2)';'LI.prr.Or_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
        '0';'0';'0';'0';'0';'0'};%Mtr_gl
@@ -17125,7 +17124,8 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire;end
     LI=cntc.call;
     Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    Friction.GHandle.ToolTip=' Friction method <a href="matlab: edit(''cntc.setfrictionmethod'')">m</a>';
+    %xxxeb commented because doesn't work
+    %Friction.GHandle.ToolTip=' Friction method <a href="matlab: edit(''cntc.setfrictionmethod'')">m</a>';
 
     switch Friction.FrcLaw
      case 0; params={'fstat','fkin'}; % 0 Coul
@@ -17507,7 +17507,8 @@ cntc : interface between SDT and CONTACT
     if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     LI.Bound=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    Bound=LI.Bound;Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
+    %xxxeb same here doesn't work
+    Bound=LI.Bound;%Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
 
     switch LI.Bound.Cond;
      case 0;  params={'fz'}; % 0 Force
