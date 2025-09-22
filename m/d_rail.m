@@ -658,19 +658,31 @@ out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
 
 
 elseif comstr(Cam,'railfromcontour')
- %% d_rail('MeshRailFromContour');
+ %% #d_rail('MeshRailFromContour');
  %% ToDo25  sdtweb d_visco 'nl_mesh contour'
  if carg>nargin;f1='@d_rail.m/Rail_UIC60.stp';
  else; f1=varargin{carg};carg=carg+1;
  end
  if carg<=nargin;RO=varargin{carg};
  else
-    RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v 1');
+    %RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v 1');
+    RO=struct('quad',1,'lc',10,'spline',1,'ntol',1e-4) % sxxx algo
+    %RO.algo='delquad'
+    %RO.algo='quadqs'
+    %RO.algo='front2d'
+    %RO.algo='initial2d'
+    RO.algo='meshadapt'
  end
- mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
- mo2=nl_mesh('contourFrom',f1); 
+% mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
+ mo1=nl_mesh('contour clmax30',sdtu.f.safe(f1),RO); 
+
+ % test: use lsutil cut to get a quad dominant mesh, pretty good, but robustness to handle
+ mo2=nl_mesh('contour qcut qlc1',sdtu.f.safe(f1),RO);
+
+
  if nargout==0;
-   feplot(mo1);fecom shownodemark groupall
+   feplot(mo1);
+   fecom shownodemark groupall
  end
 
 
