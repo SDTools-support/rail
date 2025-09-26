@@ -7877,29 +7877,6 @@ cntc : interface between SDT and CONTACT
       end
       fecom('shownodemark',n2)
      end
-
-     try
-      color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
-      set(go,'CData',color);  
-
-      [~,i2]=ismember({'xcp_w';'ycp_w';'zcp_w'},LI.Cmacro.X{1});
-      coord=LI.Cmacro.Y(i2,:); coord(3,:)=coord(3,:)-460;
-      for i1=LI.Traj.X{1}'
-       if i1==1
-        rotate(go,[0,1,0],90-LI.Traj.Y(1,6)*180/pi);
-        g1=plot3(coord(1,i1),coord(2,i1),coord(3,i1),".",'MarkerSize',20,'MarkerEdgeColor','r');
-       else
-        set(g1, 'XData', coord(1,i1), 'YData', coord(2,i1), 'ZData',coord(3,i1));
-        rotate(go,[0,1,0],-(LI.Traj.Y(i1 ...
-         ,6)-LI.Traj.Y(i1-1,6))*180/pi)
-        rotate(g1,[0,1,0],-(LI.Traj.Y(i1,6)-LI.Traj.Y(i1-1,6))*180/pi)
-       end
-       pause(0.1);
-      end
-      LI.flags.iwhe
-      'xxx animate'
-      'position the Contact line'
-     end
     end
 
     if comstr(Cam,'mcalc');[CAM,Cam]=comstr(CAM,6);
@@ -8299,6 +8276,17 @@ cntc : interface between SDT and CONTACT
       elseif isfield(RO,'j1')
        if ~strcmpi(X.from,'traj') % no need in case traj
         X=cntc.BasisChange(RO.bas,X,RO.j1);
+       end
+      end
+      if isfield(X,'gf_offset')
+       % Offset to amplify interpenetration
+       X.XYZ(:,:,3)=X.XYZ(:,:,3)+X.gf_offset;
+       % Marker displacement
+       for i2=1:length(RO.list)
+        if ~ischar(RO.list{i2}.bas)
+         ib=contains(RO.list{i2}.name,X.name(1),'IgnoreCase',true);
+         RO.list{i2}.bas(ib,6)=RO.list{i2}.bas(ib,6)+X.gf_offset;
+        end 
        end
       end
       if size(X.XYZ,2)==1||size(X.XYZ,1)==1
