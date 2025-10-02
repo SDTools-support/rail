@@ -64,10 +64,11 @@ if ischar(RO);
    % railu.RailSection('U30_Sections.mat#ra')
    fname=RO(1:find(RO==35,1,'first')-1);tag=RO(length(fname)+2:end);
    FileName=d_rail('wd',fname);
-   if ~exist(FileName,'file');error('%s not found',FileName);end
+   if ~exist(FileName,'file');error('''%s''< d_rail(''wd'',''%s'') not found',FileName,fname);end
    load(FileName,'sections');
+   if isa(sections,'containers.Map');sections=vhandle.map(sections);end
    if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
-   m_rail=sections(tag);
+   m_rail=useOrDefault(sections,tag,'','','getValue');
    [~,fname,ext]=fileparts(fname); m_rail.name=[fname '_' m_rail.name];
   else;
    nmap=nmap('Map:Sections');
@@ -161,6 +162,7 @@ end
 function out=getNmap(opt)
 %% #getNMap : implementation of nmap (legacy compatibility)
 persistent gnmap
+if nargin==0; opt=[];end
 if isempty(gnmap)||isequal(opt,'reset')
   gnmap=vhandle.nmap; 
   % rails

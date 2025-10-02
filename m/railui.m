@@ -1867,12 +1867,8 @@ if isempty(UI.gf)||~ishandle(UI.gf);
  UI.gf=GuiGF;
  if usejava('awt')==0; UI.treeF=[]; end
  
- jFrame=get(UI.gf,'javaframe');
- wd=fileparts(which('railui'));
- try
-  jicon=javax.swing.ImageIcon(fullfile(wd,'LogoDynavoie_32.png'));
-  jFrame.setFigureIcon(jicon);
- end
+ wd=fileparts(which('dyn_ui'));
+ sdtu.ui.setFigureIcon(fullfile(wd,'LogoDynavoie_32.png'))
  
 %else;PARAM=v_handle('uo',GuiGF);
 end
