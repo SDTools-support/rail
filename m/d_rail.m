@@ -666,23 +666,31 @@ elseif comstr(Cam,'railfromcontour')
  if carg<=nargin;RO=varargin{carg};
  else
     %RO=struct('Run','-1 -order 2 -clmax30 -clim6 -v 1');
-    RO=struct('quad',1,'lc',10,'spline',1,'ntol',1e-4) % sxxx algo
+    RO=struct('quad',1,'lc',15,'spline',1,'ntol',1e-4); % sxxx algo
     %RO.algo='delquad'
     %RO.algo='quadqs'
     %RO.algo='front2d'
     %RO.algo='initial2d'
-    RO.algo='meshadapt'
+    RO.algo='meshadapt';
+    RO.GMSH.Mesh=struct('Algorithm',5, ...
+    'RecombinationAlgorithm',0,'RecombineAll',1);
  end
-% mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
- mo1=nl_mesh('contour clmax30',sdtu.f.safe(f1),RO); 
 
+% mo1=fe_gmsh('write',sdtu.f.safe(f1),RO);
+if ~contains(Cam,'qcut')
+ mo1=nl_mesh('contour clmax30',sdtu.f.safe(f1),RO); 
+else
  % test: use lsutil cut to get a quad dominant mesh, pretty good, but robustness to handle
  mo2=nl_mesh('contour qcut qlc1',sdtu.f.safe(f1),RO);
+end
 
+f1=strrep(d_rail('wd','U30_Sections.mat'),'U30','UIC60');
+if ~exist(f1,'file');sections=vhandle.nmap;st1={};else; load(f1,'sections');st1={'-append'};end
+sections('ra')=struct('ToolTip','UIC60 rail section','value',mo1);
+save(f1,'sections',st1{:});
 
  if nargout==0;
-   feplot(mo1);
-   fecom shownodemark groupall
+   feplot(mo1);sdtweb('_link','fecom shownodemark groupall');
  end
 
 
@@ -2021,7 +2029,7 @@ elseif comstr(Cam,'pwd')
  if nargout>1; out1=exist(out,'file');end 
 
 elseif comstr(Cam,'jup')
-%% #jup : jupyter notebook building 
+%% #jup : jupyter notebook building -2
 wd=fullfile(fileparts(which('d_rail')),'../jup');
 
 RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
