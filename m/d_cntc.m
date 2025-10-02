@@ -263,7 +263,7 @@ C1=struct('X',{{[],{'y_ws';'yaw_ws';'roll_ws';'vpitch';'vs';'z_ws'}}},'Xlab',{{'
    ]');
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(1:end,5)=2000; % set vs
-C1.Y(1:end,6)=0.5; %set penetration
+C1.Y(1:end,6)=0.1; %set penetration
 nmap('Traj_BenchManchester')=C1;
 
 %  #Traj_TestPen -2
