@@ -14635,11 +14635,11 @@ cntc : interface between SDT and CONTACT
 
      if isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
-      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
        '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-       '0';'LI.prr.Or_tr(2)';'LI.prr.Or_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   
+       '0';'LI.prr.Or_tr(2)';'LI.prr.Or_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
        '0';'0';'0';'0';'0';'0'};%Mtr_gl
