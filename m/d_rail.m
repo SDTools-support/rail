@@ -2056,7 +2056,7 @@ st=fullfile(sdtcheck('SDTRootDir'),'tex');
 if exist(st,'dir')
    % keywords, - between, but not at beginning
    setenv('sdtfun',['rail19-d_rail'  ]); 
-   wd1=fullfile(fileparts(which('feplot')),'helpnlsim');
+   wd1=sdtu.f.safe('@sdt/help/nlsim');
    if comstr(Cam,'hevea'); 
      wdh=lat('hevea -module SNCF-DyRail','dyrail');
      st=sprintf('lat(''tex2svg -eq'',''%s'')',pwd);sdtweb('_link',st);

@@ -198,11 +198,17 @@ if isempty(gnmap)||isequal(opt,'reset')
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('iSys'),'FaceAlpha',0.3}});
    'RailTR',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('r'),'FaceAlpha',0.5}});
-   'WheelW',struct('ToolTip','Wheel surface in Eulerian/w frame', ...
+   'prwEulSurf',struct('ToolTip','Wheel surface in Eulerian/w frame WheelW', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('w'),'FaceAlpha',0.5}});
    'WheelWc',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('wc'),'FaceAlpha',0.5}});
        })
+  propM('prrEulSurf')=struct('alias','RailTR');
+  propM('prrLagSurf')=struct('alias','RailGl');
+  propM('prwLagSurf')=struct('alias','WheelWc');
+  propM('WheelW')=struct('alias','prwEulSurf');
+  % xxx alias
+  %railu.prop({'WheelW',''prwEulSurf'')
   propM.append(d_cntc('nmap.Map:OProp'))
   if isequal(opt,'reset');opt=[];end
 end

@@ -411,7 +411,7 @@ wd=fullfile(fileparts(which('d_rail')),'../jup');
 
 RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
       'reset',1,'book',{{'rail'}}); 
-RO.helpDir=sdtu.f.cffile(fileparts(which('feplot')),'helpj');
+RO.helpDir=sdtu.f.safe('@sdt/helpj');
 RO.endCopy='jup{rail}';
 RO=sdtm.jup('build',RO);
 
@@ -436,7 +436,7 @@ if exist(st,'dir')
    % keywords, - between, but not at beginning
    setenv('sdtfun',['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
       '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'  ]); 
-   wd1=fullfile(fileparts(which('feplot')),'helpnlsim');
+   wd1=sdtu.f.safe('@sdt/help/nlsim');
    if comstr(Cam,'hevea'); 
      wdh=lat('hevea -module SNCF-DyRail','dyrail');
      st=sprintf('lat(''tex2svg -eq'',''%s'')',pwd);sdtweb('_link',st);

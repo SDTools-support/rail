@@ -7790,6 +7790,8 @@ cntc : interface between SDT and CONTACT
     if isfield(RO,'prw')
      %% plot.wheel.prw
      % RTZ_wc
+     try; RO.prw.prop=railu.prop(RO.prw.from);end
+
      if isfield(LI.prw,'xsurf') %variable profile
       R1=struct('RTZ',cat(3,LI.prw.zsurf+LI.wheelsetDim.nomrad, ...
          LI.prw.xsurf,cntc.leftCoef(LI)*LI.prw.ysurf),'bas','w','name','Wheel');
@@ -7960,7 +7962,10 @@ cntc : interface between SDT and CONTACT
  
     elseif isfield(RO,'prr') 
      %% Interpolate rail profile
-     if isa(RO.prr.x,'function_handle')
+     try; RO.prr.prop=railu.prop(RO.prr.from);end
+     if ~isfield(RO.prr,'x')
+       error('Missing x for rail')
+     elseif isa(RO.prr.x,'function_handle')
       NL=cntc.getCurve('NL','back');
       RO.prr.x=RO.prr.x(NL.cnl.Y(strcmpi(NL.cnl.X{1},'x'),strcmpi(NL.cnl.X{2},'Mtr-gl'),RO.prr.j1));
      end
@@ -8024,10 +8029,10 @@ cntc : interface between SDT and CONTACT
         %% 
         X=RO.list{i1}; X.j1=RO.j1;
         if ~isfield(X,'from');error('Not implemented')
-        elseif strcmpi(X.from,'prr')
+        elseif strncmpi(X.from,'prr',3)
           % X=cntc.plot('rail',struct('prr',X,'q',q)); xxxgae EB why
           X=cntc.plot('rail',struct('prr',X));
-        elseif strcmpi(X.from,'prw')
+        elseif strncmpi(X.from,'prw',3)
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
         elseif strcmpi(X.from,'traj')
          if isfield(X,'curve')
@@ -8065,6 +8070,8 @@ cntc : interface between SDT and CONTACT
           end
         else; error('Not implemented')
         end
+        try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
+
         RO.list{i1}=X;
       end
      else; error('Obsolete'); % Initial case
@@ -8150,7 +8157,7 @@ cntc : interface between SDT and CONTACT
     end
    
    elseif comstr(Cam,'prof')
-     %% #plot.prof -2
+     %% #plot.prof -3
       RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8213,7 +8220,7 @@ cntc : interface between SDT and CONTACT
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
      view(3)
    elseif comstr(Cam,'surf')
-     %% #plot.surf -2
+     %% #plot.surf -3
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8310,7 +8317,7 @@ cntc : interface between SDT and CONTACT
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
    elseif comstr(Cam,'color')
-     %% #cntc.plot.color cntc.plot('colorcurve')
+     %% #cntc.plot.color cntc.plot('colorcurve') -3
       out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
       if nargin>1&&isnumeric(varargin{2})
          out=out{varargin{2}};
