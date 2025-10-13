@@ -7588,7 +7588,7 @@ cntc : interface between SDT and CONTACT
    %  to word not pdf
    % des : desired basis
    % Xin : Input structure
-   % Xin.XYZ stuctured as snapshots*point/line*3 coords
+   % Xin.XYZ stuctured as snapshots*points number*3 coords
    % it define a timestep chosen
    % If t is defined do the transformation for the timestep given 
 
@@ -8296,14 +8296,18 @@ cntc : interface between SDT and CONTACT
         end 
        end
       end
-      if size(X.XYZ,2)==1||size(X.XYZ,1)==1
+      if size(X.XYZ,2)==1||size(X.XYZ,1)==1 %draw profile
        if ~isfield(X,'prop');X.prop={};end
        if ischar(X.prop);X.prop=propM(X.prop);end
        go(i1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
-      else
+       if isfield(X,'legend') %draw points with legends
+        X1=squeeze(X.XYZ);
+        text(X1(:,1),X1(:,2),X1(:,3),X.legend);
+       end
+      else % draw surfaces
        if ~isfield(X,'prop');X.prop={'EdgeColor','none'};end
        if ischar(X.prop);X.prop=propM(X.prop);end
-       go(i1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
+       go(i1)=surf(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:}); 
       end
       ga=go(i1).Parent;
       if i1==1
@@ -11933,21 +11937,21 @@ cntc : interface between SDT and CONTACT
     p.ProfileS = cntc.make_arclength(p.ProfileY, p.ProfileZ);
    end % not slices
    
-   if p.is_wheel == 0 % Rail position gauge point calculation (GaugeCalc)
+   if p.is_wheel == 0 % Rail position gauge point calculation 
     %rotate the rail of the cant
     qbas=zeros(1,6);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);
     if (~is_slices)
     XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
      [1 size(p.ProfileY,1) 3]);
-    % track plan position
-    [zr_g,imin]=min(XYZ(:,:,3)); zr_g=-zr_g; %xxxgae
+    % track plan position, here min because the rail is upside down
+    [zmax,imin]=min(XYZ(:,:,3)); Omax=XYZ(:,imin,:);
     %Gauge point search
     ind=size(XYZ(XYZ(:,:,2)<-cntc.leftCoef(LI)),2)+ ...
      sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
-     LI.Track.gaught-zr_g);
-    yr_g=cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2)));
-    Or=[0 cntc.leftCoef(LI)*(LI.Track.gaugwd/2+abs(XYZ(:,ind,2))) zr_g];
-    p.Or_tr=Or;
+     LI.Track.gaught+zmax);
+    yr_g=XYZ(:,ind,2);
+    Or_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax]; %(GaugeCalc)
+    p.Or_tr=Or_tr;p.Omax=Omax;
     else; error('Not implemented')
     end
    end
