@@ -8026,15 +8026,19 @@ cntc : interface between SDT and CONTACT
      % Rail and wheel profile research
      if isfield(RO,'list')
       for i1=1:length(RO.list)
-        %% 
+        %% for each list
         X=RO.list{i1}; X.j1=RO.j1;
         if ~isfield(X,'from');error('Not implemented')
+         % No field
         elseif strncmpi(X.from,'prr',3)
+         %prr
           % X=cntc.plot('rail',struct('prr',X,'q',q)); xxxgae EB why
           X=cntc.plot('rail',struct('prr',X));
         elseif strncmpi(X.from,'prw',3)
+         %prw
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
         elseif strcmpi(X.from,'traj')
+         %traj
          if isfield(X,'curve')
           C1=cntc.getCurve(X.curve);
          else
@@ -8050,6 +8054,7 @@ cntc : interface between SDT and CONTACT
           X=cntc.BasisChange(RO.bas,X);
          end
         elseif strcmpi(X.from,'bas')
+         %bas
           RO=cntc.getBasis(RO);
           if isfield(X,'bas')
            ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
@@ -8070,6 +8075,7 @@ cntc : interface between SDT and CONTACT
           end
         else; error('Not implemented')
         end
+
         try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
 
         RO.list{i1}=X;
@@ -8228,17 +8234,19 @@ cntc : interface between SDT and CONTACT
      for i1=1:length(RO.list)
       %% loop on animations
       X=RO.list{i1};
-      if isfield(X,'RTZ'); %interpolation of the wheel
+    
+      if isfield(X,'RTZ');
+      %interpolation of the wheel
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
         ry_wc=cntc.getBasis('roll');ry_wc=ry_wc.M;
         % ry_wc is the angle that allows the wheel to rotate in the grid
-        % (thus x1 is in w frame and not wc) 
+        % (thus x1 is in w frame and not wc)
         if strcmpi(X.bas,'w') % RTZ_wc
          X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}-ry_wc(RO.j1),X.tcsc{2}),X.tcsc{:}), ...
-         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w'); 
+          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
          X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
-         'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
+          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
         end
        end
        if isfield(X,'prop'); ic=strcmpi(X.prop,'CData'); %add a colormap for wheel defect
@@ -8249,9 +8257,8 @@ cntc : interface between SDT and CONTACT
          X.prop{find(ic)+1}=cm;
         end
        end
-
        X1.XYZ=sdtu.fe.cyl2rect(X1);
-       if ~strcmpi(X1.bas,X.bas);  
+       if ~strcmpi(X1.bas,X.bas);
         X.XYZ=X1.XYZ;X.bas=X1.bas;   % X1=cntc.BasisChange(X.bas,X1,RO);
        else; X.XYZ=X1.XYZ;
        end
@@ -16865,11 +16872,11 @@ cntc : interface between SDT and CONTACT
   end
 
 
-  function [out]= SDTLoop(RC)
+  function [out]= SDTLoop(C1)
    %% #SDTLoop -2
    % CNTC script, wheel/rail position ->
    % initialize
-
+   
    % Launch initialisation
    cntc.init; LI=cntc.call; LI.ProjectWd=RT.ProjectWd;
    LI.Traj=RT.Traj; LI.flags=RT.flags; cntc.initializeflags; cntc.setflags;
