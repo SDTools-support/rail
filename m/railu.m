@@ -202,7 +202,10 @@ if isempty(gnmap)||isequal(opt,'reset')
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('w'),'FaceAlpha',0.5}});
    'WheelWc',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('wc'),'FaceAlpha',0.5}});
+   'ViewYZ',struct('ToolTip','xxx -z vertical, y xxx', ...
+      'value','view(90,0);iimouse(''viewh+180'')')
        })
+
   propM('prrEulSurf')=struct('alias','RailTR');
   propM('prrLagSurf')=struct('alias','RailGl');
   propM('prwLagSurf')=struct('alias','WheelWc');

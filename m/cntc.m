@@ -504,6 +504,9 @@ cntc : interface between SDT and CONTACT
     if evalin('caller','exist(''LI'',''var'')')
      %% use base workspace version if exists
      LI=evalin('caller','LI');
+    elseif evalin('base','exist(''LI'',''var'')')
+     %% use base workspace version if exists
+     LI=evalin('base','LI');
     else
      % Initialize if does not exist
      LI=vhandle.uo([]); assignin('base','LI',LI);
@@ -7963,13 +7966,15 @@ cntc : interface between SDT and CONTACT
     elseif isfield(RO,'prr') 
      %% Interpolate rail profile
      try; RO.prr.prop=railu.prop(RO.prr.from);end
-     if ~isfield(RO.prr,'x')
-       error('Missing x for rail')
+     if isfield(RO.prr,'XYZ')
+     elseif ~isfield(RO.prr,'x')
+       RO.prr.XYZ=reshape([[0 1]'*LI.prr.ProfileY'; LI.prr.ProfileZ']',1,[],3);
      elseif isa(RO.prr.x,'function_handle')
       NL=cntc.getCurve('NL','back');
       RO.prr.x=RO.prr.x(NL.cnl.Y(strcmpi(NL.cnl.X{1},'x'),strcmpi(NL.cnl.X{2},'Mtr-gl'),RO.prr.j1));
      end
-     if isfield(LI.prr,'xsurf')
+     if isfield(RO.prr,'XYZ'); R1=RO.prr;
+     elseif isfield(LI.prr,'xsurf')
          error('Need implement') 
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail 
         [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.is));
@@ -8027,7 +8032,30 @@ cntc : interface between SDT and CONTACT
      if isfield(RO,'list')
       for i1=1:length(RO.list)
         %% for each list
-        X=RO.list{i1}; X.j1=RO.j1;
+        X=RO.list{i1}; 
+  if ~ischar(X)
+  elseif strcmpi(X,'TrackPlane')
+         %% #cntcn.plot.TrackPlane -3
+         XYZ=zeros(1,2,3);XYZ(:,:,2)=linspace(-800,0,2);
+         X=struct('from','traj','XYZ',XYZ,'bas','tr', ...
+             'prop',{{'Color','blue','LineStyle','--', ...
+             'Linewidth',2,'DisplayName','Track plan'}});
+  elseif strncmpi(X,'points',6)
+         %% #cntcn.plot.Points 
+          LI=cntc.call;
+          [~,RP]=sdtm.urnPar(X,'{}{}');
+          r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
+           'Otr',[0 0 0]
+           'Or',LI.prr.Or_tr
+           'Omax',squeeze(LI.prr.Omax)'+LI.prr.Or_tr};
+   X=struct('from','traj','XYZ',reshape(vertcat(r1{:,2}),1,[],3), ...
+       'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
+    'LineStyle','none','marker','+','Linewidth',2}});
+ 
+  else; error('%s not implemented',X)
+  end
+
+        X.j1=RO.j1;
         if ~isfield(X,'from');error('Not implemented')
          % No field
         elseif strncmpi(X.from,'prr',3)
@@ -8037,6 +8065,7 @@ cntc : interface between SDT and CONTACT
         elseif strncmpi(X.from,'prw',3)
          %prw
           X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
+        elseif strcmpi(X.from,'traj')&&isfield(X,'XYZ')
         elseif strcmpi(X.from,'traj')
          %traj
          if isfield(X,'curve')
@@ -8321,9 +8350,9 @@ cntc : interface between SDT and CONTACT
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
      end
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse'); 'xxxreverse'
-     view(3);
+     set(gca,'DataAspectRatio',[1 1 1]); 
      %     hold on; plot3(0,0,0,'+','DisplayName','Mtr');
+     if isfield(RO,'view');  eval(railu.prop(RO.view));end
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
@@ -14704,12 +14733,16 @@ cntc : interface between SDT and CONTACT
      out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
      out.cnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      out.Cunl=cntc.getCurve(NL.unllab);
-     out.vnl=cntc.getCurve(NL.vnllab);
-     out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
-     out.vnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     out.snl=cntc.getCurve(NL.snllab);
-     out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
-     out.snl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
+     if isfield(NL,'vnllab')
+      out.vnl=cntc.getCurve(NL.vnllab);
+      out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
+      out.vnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
+     end
+     if isfield(NL,'snllab')
+      out.snl=cntc.getCurve(NL.snllab);
+      out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
+      out.snl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
+     end
      return
     end
 
@@ -16845,7 +16878,7 @@ cntc : interface between SDT and CONTACT
        'Track{Design Maintain}'
        'wheelsetDim{Ewheel NewFlexVelPos}'
        };
-      for i1=1:size(RT.Model)
+      for i1=1:size(RT.Model,1)
        st3=RT.Model;
        if comstr(st3,'PotCntc')
         list{end+1}=st3;

@@ -23,7 +23,7 @@ if comstr(Cam,'ref');[CAM,Cam]=comstr(CAM,4);
 if comstr(Cam,'mesh')
 %% #RefMesh check examples
 
-r2=sdtu.log('CmdDisp{Listen{diag,warn},stack}'); % Turn logViewer on
+sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 RT=d_rail('nmap.Trk21ref');nmap=RT.nmap; 
 %sdtweb d_rail 'MeshDOE' / sdtweb d_rail nameToMeshRO
 % nmap('Ref21')
