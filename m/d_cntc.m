@@ -364,7 +364,7 @@ nmap('Traj_WheelFlatR')=C1;
 %  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
 C1=struct('X',{{[],{'s_ws','mm';'pitch_ws','rad';'vs','mm/s';'vpitch','rad/s';'dzwhl','[mm]'}}}, ...
  'Xlab',{{'Step','Comp'}},'Y',[]);
- C1.Y(:,2)=-pi/180*linspace(0,20,6)'; % rotation angle [rad] (pdf page 36)
+ C1.Y(:,2)=-pi/180*linspace(0,6,6)'; % rotation angle [rad] (pdf page 36)
 if isfield(LI,'wheelsetDim')
  C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
 end
