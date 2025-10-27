@@ -66,7 +66,7 @@ if ischar(RO);
    FileName=d_rail('wd',fname);
    if ~exist(FileName,'file');error('''%s''< d_rail(''wd'',''%s'') not found',FileName,fname);end
    load(FileName,'sections');
-   if isa(sections,'containers.Map');sections=vhandle.map(sections);end
+   if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
    if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
    m_rail=useOrDefault(sections,tag,'','','getValue');
    [~,fname,ext]=fileparts(fname); m_rail.name=[fname '_' m_rail.name];
@@ -200,10 +200,16 @@ if isempty(gnmap)||isequal(opt,'reset')
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('r'),'FaceAlpha',0.5}});
    'prwEulSurf',struct('ToolTip','Wheel surface in Eulerian/w frame WheelW', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('w'),'FaceAlpha',0.5}});
+   'prwLine',struct('ToolTip','Ow(theta) line', ...
+       'value',{{'Color',railu.color('w'),'LineWidth',2}});
+   'prrLine',struct('ToolTip','Or(x) line', ...
+       'value',{{'Color',railu.color('r'),'LineWidth',2}});
    'WheelWc',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('wc'),'FaceAlpha',0.5}});
    'ViewYZ',struct('ToolTip','xxx -z vertical, y xxx', ...
       'value','view(90,0);iimouse(''viewh+180'')')
+   'ViewXZ',struct('ToolTip','xxx -z vertical, y xxx', ...
+      'value','view(0,0);iimouse(''views+180'')')
        })
 
   propM('prrEulSurf')=struct('alias','RailTR');

@@ -8029,8 +8029,9 @@ cntc : interface between SDT and CONTACT
     %cntc.plot('both')
      if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
      % Rail and wheel profile research
-     if isfield(RO,'list')
-      for i1=1:length(RO.list)
+if isfield(RO,'list')
+  LI=cntc.call;
+for i1=1:length(RO.list)
         %% for each list
         X=RO.list{i1}; 
   if ~ischar(X)
@@ -8042,7 +8043,6 @@ cntc : interface between SDT and CONTACT
              'Linewidth',2,'DisplayName','Track plan'}});
   elseif strncmpi(X,'points',6)
          %% #cntcn.plot.Points 
-          LI=cntc.call;
           [~,RP]=sdtm.urnPar(X,'{}{}');
           r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
            'Otr',[0 0 0]
@@ -8051,7 +8051,23 @@ cntc : interface between SDT and CONTACT
    X=struct('from','traj','XYZ',reshape(vertcat(r1{:,2}),1,[],3), ...
        'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
     'LineStyle','none','marker','+','Linewidth',2}});
- 
+  elseif strncmpi(X,'prwLagSurf',10)
+    %% #cntcn.plot.prwLagSurf 
+    [~,RP]=sdtm.urnPar(X,'{t%g,y%g}{bas%s}');
+    X=struct('from','prw','t',RP.t,'is',sdtm.indNearest(LI.prw.ysurf(1,:),RP.y), ...
+     'bas','w','prop',{railu.prop('prwLagSurf')});
+    if isscalar(RP.y)||isscalar(RP.t)
+      X.prop=railu.prop('prwLine');
+    end
+  elseif strncmpi(X,'prrLagSurf',10)
+    %% #cntcn.plot.prrLagSurf 
+    [~,RP]=sdtm.urnPar(X,'{x%g,y%g}{bas%s}');
+    X=struct('from','prr','x',RP.x,'is',sdtm.indNearest(LI.prr.ProfileS,RP.y), ...
+     'bas','w','prop',{railu.prop('prrLagSurf')});
+    if isscalar(RP.y)||isscalar(RP.x)
+      X.prop=railu.prop('prrLine');
+    end
+
   else; error('%s not implemented',X)
   end
 
@@ -8108,7 +8124,8 @@ cntc : interface between SDT and CONTACT
         try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
 
         RO.list{i1}=X;
-      end
+end % Loop on list (clean X)
+
      else; error('Obsolete'); % Initial case
      end
      if isfield(RO,'gf')

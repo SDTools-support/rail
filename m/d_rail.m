@@ -19,19 +19,20 @@ if comstr(Cam,'script');[CAM,Cam]=comstr(CAM,7);
 %% 
 
 if comstr(Cam,'dv1')
- %% #TutoDvbeam: d_rail('ScriptDv1'); 
+%% #TutoDvbeam: d_rail('ScriptDv1'); 
 %% Step1: initialize interface
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
 
-%% #TodoEb : debug
-
-% Step2 : mesh 
+%% Step mesh  : simple meshing example
 RA=struct('ArmType','MainMono'); % standard monoblock parameters
 RS=struct('SubType','Ballast'); % just ballast
 RR=struct('RedType','Modal'); % default reduction parameters
 SliceCfg={'Slice',struct('Arm',RA,'Sub',RS,'half',1);
           'Reduce',RR}; % format the SliceCfg for a half track
+
+RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper');
+RA.value(end+1,1:2)={'Reduce',RR};SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
       
 % define track parameters and place sensors
 Sens={'s1(10:11):Bal:Sleeper:z'}; % define sensors
@@ -44,9 +45,13 @@ Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}}, ...
              'SimuCfg',{{'S1',SimuCfg}}); % format the range
 dyn_solve('RangeLoop -reset',Range); % build the model and store in the interface
-dyn_post('PostRecept'); % calculate transfer at sensors and plot
+%dyn_post('PostRecept'); % calculate transfer at sensors and plot
 
-%%
+dyn_solve('eig')
+dyn_post('PostRailDef')
+dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplot(c3)
+
+%% Step transient : moving vehicle
 
 l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
    'Time',struct('NeedV',1,'NeedA',1,'dt',1e-4)}; % time integration par.
@@ -76,7 +81,7 @@ RO=varargin{carg};carg=carg+1; if isempty(CAM);[CAM,Cam]=comstr(RO.Case,1);end
 if comstr(Cam,'21ref')
  %% #Case.21ref : 22 port of reference that was in  sdtweb abr21 v21testab 
 
- model=feutil('setmat',model,rail19('nmap.MatDb.PadAniso'));
+ model=feutil('setmat',model,d_rail('nmap.MatDb.PadAniso'));
  nmap=model.nmap; expM=RO.nmap; 
  RT=struct('V',[], ...
   'v',linspace(2,20,5829),'dt',1e-5, ...
@@ -292,7 +297,7 @@ elseif comstr(Cam,'pads')
  if ~isfield(RM,'lc');RO.lc='20';end
  mo1=feutil('objecthexa 9 9',[0 0 0;eye(3)],feutil(['refineline' RM.lc],[0 140]), ...
      feutil(['refineline' RM.lc],[0 181]),[0 9]);
- mo1.pl=fe_mat('convertSIMM',rail19('nmap.MatDb.Pad'));
+ mo1.pl=fe_mat('convertSIMM',d_rail('nmap.MatDb.Pad'));
  mo1=p_solid('default',mo1); mo1.unit='MM';
  [a,b]=moe23(['Pad' RM.pad]);
 
@@ -1987,9 +1992,16 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
+    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-6];
     };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;
+
+li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-12 1e-12 1e-6];% small place holder beam
+    };
+r2=vhandle.nmap(li,'Map:MatDb');
+nmap('ProDb')=r2;
+
 
 %% IO 
  %% #IO23SCNF: sensor configuration for pad testing with SDT ----2
