@@ -14733,7 +14733,7 @@ end % Loop on list (clean X)
       '0';'0';'0';'0';'0';'0'                                  %vMcp_w
       '0';'0';'0';'0';'0';'0'                                  %Mcp_r
       '0';'0';'0';'0';'0';'0'};                                %vMtr_gl
-     NL.snllab= {'0';'0';'0';'0';'0';'0'                        % snl Mws_tr
+     NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
       'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mwc_ws xxx incoherent
       '0';'0';'0';   '0'; '0';  '0'                            % Mwc-w
       'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
@@ -16922,34 +16922,28 @@ end % Loop on list (clean X)
   end
 
 
-  function [out]= SDTLoop(qr,qw)
+  function [out]= SDTLoop(C1)
    %% #SDTLoop -2
    % CNTC script, wheel/rail position ->
    % initialize
-
    
    LI=cntc.call;  RT.ProjectWd=sdtu.f.firstdir({cntc.help('@examples')});
    RT.flags=d_cntc('nmap.Global_flags');
    RT.Model=d_cntc('nmap.Mod_WheelflatPB');
 
-   l1={'pitch_ws','rad';'vs','mm/s';'vpitch','rad/s';'dzwhl','[mm]'}
- {'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   
-      '0';'0';'0';   '0';                   'pitch_ws';  '0' 
-      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' }
+  
    % Trajectory definition
-   RT.Traj=struct('X',{{[],{'s_ws','mm';'pitch_ws','rad';'vs','mm/s';'vpitch' ...
-    ,'rad/s';'dzwhl','[mm]'}}}, 'Xlab',{{'Step','Comp'}},'Y',[]);
- C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
- % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
-if isfield(LI,'wheelsetDim')
- C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
-end
-C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(:,3)=2000; % set vs [mm/s]
-C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+   RT.Traj=struct('X',{{[],l1}}, 'Xlab',{{'Step','Comp'}},'Y',[]);
+   C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
+   % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
+   if isfield(LI,'wheelsetDim')
+    C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
+   end
+   C1.X{1}=(1:size(C1.Y,1))';
+   C1.Y(:,3)=2000; % set vs [mm/s]
+   C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]   
 
    
-
    RT.LoopParam={'traj{}';'calculate{}';'getout{}';'getsol{}'};
    cntc.set(li);
 
