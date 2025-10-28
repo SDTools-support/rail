@@ -20,14 +20,14 @@ if comstr(Cam,'script');[CAM,Cam]=comstr(CAM,7);
 
 if comstr(Cam,'dv1')
 %% #TutoDvbeam: d_rail('ScriptDv1'); 
-%% Step1: initialize interface
+%% Step init : initialize interface
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
 
 %% Step mesh  : simple meshing example
 RA=struct('ArmType','MainMono'); % standard monoblock parameters
 RS=struct('SubType','Ballast'); % just ballast
-RR=struct('RedType','Modal'); % default reduction parameters
+RR=struct('RedType','Modal{fmax3000}'); % default reduction parameters
 SliceCfg={'Slice',struct('Arm',RA,'Sub',RS,'half',1);
           'Reduce',RR}; % format the SliceCfg for a half track
 
@@ -36,22 +36,26 @@ RA.value(end+1,1:2)={'Reduce',RR};SliceCfg=RA;SliceCfg.value(2,:)=[];% no conver
       
 % define track parameters and place sensors
 Sens={'s1(10:11):Bal:Sleeper:z'}; % define sensors
-TrackCfg=struct('type','GenTrack','nb_slices',40,'Sens',{{Sens{:}}});
+TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{Sens{:}}});
 
 % Define the simulation to be done on the track model
 SimuCfg={'Impact',struct('xload',7.2,'weight',10e-3);... % 10 kg at x=7.2m
          'Time',struct('tf',.8)}; % impact simulation
 Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
-             'TrackCfg',{{'T1',TrackCfg}}, ...
-             'SimuCfg',{{'S1',SimuCfg}}); % format the range
+             'TrackCfg',{{'T1',TrackCfg}});
+% Range.SimuCfg={'S1',SimuCfg}; % format the range
+
 dyn_solve('RangeLoop -reset',Range); % build the model and store in the interface
 %dyn_post('PostRecept'); % calculate transfer at sensors and plot
 
-dyn_solve('eig')
+% s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
+
+dyn_solve('eig 5 50 0')
 dyn_post('PostRailDef')
 dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplot(c3)
 
 %% Step transient : moving vehicle
+% d_rail('TutoDvBeam-s{init,mesh}')
 
 l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
    'Time',struct('NeedV',1,'NeedA',1,'dt',1e-4)}; % time integration par.
@@ -209,7 +213,7 @@ end
 elseif comstr(Cam,'mesh');[CAM,Cam]=comstr(CAM,5);
 %% #Mesh : mesh loading/generation 
         
- 
+sdtu.logger.doing('d_rail(''Mesh%s'')',CAM) 
 if comstr(Cam,'db');
  %% #MeshDb : database configurations
 
@@ -1992,7 +1996,7 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
-    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-6];
+    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-9];
     };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;
@@ -2088,6 +2092,10 @@ cd(pw0);
 sdtweb('_link','hbm_utils(''helpputall'')');
 sdtweb('_link','sd helpcursync helphbm');
 
+elseif comstr(Cam,'tuto'); 
+ %% #tuto : forward to sdtweb _tuto for handling -2
+ r1=dbstack;eval(sdtweb('_tuto',struct('file',r1(1).name,'CAM',CAM)));
+ if nargout==0; clear out; end
 
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);

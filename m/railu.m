@@ -142,9 +142,7 @@ end % RailSection
 
 function   ms=MeshSlice(RO);
 %% #MeshSlice : rail section mesh -3
- if all(ismember(fieldnames(RO),{'ToolTip','data'}))
-   RO=RO.data; 
- end
+ RO=sdtu.ui.cleanEntry(RO);
  if iscell(RO) 
   %% dynavoie list
   Range=dyn_solve('Range',struct('SliceCfg',{{'T',RO}}));

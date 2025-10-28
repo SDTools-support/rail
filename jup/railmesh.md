@@ -7,5 +7,3 @@ This is an Open Source set of MATLAB/SDT functions needed to generate meshes of 
 
 See the table of content below to get started :
 
-```{tableofcontents}
-```
