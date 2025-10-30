@@ -53,6 +53,191 @@ function   out=asUo(r1);
  if nargout==0;sdtm.toString(out);clear out;end
 end
 
+function mt=addVehicle(mt,mv,RO,RunOpt)
+ %% #addVehicle : combine track and vehicle model with placement 
+ if RunOpt.Reset 
+  % Remove vehicle to allow reset
+  % ve : defined by PID in the 1-100 range, nodes < 1000
+  i1=setdiff(unique(mt.Node(:,2)),0);
+  if ~isempty(i1)&&isfield(mt,'bas')&&~isempty(mt.bas)
+    mt.bas(ismember(mt.bas(:,1),i1),:)=[];
+  end
+  i1=mt.Node(mt.Node(:,2)>0,1);
+  if ~isempty(i1);
+      mt.Elt=feutil('removeelt withnode',mt,i1);
+      mt.Node(mt.Node(:,2)>0,:)=[];
+  end
+ end
+ Geo=RO.Geo;
+  % put the vehicle *on* the rails : 
+  if RO.half
+    mv.Node(:,6)=(mv.Node(:,6)-min(mv.Node(:,6))); % centers y
+  else
+    mv.Node(:,6)=mv.Node(:,6)-...
+      (min(mv.Node(:,6))+max(mv.Node(:,6)))/2; % centers y
+  end
+  if max(mv.Node(:,6))>0
+    if RO.double
+        mv.Node(:,6)=mv.Node(:,6)./max(mv.Node(:,6))*diff(Geo.y_rail)+min(Geo.y_rail);
+    else
+        mv.Node(:,6)=mv.Node(:,6)./max(mv.Node(:,6))*max(Geo.y_rail);
+    end
+  end
+  n1=(mt.Node(:,1)>1000); % mt without any vehicle
+  mv.Node(:,7)=mv.Node(:,7)+max(mt.Node(n1,7))-...
+    min(mv.Node(:,7)); %z/ vehicle put on the rails
+  
+  % basis : add basis  1 99 range
+  basid=max([mt.bas(mt.bas(:,1)<100,1);0])+1;
+  n1=find(mt.Node(:,1)>1000); % mt without any vehicle
+  n1=mt.Node(mt.Node(n1,7)==max(mt.Node(n1,7)), ...
+      6); %Ys of nodes on the top of the slice (pad nodes if any)
+  if ~RO.half;
+      ybas=(min(n1)+max(n1))/2;
+  else
+      ybas=0;
+  end
+  mt.bas=[mt.bas;
+    basid 1 0    0.0 ybas 0.0  ...
+    1.0 0.0 0.0  0.0 1.0 0.0  0.0 0.0 1.0]; % basis of the vehicle
+  
+  if ~isempty(trajectory) % trajectory given as an argument
+    mt=dyn_solve(sprintf('trajectory %i',basid),mt,trajectory.table);
+  end
+    
+  trajectory=stack_get(mt,'info','usertrajectory','getdata');
+  if isempty(trajectory); sdtw('_nb','can''t find trajectory in stack'); 
+  else
+   RO.ID=[trajectory(:).ID];
+   if ~any(RO.ID==basid)
+    sdtw('_nb','trajectory %i should be fulfilled in the stack of the global model',basid);
+   end
+  end
+  if ~isempty(trajectory) && any(RO.ID==basid)
+    trajectory=trajectory(RO.ID==basid);
+    mt.bas(end,4+size(trajectory.table,2)-2)=trajectory.table(1,2:end); % origin of the trajectory
+  end
+  
+  % - associate nodes of mv and this basis :
+  mv.Node(:,2:3)=basid*ones(size(mv.Node,1),2);
+  
+  % nodes and elts :
+  % checks whether the free range of nodes at the beginning of track model
+  % is sufficient :
+  
+  NodeId0=max([mt.Node(mt.Node(:,1)<1000,1);0])+1;
+
+  mv=feutil('renumber',mv,...
+    NodeId0:NodeId0+size(mv.Node,1)-1); % begins vehicles node numbering from the last vehicle
+
+  if ~isempty(find(mt.Node(:,1)>=min(mv.Node(:,1)) & mt.Node(:,1)<=max(mv.Node(:,1)), 1)) 
+    sdtw('_nb','there is not enough space in the range 1-1000 to add the vehicle')
+    out=mt;
+    return
+  end
+ 
+  % material and element properties : .il, .pl
+  if ~isfield(mt,'il'); mt.il=[]; end;
+  if ~isfield(mt,'pl'); mt.pl=[]; end;
+  if isfield(mv,'pl')
+    if min(mv.pl(:,1))<401 || max(mv.pl(:,1))>500
+      sdtw('_nb','vehicle matid should be in the 401-500 range'); end
+    % matid shifting in mv.Elt :
+    mpid=feutil('mpid',mv.Elt);
+    mpid(mpid(:,1)~=0,1)=mpid(mpid(:,1)~=0,1)...
+      -min(mpid(mpid(:,1)~=0,1))...
+      +max([mt.pl(mt.pl(:,1)>400 & mt.pl(:,1)<=500,1);400])+1;
+    mv.Elt=feutil('mpid',mv.Elt,mpid);
+    % matid shifting in mv.pl :
+    mv.pl(:,1)=mv.pl(:,1)-min(mv.pl(:,1))...
+      +max([mt.pl(mt.pl(:,1)>400 & mt.pl(:,1)<=500,1);400])+1;
+  end
+  if isfield(mv,'il')
+    if min(mv.il(:,1))<401 || max(mv.il(:,1))>500
+      sdtw('_nb','vehicle proid should be in the 401-500 range'); end
+    % proid shifting in mv.Elt :
+    mpid=feutil('mpid',mv.Elt);
+    mpid(mpid(:,2)~=0,2)=mpid(mpid(:,2)~=0,2)...
+      -min(mpid(mpid(:,2)~=0,2))...
+      +max([mt.il(mt.il(:,1)>400 & mt.il(:,1)<=500,1);400])+1;
+    mv.Elt=feutil('mpid',mv.Elt,mpid);
+    % proid shifting in mv.il :
+    mv.il(:,1)=mv.il(:,1)-min(mv.il(:,1))...
+      +max([mt.il(mt.il(:,1)>400 & mt.il(:,1)<=500,1);400])+1;
+  end
+  mv=stack_rm(mv,'info','OrigNumbering');
+  mt=feutil('addtest -noOri;',mt,mv);
+ 
+  % add model of vehicle to the others in the stack of the global model
+  mo1=stack_get(mt,'info','mv','getdata'); % previous vehicles
+  if isempty(mo1)||RunOpt.Reset
+    mo1=mv;
+  else
+    mo1=feutil('addtest',stack_rm(mo1,'info','OrigNumbering'),mv);
+  end
+  mo1.pl=mt.pl;mo1.pl=feutil('getpl',mo1);
+  mo1.il=mt.il;mo1.il=feutil('getil',mo1);
+  mo1.bas=mt.bas(ismember(mt.bas(:,1),unique(mo1.Node(:,1))),:);
+  % FixDof to have a 2D motion without x motion for the vehicle :
+  [Case,vDOF]=fe_mknl('init',mo1); i1=fe_c(vDOF,.01*[1 2 4 6]','dof');
+  mt = fe_case(mt,'FixDof','2D',i1);
+  mo1=fe_case(mo1,'FixDof','2D',i1);
+  mt=stack_set(mt,'info','mv',mo1); % vehicles
+  
+  % stack the contact dofs trajectory
+  mt=dyn_solve('cdoftrajectory',mv,mt,trajectory);
+  
+  out=mt; if nargout==0; feplot(out);fecom('colordatamat -alpha.3');end
+
+end
+function   mv=WheelSection(RO);
+%% #WheelSection : wheel section mesh -3
+ mv=[];
+ if ischar(RO.VehType); 
+  nmap=d_rail('nmap');
+  if isKey(nmap,RO.VehType);RA=nmap(RO.VehType);
+  elseif contains(RO.VehType,'.mat#');
+   % railu.RailSection('U30_Sections.mat#ra')
+   fname=RO.VehType(1:find(RO.VehType==35,1,'first')-1);tag=RO.VehType(length(fname)+2:end);
+   FileName=d_rail('wd',fname);
+   if ~exist(FileName,'file');error('''%s''< d_rail(''wd'',''%s'') not found',FileName,fname);end
+   sections=[];sdtm.load(FileName,'sections');
+   if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
+   if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
+   mv=useOrDefault(sections,tag,'','','getValue');
+   if ~isfield(mv,'name');mv.name=tag;end
+   [~,fname,ext]=fileparts(fname); 
+   mv.name=[fname '_' mv.name];
+  else;
+   nmap=nmap('Map:Sections');
+   if isKey(nmap,RO);RA=nmap(RO);end
+  end
+ end
+ if isempty(mv);error('Not implemented');end
+ % Otr Middle of Track is typically at y==0
+ y=mv.Node(:,6); r1=[min(y) mean(y) max(y)];
+ if abs(RO.Geo.y_rail_m)<1&&max(abs(r1))>5
+   %% convert to units of track (typically meters)
+   mv.Node(:,5:7)=mv.Node(:,5:7)/1000;
+   mv.pl=fe_mat(['convert' mv.unit 'SI'],mv);
+   r1=r1/100;
+ end
+ if sign(r1(1)*r1(2))==-1
+  %% wheel is meshed at 0
+  n1=mv.Node(mv.Node(:,7)==max(mv.Node(:,7)),:);
+  mv.Node(:,5)=mv.Node(:,5)-n1(5);
+  % cf.sel='withnode{x<=-1e-5} & selface & facing >.9 1000 0 0 & innode{x>-.01} & seledge'
+
+ end
+ if RO.half==-1
+ end 
+ dbstack; keyboard; 
+
+end
+
+
+
+
 function   m_rail=RailSection(RO);
 %% #RailSection : rail section mesh -3
 
@@ -65,7 +250,7 @@ if ischar(RO);
    fname=RO(1:find(RO==35,1,'first')-1);tag=RO(length(fname)+2:end);
    FileName=d_rail('wd',fname);
    if ~exist(FileName,'file');error('''%s''< d_rail(''wd'',''%s'') not found',FileName,fname);end
-   load(FileName,'sections');
+   sections=[];sdtm.load(FileName,'sections');
    if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
    if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
    m_rail=useOrDefault(sections,tag,'','','getValue');

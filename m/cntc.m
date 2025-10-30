@@ -5570,6 +5570,73 @@ cntc : interface between SDT and CONTACT
 
   end % show_profiles
 
+
+  function out=asModel(RO) 
+   %% #asModel : transform cntc object to SDT FEM representations -2
+
+   if isfield(RO,'list')
+     RO.asModel=1; 
+     RO=cntc.plot('list',RO);nodeM=[];
+     mt=struct('Node',[],'Elt',[], ...
+         'bas',[1 1 0   0 0 0   1 0 0  0 -1 0  0 0 -1], ...
+         'nmap',vhandle.nmap);
+     nameM=mt.nmap('Map:SetName');nameM('bas:1')='GDv';
+     % first add bases
+     for j1=1:size(RO.list,1)
+      X=RO.list{j1};
+      if strcmpi(X.from,'bas')
+       %% add bases 
+       if ~isfield(mt,'bas')||isempty(mt.bas); 
+         mt.bas=[];
+       end
+       i1=size(mt.bas,1)+1;
+       mt.bas(i1,1:15)=[i1 1 0 X.bas(4:15)];
+       nameM(sprintf('bas:%i',i1))=X.name{1};   
+      end
+     end
+     
+     for j1=1:size(RO.list,1)
+      X=RO.list{j1};
+      if strcmpi(X.from,'prr')&&size(X.XYZ,1)==1
+       % prrLine
+       n1=reshape(X.XYZ,[],3);n1=[size(mt.Node,1)+(1:size(n1,1))'*[1 0 0 0] n1];
+       st1=char(GetKeyMatchingV(nameM,sprintf('M%s-%s',X.bas,RO.bas)));
+       n1(:,2)=str2double(st1(5:end));
+       [n2,bas]=basis('nodebas',struct('Node',n1,'bas',mt.bas));
+       mt.Node=[mt.Node;n2];
+       elt=[n1(1:end-1,1) n1(2:end,1)];elt(:,3:4)=499;
+       mt=feutil('addelt',mt,'beam1',elt);
+       nameM('Mat:499')='prrLine';
+      elseif isfield(X,'model')
+       %% add something that already has a model form (TrackPlane, ...)
+       mt=feutil('addtest;',mt,X.model);
+      elseif strcmpi(X.from,'traj')&&size(X.XYZ,1)==1&&isfield(X,'legend')
+       %% add named nodes
+       if isempty(nodeM);nodeM=mt.nmap('Map:Nodes');end
+       n1=reshape(X.XYZ,[],3);n1=[(size(mt.Node,1)+(1:size(n1,1))')*[1 0 0 0] n1];
+       mt.Node=[mt.Node;n1];
+       nodeM.append([X.legend(:) num2cell(n1(:,1))])
+      elseif strcmpi(X.from,'bas') % already done
+      else
+       dbstack; keyboard; 
+      end
+     end
+     mt.Node(:,2)=1; % flip using the global dynavoie frame GDv
+     [mt.Node,mt.bas]=feutil('getnodebas',mt);
+     mt.bas(:,5:6)=-mt.bas(:,5:6); % change origin
+     feplot(mt);
+     if size(mt.bas,1)>1;fecom showbas;end
+     if ~isempty(nodeM);fecom('textnodeURN','nmap.Nodes');end
+
+
+   else
+    dbstack; keyboard
+   end
+
+
+
+  end
+
   function  asFeplot(RO,cf)
    %% #asFeplot cntc.asFeplot(struct('X',X,'Y',Y,'Z',Z,'cf',30))     -2
 
@@ -7721,7 +7788,7 @@ cntc : interface between SDT and CONTACT
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   function coef=leftCoef(LI)
-   %% #leftCoef
+   %% #leftCoef xxx should use Slr -2
    if isfield(LI,'ProfileY')
     if ~isfield(LI,'isLeft')
      warning('Using LI as isLeft not defined')
@@ -7896,7 +7963,7 @@ cntc : interface between SDT and CONTACT
      if nargout>0;out=X;end
 
     elseif comstr(Cam,'mplot');[CAM,Cam]=comstr(CAM,6);
-     % #cntc.plot.WheelMPlot -3
+     % #plot.WheelMPlot -3
      if contains(Cam,'mws')
       % cntc.plot('WheelMPlot{Mws}')
       cntc.plot('WheelMCalc{Mws}')
@@ -8025,24 +8092,28 @@ cntc : interface between SDT and CONTACT
     end
 
    elseif comstr(Cam,'both')||comstr(Cam,'list');;[CAM,Cam]=comstr(CAM,5);
-    %% #cntc.plot.both plot both wheel and rail in track marker -3
+    %% #plot.list #plot.both analyze list to generate plot -3
     %cntc.plot('both')
      if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
      % Rail and wheel profile research
 if isfield(RO,'list')
-  LI=cntc.call;
+LI=cntc.call;
+Slr=cntc.leftCoef(LI);
 for i1=1:length(RO.list)
         %% for each list
         X=RO.list{i1}; 
   if ~ischar(X)
   elseif strcmpi(X,'TrackPlane')
-         %% #cntcn.plot.TrackPlane -3
-         XYZ=zeros(1,2,3);XYZ(:,:,2)=linspace(-800,0,2);
-         X=struct('from','traj','XYZ',XYZ,'bas','tr', ...
-             'prop',{{'Color','blue','LineStyle','--', ...
-             'Linewidth',2,'DisplayName','Track plan'}});
+   %% #plot.list.TrackPlane -4
+     mo1=feutil('objectquad',[0 0 0;1 0 0;0 1 0],[-10 10], ...
+         [0 Slr*(LI.Track.gaugwd/2+100)]);
+     mo1.name='TrackPlane';
+     X=struct('from','traj','XYZ',reshape(mo1.Node(:,5:7),2,2,3),'bas','tr', ...
+         'prop',{{'EdgeColor','blue','Facecolor','none','LineStyle','--', ...
+         'Linewidth',2,'DisplayName','Track plane'}},'model',mo1);
+
   elseif strncmpi(X,'points',6)
-         %% #cntcn.plot.Points 
+         %% #plot.list.Points -4
           [~,RP]=sdtm.urnPar(X,'{}{}');
           r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
            'Otr',[0 0 0]
@@ -8052,7 +8123,7 @@ for i1=1:length(RO.list)
        'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
     'LineStyle','none','marker','+','Linewidth',2}});
   elseif strncmpi(X,'prwLagSurf',10)
-    %% #cntcn.plot.prwLagSurf 
+    %% #plot.list.prwLagSurf -4
     [~,RP]=sdtm.urnPar(X,'{t%g,y%g}{bas%s}');
     X=struct('from','prw','t',RP.t,'is',sdtm.indNearest(LI.prw.ysurf(1,:),RP.y), ...
      'bas','w','prop',{railu.prop('prwLagSurf')});
@@ -8060,14 +8131,17 @@ for i1=1:length(RO.list)
       X.prop=railu.prop('prwLine');
     end
   elseif strncmpi(X,'prrLagSurf',10)
-    %% #cntcn.plot.prrLagSurf 
+    %% #plot.list.prrLagSurf -4
     [~,RP]=sdtm.urnPar(X,'{x%g,y%g}{bas%s}');
     X=struct('from','prr','x',RP.x,'is',sdtm.indNearest(LI.prr.ProfileS,RP.y), ...
      'bas','w','prop',{railu.prop('prrLagSurf')});
     if isscalar(RP.y)||isscalar(RP.x)
       X.prop=railu.prop('prrLine');
     end
-
+  elseif strncmpi(X,'prrEulSurf',11)
+    %% #plot.list.prrEulSurf -4
+    dbstack; keyboard; 
+    
   else; error('%s not implemented',X)
   end
 
@@ -8111,12 +8185,12 @@ for i1=1:length(RO.list)
            r1(1,[4 8 12])=1; % add the gl or tr marker
            r1(2:end,:)=RO.M.Y(:,ind)';
            X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-            'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]});
+            'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]},'from','bas');
           else
            r1=zeros(size(RO.M.Y(:,ind),2),size(RO.M.Y(:,ind),1));
            r1(:,:)=RO.M.Y(:,ind)';
            X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-            'name',{[RO.M.X{2}(ind)]});
+            'name',{[RO.M.X{2}(ind)]},'from','bas');
           end
         else; error('Not implemented')
         end
@@ -8128,7 +8202,8 @@ end % Loop on list (clean X)
 
      else; error('Obsolete'); % Initial case
      end
-     if isfield(RO,'gf')
+     if isfield(RO,'asModel');  out=RO;
+     elseif isfield(RO,'gf')
       cntc.plot('surf',RO); % sdtweb cntc plot.surf
       if nargout>0;out=RO;end
      else; out=RO;
@@ -8140,7 +8215,7 @@ end % Loop on list (clean X)
     % RO.cnl=C1; 
     
    elseif comstr(Cam,'cmacro');[CAM,Cam]=comstr(CAM,7);
-    %% #cntc.plot('cmacro'), plot time variation of Cmacor variable -3
+    %% #plot.cmacro, plot time variation of Cmacor variable -3
 
     if contains(Cam,'index')
      % cntc.plot('cmacro{index}',{str})
@@ -8178,7 +8253,7 @@ end % Loop on list (clean X)
     set(gca,'DataAspectRatio',[1 1 1]);
 
    elseif comstr(Cam,'mcp')
-    %% #mcp : show marker trajectory -3
+    %% #plot.mcp : show marker trajectory -3
     C2=cntc.getCurve('MCP'); bas=cntc.getBas(C2);
     for j1=1:size(C2.X{2},1)
      figure(100+j1); lab=strrep(C2.X{2}{j1,1},'_','-');
@@ -8191,7 +8266,7 @@ end % Loop on list (clean X)
     end
 
    elseif comstr(Cam,'lcp')
-    %% #lcp : show force trajectory -3
+    %% #plot.lcp : show force trajectory -3
     C2=cntc.getCurve('MCP'); bas=cntc.getBas(C2);
     C3=cntc.getCurve('LCP');gf=200+(1:size(C2.X{2},1));
     for j1=1:length(gf)
@@ -8318,7 +8393,7 @@ end % Loop on list (clean X)
          'arProp',{{'linewidth',2}},'DefLen',40);
         if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
         RB.text= cellfun(@(x)['O',x(2:end)],st,'uni',0);RB.text{1,4}='';
-        sel=sdtu.fe.genSel(sdtm.rmfield(X,'name'),RB);
+        sel=sdtu.fe.genSel(sdtm.rmfield(X,{'name','from'}),RB);
         % Some design features
         if all(cellfun(@(k) any(contains(X.name, k)),{'Mws-','Mw-','Mwc-'}));
          Ows=X.bas(contains(X.name,'Mws-'),4:6);
@@ -8374,7 +8449,7 @@ end % Loop on list (clean X)
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
    elseif comstr(Cam,'color')
-     %% #cntc.plot.color cntc.plot('colorcurve') -3
+     %% #plot.color cntc.plot('colorcurve') -3
       out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
       if nargin>1&&isnumeric(varargin{2})
          out=out{varargin{2}};

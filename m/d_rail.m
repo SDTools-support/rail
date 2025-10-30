@@ -25,6 +25,7 @@ wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if 
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
 
 %% Step mesh  : simple meshing example
+sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 RA=struct('ArmType','MainMono'); % standard monoblock parameters
 RS=struct('SubType','Ballast'); % just ballast
 RR=struct('RedType','Modal{fmax3000}'); % default reduction parameters
@@ -53,6 +54,13 @@ dyn_solve('RangeLoop -reset',Range); % build the model and store in the interfac
 dyn_solve('eig 5 50 0')
 dyn_post('PostRailDef')
 dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplot(c3)
+
+%% Step TrackWheel : model with track and wheel
+l1={'Vehicle',struct('VehType','UIC60_Sections.mat#Wheel','v0',80, ...
+    'x0','$x_start-2','xf','$x_start-1')}; 
+Range=struct('SimuCfg',{{'S1',l1}});
+dyn_solve('RangeLoop',Range);
+
 
 %% Step transient : moving vehicle
 % d_rail('TutoDvBeam-s{init,mesh}')
