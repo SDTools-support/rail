@@ -16906,12 +16906,14 @@ end % Loop on list (clean X)
       % increment icase = j1 in fe_time
       %NL=cntc.SDTLoop;
       %[NL.unllab NL.vnllab NL.snllab]
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
-       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';
-       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw';
-       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw';
-       'dyrail';'dzrail';'drollr'; % Mr
-       'vyrail';'vzrail';'vrollr'};% vMr
+      % Be careful CNTC convention {x y z rx rz ry}
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws {'s_ws';'0';'0';'0';'0';'pitch_ws'}
+       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws {'vs';'0';'0';'0';'0';'vpitch'}
+       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw  {'0';'dywhl';'dzwhl';'drollw';'dyaww';'0'}
+       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw {'0';'vywhl';'vzwhl';'vrollw';'vyaww';'0'}
+       'dyrail';'dzrail';'drollr'; % Mr  {'0';'dyrail';'dzrail';'drollr';'0';'0'}
+       'vyrail';'vzrail';'vrollr'};% vMr {'0';'vyrail';'vzrail';'vrollr';'0';'0'}
+
       if ~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
@@ -16953,22 +16955,30 @@ end % Loop on list (clean X)
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    cntc.init; LI=cntc.call;
-   if ~(isfield(LI,'cur')&LI.cur.j1>1)
-   % Cosimulation
-   RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
-   RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatFB');
-
-   LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
-   LI.flags=RT.flags;
-   % Initialize
-   cntc.initializeflags; %initialize Global_flags
-   cntc.setflags;
-   cntc.set(RT.Model);
-   li=RT.LoopParam;
+   if contains(RT.LoopParam,'cosim')
+    % Cosimulation
+    if isfield(LI.cur,'j1')&(LI.cur.j1==1)
+     RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+     RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatFB');
+     LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags; LI.Traj=RT.Traj;
+     % Initialize
+     cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
+    else
+     LI.Traj=RT.Traj;  li=RT.LoopParam;
+    end
+   else
+    % Initialize
+    LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
+    LI.flags=RT.flags;
+    cntc.initializeflags; %initialize Global_flags
+    cntc.setflags;
+    cntc.set(RT.Model);
+    li=RT.LoopParam;
    end
 
-   if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
+   if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end %call the profiler
    if RT.profile;try;profile('clear');end;profile('on');end
+
    if comstr(lower(li{1}),'traj');
     for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
      if j1==2
@@ -17013,11 +17023,18 @@ end % Loop on list (clean X)
    %Y=[1 0 0.6 0 0 0; 1 0 0 0 0 0];
    j1=1;
 
+   l1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
+       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws
+       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw
+       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw
+       '0';'dyrail';'dzrail';'drollr';'0';'0' % Mr
+       '0';'vyrail';'vzrail';'vrollr';'0';'0'};% vMr
    % Trajectory definition
-   l1={'s_ws';'pitch_ws';%Minterp
+   l1={'s_ws';'pitch_ws';%Mws
     'dywhl';'dzwhl';'drollw';'dyaww'; % Mw
     'dyrail';'dzrail';'drollr'};% Mr
    C1=struct('X',{{j1,l1}}, 'Xlab',{{'step','Comp'}},'Y',[]);
+   C1.zeros()
    C1.Y=[1;0;
           0;0.6;0;0;
           0;0;0]';
@@ -18583,7 +18600,9 @@ end % Loop on list (clean X)
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-
+    if ~isfield(LI.prw,'Ow_tr')
+     LI.prw.Ow_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0];%xxxgae sign fbpos
+    end
     switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
      case {3,5}; params=sdth.sfield('addselected',struct,wheelsetDim, ...
