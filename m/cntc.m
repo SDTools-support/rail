@@ -14764,7 +14764,7 @@ end % Loop on list (clean X)
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {% label of cq 
-      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; 'pitch_ws'; 'yaw_ws' %Mws-tr
+      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws' %Mws-tr
       'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc-ws
       '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mwc-w  
       '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
@@ -14967,7 +14967,7 @@ end % Loop on list (clean X)
   function out=getMacro(varargin)
    %% #getMacro : get macro field content -2
    LI=cntc.call;
-   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(:,1));
+   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(2:end,1)); %xxx why first line is an empty double
    out=zeros(length(varargin{1}),length(varargin{2}));
    out(i1,:)=LI.Cmacro.Y(i2(i1),varargin{2});
   end
@@ -16952,13 +16952,21 @@ end % Loop on list (clean X)
 
   function []= TimeLoop(RT)
    %% #TimeLoop -2
-   cntc.init; LI=cntc.call;LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
+   cntc.init; LI=cntc.call;
+   if ~(isfield(LI,'cur')&LI.cur.j1>1)
+   % Cosimulation
+   RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+   RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatFB');
+
+   LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
    LI.flags=RT.flags;
    % Initialize
    cntc.initializeflags; %initialize Global_flags
    cntc.setflags;
    cntc.set(RT.Model);
    li=RT.LoopParam;
+   end
+
    if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
    if RT.profile;try;profile('clear');end;profile('on');end
    if comstr(lower(li{1}),'traj');
@@ -16997,49 +17005,30 @@ end % Loop on list (clean X)
   end
 
 
-  function [out]= SDTLoop(C1)
+  function [out]= SDTLoop
    %% #SDTLoop -2
    % CNTC script, wheel/rail position ->
    % initialize
-   
-   LI=cntc.call;  RT.ProjectWd=sdtu.f.firstdir({cntc.help('@examples')});
-   RT.flags=d_cntc('nmap.Global_flags');
-   RT.Model=d_cntc('nmap.Mod_WheelflatPB');
+     
+   %Y=[1 0 0.6 0 0 0; 1 0 0 0 0 0];
+   j1=1;
 
-  
    % Trajectory definition
-   RT.Traj=struct('X',{{[],l1}}, 'Xlab',{{'Step','Comp'}},'Y',[]);
-   C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
-   % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
-   if isfield(LI,'wheelsetDim')
-    C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
-   end
-   C1.X{1}=(1:size(C1.Y,1))';
-   C1.Y(:,3)=2000; % set vs [mm/s]
-   C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]   
+   l1={'s_ws';'pitch_ws';%Minterp
+    'dywhl';'dzwhl';'drollw';'dyaww'; % Mw
+    'dyrail';'dzrail';'drollr'};% Mr
+   C1=struct('X',{{j1,l1}}, 'Xlab',{{'step','Comp'}},'Y',[]);
+   C1.Y=[1;0;
+          0;0.6;0;0;
+          0;0;0]';
+   RT.Traj=C1;
 
-   
-   RT.LoopParam={'traj{}';'calculate{}';'getout{}';'getsol{}'};
-   cntc.set(li);
-
+   RT.LoopParam= {'traj{cosim}';'calculate{}';'getout{}'};
    cntc.TimeLoop(RT) % Temporal Loop
-
-   cntc.init; LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj; LI.flags=RT.flags;
-   cntc.initializeflags;  cntc.setflags; cntc.set(RT.Model);
-
-   cntc.set(RT.Model);
-   li=RT.LoopParam;
-
-      
-     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-     LI.cur=st2; li{1}=st2;
-     % sdtweb cntc set.traj
-     cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
-    % icase j1
    eval(iigui({'RT'},'SetInBaseC'));
-
-   LI.Fmacro.F_r=cntc.getMacro({'fx_r','fy_r','fz_r','mx_r_r','my_r_r','mz_r_r'},RC.j1);
-   LI.Fmacro.F_w=cntc.getMacro({'fx_w','fy_w','fz_w','mx_w_w','my_w_w','mz_w_w'},RC.j1);
+   LI=cntc.call;
+   Fr=cntc.getMacro({'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'},1);
+   Fw=cntc.getMacro({'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w'},1);
    LI.Fmacro.Pos_w=zeros(6,1);
    LI.Fmacro.Pos_w(1:4)=cntc.getMacro({'xcp_r','ycp_r','zcp_r','deltcp_r'},RC.j1);
    LI.Fmacro.Pos_r=zeros(6,1);
@@ -19263,7 +19252,6 @@ end % Loop on list (clean X)
  end % Static
 end
 
-
 function  setCMacro(LI,val,ire,j1)
 %% #setCMacro efficient storage into CMacro
 persistent iMap
@@ -19273,7 +19261,7 @@ end
 st=dbstack;st=st(2).name;
 if ~isKey(iMap,st) % Increment the X{1} to contain keys
  l1=evalin('caller','l1');
- i2=LI.Cmacro.rowM(l1(:,2));
+ i2=LI.Cmacro.rowM(l1(:,2)); % xxxEB first line empty ???
  if ~iscell(LI.Cmacro.X{1});LI.Cmacro.X{1}={};end
  LI.Cmacro.X{1}(i2,1)=l1(:,2); % set labels
  if size(l1,2)>=3
