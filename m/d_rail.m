@@ -698,13 +698,13 @@ if ~contains(Cam,'qcut')
  mo1=nl_mesh('contour clmax30',sdtu.f.safe(f1),RO); 
 else
  % test: use lsutil cut to get a quad dominant mesh, pretty good, but robustness to handle
- mo2=nl_mesh('contour qcut qlc1',sdtu.f.safe(f1),RO);
+ mo1=nl_mesh('contour qcut qlc1',sdtu.f.safe(f1),RO);
 end
 
 f1=strrep(d_rail('wd','U30_Sections.mat'),'U30','UIC60');
 if ~exist(f1,'file');sections=vhandle.nmap;st1={};else; load(f1,'sections');st1={'-append'};end
 sections('ra')=struct('ToolTip','UIC60 rail section','value',mo1);
-save(f1,'sections',st1{:});
+sdtm.save(f1,'sections',st1{:});
 
  if nargout==0;
    feplot(mo1);sdtweb('_link','fecom shownodemark groupall');

@@ -234,15 +234,11 @@ cntc : interface between SDT and CONTACT
    end
    % load the library into Matlab
    if (~libisloaded(libname))
-    pathstr = [deblank(pathstr) filesep '..' filesep 'bin'];
-    if ispref('SDT','CONTACT_Path')
-     pathstr=getpref('SDT','CONTACT_Path');
-    end
+    pathstr=sdtdef('Contact_Path',[deblank(pathstr) filesep '..' filesep 'bin']);
     fullname = fullfile(pathstr, [libname lib_ext]);
 
     if ~exist(fullname,'file')
      disp(['ERROR: cant find library: ', fullname]);
-     return
     else
      loadlibrary(fullname, 'contact_addon.h');
      LI.libname=libname;
@@ -570,7 +566,11 @@ cntc : interface between SDT and CONTACT
    wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
     'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
     '/o/APP/contact_v24.1/bin'});
-   wd=sdtdef('Contact_Path-safe',wd);
+   if 1==2
+     wd=sdtu.f.firstdir(wd);
+     sdtdef('Contact_Path-setpref',wd);
+   end
+   wd=sdtdef('Contact_Path-safe',sdtu.f.firstdir(wd));
    cd(wd0);
    f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
    if exist(f1,'file')

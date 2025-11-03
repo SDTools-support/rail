@@ -254,6 +254,8 @@ if ischar(RO);
    if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
    if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
    m_rail=useOrDefault(sections,tag,'','','getValue');
+   %m_rail=feutil('quad2lin',m_rail);
+   if ~isfield(m_rail,'name');m_rail.name=tag;end
    [~,fname,ext]=fileparts(fname); m_rail.name=[fname '_' m_rail.name];
   else;
    nmap=nmap('Map:Sections');
