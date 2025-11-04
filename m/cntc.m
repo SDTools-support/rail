@@ -12078,8 +12078,8 @@ end % Loop on list (clean X)
      sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
      LI.Track.gaught+zmax);
     yr_g=XYZ(:,ind,2);
-    Or_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax]; %(GaugeCalc)
-    p.Or_tr=Or_tr;p.Omax=Omax;
+    Mr_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax LI.Track.cant 0 0]; %(GaugeCalc)
+    p.Mr_tr=Mr_tr;p.Omax=Omax;
     else; error('Not implemented')
     end
    end
@@ -18600,8 +18600,8 @@ end % Loop on list (clean X)
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    if ~isfield(LI.prw,'Ow_tr')
-     LI.prw.Ow_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0];%xxxgae sign fbpos
+    if ~isfield(LI.prw,'Mw_tr')
+     LI.prw.Mw_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0 0 0 0];%xxxgae sign fbpos
     end
     switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
