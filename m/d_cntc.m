@@ -190,11 +190,12 @@ nmap('Mod_WheelflatPB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, m
    'Friction{FrcLaw Coul, fstat 0.3, fkin 0.3}'
    'PotCntc{PosGrid WR, dx 0.4, ds 0.4, a_sep 90deg, d_sep 8.0, d_comb 4.0}'
    'Rolling{StepSize WRCn, dqrel 1}'
-   'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
-   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'
     ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
    ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0}']
-   'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+    % the Gauge calculation require the track definition  
+   'setProfile{fname "r300_wide.prr",iswheel 0,mirrory 0, mirrorz -1, sclfac 1, smooth 0}'
+   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0,mirrorz -1, sclfac 1, smooth 5}'
+   'wheelsetDim{Ewheel NewAll, fbdist 1360, fbpos -70, nomrad 460}'
    };
 % #Mod_WheelflatFBound force boundary condition -2
 nmap('Mod_WheelflatFB')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxout 1,eps 1e-5}'
