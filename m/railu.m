@@ -69,9 +69,12 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   end
  end
  Geo=RO.Geo;
+ safeDistM=dyn_mesh('@safeDistM');
   % put the vehicle *on* the rails : 
-  if RO.half
+  if RO.half>0
     mv.Node(:,6)=(mv.Node(:,6)-min(mv.Node(:,6))); % centers y
+  elseif RO.half<0
+    mv.Node(:,6)=(mv.Node(:,6)+max(mv.Node(:,6))); % centers y
   else
     mv.Node(:,6)=mv.Node(:,6)-...
       (min(mv.Node(:,6))+max(mv.Node(:,6)))/2; % centers y
@@ -79,14 +82,19 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   if max(mv.Node(:,6))>0
     if RO.double
         mv.Node(:,6)=mv.Node(:,6)./max(mv.Node(:,6))*diff(Geo.y_rail)+min(Geo.y_rail);
-    else
+    elseif isfield(Geo,'y_rail')
         mv.Node(:,6)=mv.Node(:,6)./max(mv.Node(:,6))*max(Geo.y_rail);
     end
   end
   n1=(mt.Node(:,1)>1000); % mt without any vehicle
-  mv.Node(:,7)=mv.Node(:,7)+max(mt.Node(n1,7))-...
-    min(mv.Node(:,7)); %z/ vehicle put on the rails
-  
+  if isfield(mv,'meta')&&isfield(mv.meta,'nomrad')
+   mv.Node(:,7)=mv.Node(:,7)+Geo.z_rail_up+safeDistM(mv.meta.nomrad); %z/ vehicle put on the rails
+   mv.bas=[];
+  else
+   mv.Node(:,7)=mv.Node(:,7)+max(mt.Node(n1,7))-...
+     min(mv.Node(:,7)); %z/ vehicle put on the rails
+  end
+
   % basis : add basis  1 99 range
   basid=max([mt.bas(mt.bas(:,1)<100,1);0])+1;
   n1=find(mt.Node(:,1)>1000); % mt without any vehicle
@@ -100,7 +108,7 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   mt.bas=[mt.bas;
     basid 1 0    0.0 ybas 0.0  ...
     1.0 0.0 0.0  0.0 1.0 0.0  0.0 0.0 1.0]; % basis of the vehicle
-  
+  trajectory=RunOpt.trajectory;
   if ~isempty(trajectory) % trajectory given as an argument
     mt=dyn_solve(sprintf('trajectory %i',basid),mt,trajectory.table);
   end
@@ -219,19 +227,21 @@ function   mv=WheelSection(RO);
  if abs(RO.Geo.y_rail_m)<1&&max(abs(r1))>5
    %% convert to units of track (typically meters)
    mv.Node(:,5:7)=mv.Node(:,5:7)/1000;
-   mv.pl=fe_mat(['convert' mv.unit 'SI'],mv);
-   r1=r1/100;
+   mv.pl=fe_mat(['convert' mv.unit 'SI'],mv.pl);
+   mv.il=fe_mat(['convert' mv.unit 'SI'],mv.il);
+   mv.unit='SI';
+   r1=r1/1000;
  end
+ n1=mv.Node(mv.Node(:,7)==max(mv.Node(:,7)),:);
  if sign(r1(1)*r1(2))==-1
-  %% wheel is meshed at 0
-  n1=mv.Node(mv.Node(:,7)==max(mv.Node(:,7)),:);
+  %% wheel is meshed at x==0
   mv.Node(:,5)=mv.Node(:,5)-n1(5);
   % cf.sel='withnode{x<=-1e-5} & selface & facing >.9 1000 0 0 & innode{x>-.01} & seledge'
 
  end
- if RO.half==-1
+ if RO.half==-1 % Negative should be left wheel (positive y in dv)
+  mv.Node(:,6)=(mv.Node(:,6)-r1(3));
  end 
- dbstack; keyboard; 
 
 end
 
@@ -254,7 +264,12 @@ if ischar(RO);
    if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
    if ~isKey(sections,tag); error('%s not found in %s',tag,FileName);end
    m_rail=useOrDefault(sections,tag,'','','getValue');
-   %m_rail=feutil('quad2lin',m_rail);
+   i1=feutil('findelt eltname quad9',m_rail);
+   if ~isempty(i1)
+     m_rail.Elt(i1(1)-1,1:6)=[Inf abs('quadb')];
+     m_rail.Elt(i1,:)=[m_rail.Elt(i1,[1:8 10:end]) i1*0];
+   end
+   m_rail=feutil('quad2lin',m_rail);m_rail.Node=feutil('getnodegroupall',m_rail);
    if ~isfield(m_rail,'name');m_rail.name=tag;end
    [~,fname,ext]=fileparts(fname); m_rail.name=[fname '_' m_rail.name];
   else;
@@ -427,7 +442,8 @@ function col=color(tag)
        'wc','#FF9E00';'wc','#FF9E00';
        'isys','#00B4D8';'gl','#00B4D8';
        'tr','#0077B6';'r','#0077B6';
-       'a','#023E8A'};
+       'a','#023E8A'
+       };
   if nargin==1;
       i1=find(strncmpi(col,tag,length(tag)),1,'first');
       if isempty(i1);i1=size(col,1);end

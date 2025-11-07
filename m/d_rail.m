@@ -60,7 +60,9 @@ l1={'Vehicle',struct('VehType','UIC60_Sections.mat#Wheel','v0',80, ...
     'x0','$x_start-2','xf','$x_start-1')}; 
 Range=struct('SimuCfg',{{'S1',l1}});
 dyn_solve('RangeLoop',Range);
+PA=dyn_ui('paramvh');
 
+mo1=PA.mt;mo1=fesuper('fsemodel-join2',mo1);feplot(mo1);fecom('showfipro')
 
 %% Step transient : moving vehicle
 % d_rail('TutoDvBeam-s{init,mesh}')
@@ -705,6 +707,43 @@ f1=strrep(d_rail('wd','U30_Sections.mat'),'U30','UIC60');
 if ~exist(f1,'file');sections=vhandle.nmap;st1={};else; load(f1,'sections');st1={'-append'};end
 sections('ra')=struct('ToolTip','UIC60 rail section','value',mo1);
 sdtm.save(f1,'sections',st1{:});
+
+if 1==2
+  %% pseudo wheel
+  load(f1,'sections');
+  %r1=load(strrep(f1,'UIC60','U30'));mo1=r1.sections('Wheel');sections('Wheel')=mo1;
+  % abs(LI.wheelsetDim.fbdist/2)+abs(LI.wheelsetDim.fbpos)
+  mo1=sections('Wheel');
+  mo1.Node(:,5:7)=mo1.Node(:,5:7)+[170.375 -717.15-40.35 -5.4458e+02];
+  i1=mo1.Node(:,6)>-600;
+  mo1.Node(i1,6)=-600+(mo1.Node(i1,6)+600)/(600-40)*600;
+  max(mo1.Node(:,6))
+  mo1.meta.nomrad=460; mo1.meta.bas='Mws';
+  n1=[0 -(abs(LI.wheelsetDim.fbdist/2)+abs(LI.wheelsetDim.fbpos)) -mo1.meta.nomrad];
+  n1=feutilb('addnode-nearest -epsl 20',mo1.Node,n1);n1=mo1.Node(mo1.Node(:,1)==n1,:);
+  elt=feutil('geolinetopo',mo1,struct('starts',n1(1),'dir',[1 0 0],'cos',.8));
+  elt=[elt{1}(1:end) elt{1}([2:end 1])];elt(:,3:4)=499;
+  mo1=feutil('addelt',mo1,'beam1',elt);
+  mo1=feutil('setpro',mo1,'d_rail(nmap.ProDb.prwLine)');
+  mo1=feutil('setmat',mo1,'dyn_mesh(matdb{499,prwLine})');
+  mo1.Elt=feutil('set sel matid 401 proid 401',mo1,'matid8');
+  mo1.Elt=feutil('set sel matid 402 proid 402',mo1,'matid1');
+  mo1.Elt=feutil('set group 2 matid 498 proid 498',mo1);
+  mo1=feutil('setpro',mo1,'d_rail(nmap.ProDb.prwEulSurf -name prwEulSurf)');
+  mo1=feutil('setmat',mo1,'m_elastic(dbval 401 Steel -name Wheel)');
+  mo1=feutil('setmat',mo1,'m_elastic(dbval 402 Steel -name Shaft)');
+  mo1.bas=[1 1 0   0 0 0   1 0 0  0 -1 0   0 0 -1
+           2 1 0   n1(5:7) 1 0 0  0 -1 0   0 0 -1];
+  mo1.pl(mo1.pl(:,1)<400,:)=[];
+  mo1.il(mo1.il(:,1)<400,:)=[];
+  mo1=p_solid('default;',mo1);
+  basM=mo1.nmap('Map:BasName');
+  append(basM,{'ws',1;'w',2});
+  feplot(mo1);axis on; fecom(';showfipro;colorfacealpha.2;view4')
+  fecom('showbas{deflen,50,arProp"linewidth,2"}')
+
+  sections('Wheel')=mo1; sdtm.store(f1,'sections>sections')
+end
 
  if nargout==0;
    feplot(mo1);sdtweb('_link','fecom shownodemark groupall');
@@ -2004,13 +2043,17 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
+    'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-9];
     'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-9];
     };
 r2=vhandle.nmap(li,'Map:MatDb');
-nmap('MatDb')=r2;
+nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 
 li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-12 1e-12 1e-6];% small place holder beam
-    };
+    'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
+    'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-12 1e-12 1e-6];% small place holder beam
+    'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
+        };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('ProDb')=r2;
 

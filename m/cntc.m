@@ -5,6 +5,7 @@ classdef cntc
  % <a href="matlab:methods cntc">methods cntc</a> for methods
  % <a href="matlab:sdtweb cntc">sdtweb cntc</a> for HTML documentation
  % <a href="matlab:sdtweb _taglist cntc">sdtweb _taglist cntc</a> for taglist
+ % <a href="matlab:cntc.tab">cntc.tab</a> current status
  %
  % For Linux you may have to set
  %    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/o3/APP/contact_v24.1/bin
@@ -16649,8 +16650,9 @@ end % Loop on list (clean X)
    % category 2: m=1, wtd    - no icp needed
    % #getwheelsetposition
 
-   l1={
-    1, 'S_WS','mm', 's-position of the wheelset center of mass along the track center line'
+   ColumnName={'Index','CNTCname','unit','ToolTip','tlab','TeX'};
+   l1={ 
+    1, 'S_WS','mm', 's-position of the wheelset center of mass along the track center line' %,'ws:x','x_{ws}'
     2, 'Y_WS','mm', 'lateral y-position of the wheelset center of mass in track coordinates'
     3, 'Z_WS','mm', ' vertical z-position of the wheelset center of mass in track coordinates'
     4, 'ROLL_WS','rad', 'wheelset roll angle with respect to the track plane'
@@ -17074,7 +17076,7 @@ end % Loop on list (clean X)
    st=[st1;setdiff(st,st1)];
 
    r2=sdth.sfield('addselected',struct,LI,st);
-   vhandle.tab(r2,struct('asTree',1,'name','LI','gf','SDT Root'))
+   vhandle.tab(r2,struct('asTree',1,'name','LI','gf','SDT Root'));
 
    %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
   end
