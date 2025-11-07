@@ -16914,6 +16914,7 @@ end % Loop on list (clean X)
        'dyrail';'dzrail';'drollr'; % Mr  {'0';'dyrail';'dzrail';'drollr';'0';'0'}
        'vyrail';'vzrail';'vrollr'};% vMr {'0';'vyrail';'vzrail';'vrollr';'0';'0'}
 
+      %% DataExch CNTC/FEM data input 
        %  st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws {'x_ow';'0';'0';'0';'0';'ry_ow'}
        % 'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws {'vx_ow';'0';'0';'0';'0';'vry_ow'}
        % 'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw  {'0';'y_ow';'z_ow';'rx_ow';'rz_ow';'0'}
@@ -16960,13 +16961,12 @@ end % Loop on list (clean X)
       LI=cntc.call;
       if contains(list{j1},'cosim')&LI.cur.j1==1
        % Cosimulation
-        cntc.init; LI=cntc.call;
-       cntc.init; eval(iigui({'RT'},'GetInCaller'));
-        RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
-        RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatPB');
-        LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags; 
-        % Initialize
-        cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
+       cntc.init; LI=cntc.call; eval(iigui({'RT'},'GetInCaller'));
+       RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+       RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatPB');
+       LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags;
+       % Initialize
+       cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
       elseif contains(list{j1},'maintain')&LI.cur.j1==2
        %% After first step maintain parameters as constant XXXGAE
        list={'Solver{GauSei maintain}'
@@ -17008,7 +17008,12 @@ end % Loop on list (clean X)
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    li=RT.LoopParam; LI=cntc.call;
-   for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
+   if isfield(RT.Traj,'step')
+    J1=RT.Traj.step;
+   else 
+    J1=RT.Traj.X{1};
+   end 
+   for j1 = J1 % Loop on traj, In fe_time step is called j1 here icase
     i1=contains(li,'traj');
     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe); LI.cur=st2; 
     % sdtweb cntc set.traj
