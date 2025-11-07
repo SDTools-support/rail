@@ -235,7 +235,7 @@ cntc : interface between SDT and CONTACT
    end
    % load the library into Matlab
    if (~libisloaded(libname))
-    pathstr=sdtdef('Contact_Path',[deblank(pathstr) filesep '..' filesep 'bin']);
+    pathstr=sdtdef('Contact_Path');
     fullname = fullfile(pathstr, [libname lib_ext]);
 
     if ~exist(fullname,'file')
@@ -12079,8 +12079,8 @@ end % Loop on list (clean X)
      sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
      LI.Track.gaught+zmax);
     yr_g=XYZ(:,ind,2);
-    Or_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax]; %(GaugeCalc)
-    p.Or_tr=Or_tr;p.Omax=Omax;
+    Mr_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax LI.Track.cant 0 0]; %(GaugeCalc)
+    p.Mr_tr=Mr_tr;p.Omax=Omax;
     else; error('Not implemented')
     end
    end
@@ -16916,6 +16916,14 @@ end % Loop on list (clean X)
        'dyrail';'dzrail';'drollr'; % Mr  {'0';'dyrail';'dzrail';'drollr';'0';'0'}
        'vyrail';'vzrail';'vrollr'};% vMr {'0';'vyrail';'vzrail';'vrollr';'0';'0'}
 
+      %% DataExch CNTC/FEM data input 
+       %  st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws {'x_ow';'0';'0';'0';'0';'ry_ow'}
+       % 'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws {'vx_ow';'0';'0';'0';'0';'vry_ow'}
+       % 'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw  {'0';'y_ow';'z_ow';'rx_ow';'rz_ow';'0'}
+       % 'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw {'0';'vy_ow';'vz_ow';'vrx_ow';'vrz_ow';'0'}
+       % 'dyrail';'dzrail';'drollr'; % Mr  {'0';'y_or';'z_or';'rx_or';'0';'0'}
+       % 'vyrail';'vzrail';'vrollr'};% vMr {'0';'vy_or';'vz_or';'vrx_or';'0';'0'}
+
       if ~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
@@ -16929,19 +16937,18 @@ end % Loop on list (clean X)
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
 
-      % Wheel trajectory % i1=1:6;[ st1(i1) num2cell(pos)']
+      % Wheelset trajectory and speed % i1=1:6;[ st1(i1) num2cell(pos)']
       pos=LI.Traj.Y(icase,1:6);
-      cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
-
       vel=LI.Traj.Y(icase,7:12);
-      cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
-
-      i1=13:24;flex=LI.Traj.Y(icase,i1);%[ st1(i1) num2cell(flex)']
-      cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
-
-      % Rail Traj
+      % Rail Traj and speed
       dev=LI.Traj.Y(icase,25:30);
-      % Track Definition at first timestep
+      % Wheel Traj and speed
+      i1=13:24;flex=LI.Traj.Y(icase,i1);%[ st1(i1) num2cell(flex)']
+     
+      % CNTC input functions
+      cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
+      cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
+      cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
       if icase==1
        params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
         'railz0', 'cant', 'nomrad'}); params=struct2cell(params);
@@ -16950,67 +16957,70 @@ end % Loop on list (clean X)
       else
        cntc.settrackdimensions(iwhe, 2, dev); %  New Devia, deviation definition only
       end
+
+     case 'initcalc'
+      %% #InitCalc initialize CNTC Calculation -2
+      LI=cntc.call;
+      if contains(list{j1},'cosim')&LI.cur.j1==1
+       % Cosimulation
+       cntc.init; LI=cntc.call; eval(iigui({'RT'},'GetInCaller'));
+       RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+       RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatPB');
+       LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags;
+       % Initialize
+       cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
+      elseif contains(list{j1},'maintain')&LI.cur.j1==2
+       %% After first step maintain parameters as constant XXXGAE
+       list={'Solver{GauSei maintain}'
+        'Friction{FrcLaw Maintain}'
+        'Track{Design Maintain}'
+        'wheelsetDim{Ewheel NewFlexVelPos}'};
+       for i1=1:size(RT.Model,1)
+        st3=RT.Model;
+        if comstr(st3,'PotCntc')
+         list{end+1}=st3;
+        elseif comstr(st3,'Rolling')
+         list{end+1}=st3;
+        elseif comstr(st3,'Mat')
+         list{end+1}=st3;
+        end
+       end
+       RT.Model=list;
+       cntc.set(RT.Model);
+      elseif LI.cur.j1==1
+       % Initialize
+       cntc.init; eval(iigui({'RT'},'GetInCaller'));
+       LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
+       LI.flags=RT.flags;
+       cntc.initializeflags; %initialize Global_flags
+       cntc.setflags;
+       cntc.set(RT.Model);
+      end
+      %xxxgae inside or outside of the if
+      % call the profiler
+      eval(iigui({'RT'},'GetInCaller'));
+      if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end 
+      if RT.profile;try;profile('clear');end;profile('on');end
+      eval(iigui({'RT'},'SetInCaller'));
+
     end
    end
   end
-
+  
   function []= TimeLoop(RT)
    %% #TimeLoop -2
-   cntc.init; LI=cntc.call;
-   if contains(RT.LoopParam,'cosim')
-    % Cosimulation
-    if isfield(LI.cur,'j1')&(LI.cur.j1==1)
-     RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
-     RT.flags=d_cntc('nmap.Global_flags');  RT.Model=d_cntc('nmap.Mod_WheelflatFB');
-     LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags; LI.Traj=RT.Traj;
-     % Initialize
-     cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
-    else
-     LI.Traj=RT.Traj;  li=RT.LoopParam;
-    end
-   else
-    % Initialize
-    LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
-    LI.flags=RT.flags;
-    cntc.initializeflags; %initialize Global_flags
-    cntc.setflags;
-    cntc.set(RT.Model);
-    li=RT.LoopParam;
-   end
-
-   if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end %call the profiler
-   if RT.profile;try;profile('clear');end;profile('on');end
-
-   if comstr(lower(li{1}),'traj');
-    for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
-     if j1==2
-      %% After first step maintain parameters as constant
-      list={'Solver{GauSei maintain}'
-       'Friction{FrcLaw Maintain}'
-       'Track{Design Maintain}'
-       'wheelsetDim{Ewheel NewFlexVelPos}'
-       };
-      for i1=1:size(RT.Model,1)
-       st3=RT.Model;
-       if comstr(st3,'PotCntc')
-        list{end+1}=st3;
-       elseif comstr(st3,'Rolling')
-        list{end+1}=st3;
-       elseif comstr(st3,'Mat')
-        list{end+1}=st3;
-       end
-      end
-      RT.Model=list;
-      cntc.set(RT.Model);
-     end
-     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-     LI.cur=st2; li{1}=st2;
-     % sdtweb cntc set.traj
-     cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
-    end % icase j1
-   else
-    error('Trajectory must be define first')
-   end
+   li=RT.LoopParam; LI=cntc.call;
+   if isfield(RT.Traj,'step')
+    J1=RT.Traj.step;
+   else 
+    J1=RT.Traj.X{1};
+   end 
+   for j1 = J1 % Loop on traj, In fe_time step is called j1 here icase
+    i1=contains(li,'traj');
+    st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe); LI.cur=st2; 
+    % sdtweb cntc set.traj
+    cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
+   end % icase j1
    if RT.profile;profile('viewer'),end
    eval(iigui({'RT'},'SetInBaseC'));
 
@@ -18602,8 +18612,8 @@ end % Loop on list (clean X)
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    if ~isfield(LI.prw,'Ow_tr')
-     LI.prw.Ow_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0];%xxxgae sign fbpos
+    if ~isfield(LI.prw,'Mw_tr')
+     LI.prw.Mw_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0 0 0 0];%xxxgae sign fbpos
     end
     switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
