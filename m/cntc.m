@@ -16730,7 +16730,7 @@ end % Loop on list (clean X)
   end % cntc.getwheelsetvelocity
 
   %------------------------------------------------------------------------------------------------------------
-  function []=set(list)
+  function []=set(list,RT)
    %% #SetSDT : SDT distribution to CNTC set commands -1
    if ~iscell(list);list={list};end
    LI=cntc.call;
@@ -16909,29 +16909,43 @@ end % Loop on list (clean X)
       %NL=cntc.SDTLoop;
       %[NL.unllab NL.vnllab NL.snllab]
       % Be careful CNTC convention {x y z rx rz ry}
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws {'s_ws';'0';'0';'0';'0';'pitch_ws'}
-       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws {'vs';'0';'0';'0';'0';'vpitch'}
-       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw  {'0';'dywhl';'dzwhl';'drollw';'dyaww';'0'}
-       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw {'0';'vywhl';'vzwhl';'vrollw';'vyaww';'0'}
-       'dyrail';'dzrail';'drollr'; % Mr  {'0';'dyrail';'dzrail';'drollr';'0';'0'}
-       'vyrail';'vzrail';'vrollr'};% vMr {'0';'vyrail';'vzrail';'vrollr';'0';'0'}
 
-      %% DataExch CNTC/FEM data input 
-       %  st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws {'x_ow';'0';'0';'0';'0';'ry_ow'}
-       % 'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws {'vx_ow';'0';'0';'0';'0';'vry_ow'}
-       % 'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw  {'0';'y_ow';'z_ow';'rx_ow';'rz_ow';'0'}
-       % 'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw {'0';'vy_ow';'vz_ow';'vrx_ow';'vrz_ow';'0'}
-       % 'dyrail';'dzrail';'drollr'; % Mr  {'0';'y_or';'z_or';'rx_or';'0';'0'}
-       % 'vyrail';'vzrail';'vrollr'};% vMr {'0';'vy_or';'vz_or';'vrx_or';'0';'0'}
+      if contains(list{j1},'cosim')&LI.cur.j1==1
+       % Cosim init
+       cntc.set('initcalc{cosim}')
+      elseif LI.cur.j1==1
+       % Full traj init
+       cntc.set('initcalc{}')
+      elseif contains(list{j1},'maintain')&LI.cur.j1==2
+       % Modification init
+       cntc.set('initcalc{maintain}')
+      end
 
-      if ~isequal(LI.Traj.X{2}(:,1),st1)
+      %% DataExch CNTC/FEM data input
+      
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws 
+       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws
+       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw 
+       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw 
+       '0';'dyrail';'dzrail';'drollr';'0';'0'; % Mr
+       '0';'vyrail';'vzrail';'vrollr''0';'0'};% vMr
+      % warning CNTC convention {x,y,z,roll,yaw,pitch}
+      st2={'Mw:x';'0';'0';'0';'0';'Mw:ry';
+       'Mw:vrx';'0';'0';'0';'0';'Mw:vry'
+       '0';'Mw:y';'Mw:z';'Mw:rx';'Mw:rz';'0'
+       '0';'Mw:vy';'Mw:vz';'Mw:vrx';'Mw:rz';'0'
+       '0';'Mr:y';'Mr:z';'Mr:rx';'0';'0'
+       '0';'Mr:vy';'Mr:vz';'Mr:vrx';'0';'0'};
+
+      if isfield(LI,'Traj')&~isequal(LI.Traj.X{2}(:,1),st1)
        [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
        C2=LI.Traj; C2.X{2}=st1;
        C2.Y=zeros(size(C2.Y,1),length(st1));C2.Y(:,i2)=LI.Traj.Y;
        C2.X{2}(i2,1:size(LI.Traj.X{2},2))=LI.Traj.X{2};
        LI.Traj=C2;
+      else
+       
       end
-
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
@@ -16961,7 +16975,7 @@ end % Loop on list (clean X)
      case 'initcalc'
       %% #InitCalc initialize CNTC Calculation -2
       LI=cntc.call;
-      if contains(list{j1},'cosim')&LI.cur.j1==1
+      if contains(list{j1},'cosim')
        % Cosimulation
        cntc.init; LI=cntc.call; eval(iigui({'RT'},'GetInCaller'));
        RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
@@ -16969,7 +16983,7 @@ end % Loop on list (clean X)
        LI.ProjectWd=RT.ProjectWd; LI.flags=RT.flags;
        % Initialize
        cntc.initializeflags; cntc.setflags; cntc.set(RT.Model); li=RT.LoopParam;
-      elseif contains(list{j1},'maintain')&LI.cur.j1==2
+      elseif contains(list{j1},'maintain')
        %% After first step maintain parameters as constant XXXGAE
        list={'Solver{GauSei maintain}'
         'Friction{FrcLaw Maintain}'
@@ -16987,7 +17001,7 @@ end % Loop on list (clean X)
        end
        RT.Model=list;
        cntc.set(RT.Model);
-      elseif LI.cur.j1==1
+      else
        % Initialize
        cntc.init; eval(iigui({'RT'},'GetInCaller'));
        LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
@@ -17019,7 +17033,7 @@ end % Loop on list (clean X)
     i1=contains(li,'traj');
     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe); LI.cur=st2; 
     % sdtweb cntc set.traj
-    cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
+    cntc.set(li,RT); % Do steps typically Traj/calculate/getout/getsol
    end % icase j1
    if RT.profile;profile('viewer'),end
    eval(iigui({'RT'},'SetInBaseC'));
