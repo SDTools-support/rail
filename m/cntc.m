@@ -14749,7 +14749,7 @@ end % Loop on list (clean X)
      };
     chan=PreMCp;RO.type='AtMarker';
 
-   elseif strcmpi(CAM,'nl')
+   elseif strncmpi(CAM,'nl',2)
     persistent NL
     if isempty(NL)||nargin==1
      NL=struct;
@@ -14759,7 +14759,7 @@ end % Loop on list (clean X)
       % Mw_ws
       '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
       };
-     NL.unl.X{1}={'x0';'y0';'z0';'rx0';'ry0';'rz0'};
+     NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
      NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
@@ -14773,13 +14773,13 @@ end % Loop on list (clean X)
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
       's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_gl
 
-     if isempty(LI.Track.raily0)
+     if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
       unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
        '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-       '0';'LI.prr.Or_tr(2)';'LI.prr.Or_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
+       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
        '0';'0';'0';'0';'0';'0'};%Mtr_gl
@@ -14818,8 +14818,72 @@ end % Loop on list (clean X)
       '0';'0';'0';'0';'0';'0'};                                %Mtr_gl
     end
 
-    if isempty(str)
+    if nargin>1&&isempty(str)
      out=NL;return
+    elseif strcmpi(CAM,'nlastable')
+     %% #nlastable -3 
+
+     st1={'Track','Friction'};
+     cntc.settrackdimensions('');% Track
+     cntc.setwheelsetposition(''); % wheelsetPos
+     cntc.setwheelsetvelocity(''); % wheelsetVel
+     cntc.setwheelsetflexibility('');%wheelsetFlex
+  
+     r2=sdth.sfield('addmissing',sdtu.ui.EditT2struct(LI.Track), ...
+          sdtu.ui.EditT2struct(LI.wheelsetPos));
+     r2=sdth.sfield('addmissing',r2,sdtu.ui.EditT2struct(LI.wheelsetVel));
+     r2=sdth.sfield('addmissing',r2,sdtu.ui.EditT2struct(LI.wheelsetFlex));
+
+     st=fieldnames(r2);% intersect(fieldnames(r2),[NL.unllab(:);NL.vnllab(:);])
+     colM=[];parM=[];
+     for j1=1:length(st)
+      r3=r2.(st{j1});
+      if ~isfield(r3,'ToolTip')||r3.ToolTip(end)~='}';continue;end
+      [r3.ToolTip,r4]=sdtm.urnPar(r3.ToolTip,'{}{}');
+      if strcmpi(r4.Other{2},'param')&&length(r4.Other)==2
+       %% 
+       if isempty(parM);parM=sdtu.ivec('ColList',st(j1));end
+       fprintf('Not implemented %s=%s\n',st{j1},sdtm.toString(r2.(st{j1})))
+       icol=parM(st{j1});parM.prop(icol)=r3;
+      elseif length(r4.Other)~=4;
+        fprintf('Not valid %s\n',sdtm.toString(r2.(st{j1})))
+      else
+       %% tooltip{tlab,TeX,state,LI position}
+       if isempty(colM);colM=sdtu.ivec('ColList',st(j1));end
+       r3.tlab=r4.Other{1};r3.Tex=r4.Other{2};
+       r3.param=r4.Other{3};r3.ipos=r4.Other{4};
+       r2.(st{j1})=r3;
+       icol=colM(st{j1});colM.prop(icol)=r3;
+      end
+     end
+
+     %r2=sdtm.toStruct(Track.GHandle);r2.vrollr
+
+     taPre=struct('ColumnName',{[{'M/DOF'},NL.unl.X{1}(:,1)']}, ...
+         'table','');
+     taPre.table=[NL.unl.X{2};cellfun(@(x)['v' x],NL.unl.X{2}(:,1),'uni',0)
+         cellfun(@(x)['s' x],NL.unl.X{2}(:,1),'uni',0)];
+     taPre.table(:,2:7)=[reshape(NL.cnllab,6,[])';reshape(NL.vnllab,6,[])'
+         reshape(NL.snllab,6,[])'];
+     taPre.name='nl'; ta=vhandle.tab(taPre);
+
+     setdiff(NL.cnllab,fieldnames(r2))
+
+     asTab(ta)
+     st=strrep(asTex(ta),'_','\_');disp(st)
+
+     % now tex table
+     i2=containers.Map(colM.prop.name,colM.prop.Tex);
+     for j1=1:numel(ta.table)
+       if isKey(i2,ta.table{j1});
+           ta.table{j1}=['$' i2(ta.table{j1}) '$'];
+       end 
+     end
+     asTex(ta)
+
+     if nargout>0; out=ta;end
+     return
+
     elseif strcmp(str,'back') % get trajectories
      out=NL;  % NL.unl(:,:,2)=unl0
      out.cnl=cntc.getCurve(NL.cnllab);
@@ -17262,7 +17326,7 @@ end % Loop on list (clean X)
 
 
   %------------------------------------------------------------------------------------------------------------
-  function []=setfrictionmethod(ire, icp, imeth, params)
+  function [out]=setfrictionmethod(ire, icp, imeth, params)
    % [ ] = cntc.setfrictionmethod(ire, icp, imeth, params)
    %  imeth          - type of friction law used: 10 * V-digit + 1 * L-digit
    %  params         - depending on method that is used
@@ -17317,7 +17381,7 @@ end % Loop on list (clean X)
      'nvf(#%g#"Number of control points for friction variation")' ...
      'alphvf(#%g#"Rail surface inclinations at the control points")'];
 
-    if nargin==0; CAM='';else; CAM=ire;end
+    if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     %xxxeb commented because doesn't work
@@ -18465,7 +18529,10 @@ end % Loop on list (clean X)
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    Track=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'Track');Track=sdtu.ui.cleanEntry(LI.Track);
+    else; Track=struct;
+    end
+    Track=cingui('paramedit -doclean2',DoOpt,{Track,CAM});
     % XXXGAE EB
     switch Track.Design
      case 0; params=[];% 0 Maintain
@@ -18498,7 +18565,9 @@ end % Loop on list (clean X)
     if Track.Design~=0;LI.Track=Track;end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if ~isempty(params);params=struct2cell(params);params=horzcat(params{:});end
+    if ~isempty(CAM)
     cntc.settrackdimensions(Global.ire, Track.Design, params); % config solver Gauss-Seidel
+    end
     return
     % end SDT packaging
 
@@ -18696,7 +18765,7 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'dxwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:x,x_{w},state,LI.Traj}")' ...
      'dywhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:y,y_{w},state,LI.Traj}")' ...
@@ -18713,7 +18782,11 @@ end % Loop on list (clean X)
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'wheelsetFlex');wheelsetFlex=sdtu.ui.cleanEntry(LI.wheelsetFlex);
+    else; wheelsetFlex=struct;
+    end
+
+    wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{wheelsetFlex,CAM});
 
     switch wheelsetFlex.Ewheel;
      case 0; params=[];% Maintain
@@ -18721,7 +18794,8 @@ end % Loop on list (clean X)
      case {4,5}; % New flexibilities with symmetry
       params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
        'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'};
-     otherwise; error('Wrong parameter')
+     otherwise; 
+       if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
     if wheelsetFlex.Ewheel~=0;LI.wheelsetFlex=wheelsetFlex;end;
@@ -18775,7 +18849,7 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      's_ws(#%g#"Wheelset position along the track center line{Mtr_gl:x,x_{ws},state,LI.Traj}")' ...
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.{Mws_tr:y,y_{ws},state,LI.Traj}")' ...
@@ -18784,9 +18858,12 @@ end % Loop on list (clean X)
      'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{Mw_wc:rz,rz_{ws},state,LI.Traj}")' ...
      'pitch_ws(#%g#"Wheelset pitch angle, i.e. rotation about the wheelset axle{Mws_tr:ry,ry_{ws},state,LI.Traj}")'];
 
-    if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if nargin==0; CAM='';else; CAM=ire ;end
+    if isempty(CAM)&&isfield(LI,'wheelsetPos');wheelsetPos=sdtu.ui.cleanEntry(LI.wheelsetPos);
+    else; wheelsetPos=struct;
+    end
+    wheelsetPos=cingui('paramedit -doclean2',DoOpt,{wheelsetPos,CAM});
 
     switch wheelsetPos.Ewheel
      case 0 % Maintain
@@ -18795,10 +18872,12 @@ end % Loop on list (clean X)
       params=sdth.sfield('addselected',struct,wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
        'roll', 'yaw', 'pitch'});
      otherwise
-      error('Wrong parameter')
+      if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
-    if wheelsetPos.Ewheel~=0;LI.wheelsetPos=wheelsetPos;end
+    if wheelsetPos.Ewheel~=0;LI.wheelsetPos=wheelsetPos;
+        if isempty(CAM);return;end
+    end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetposition(Global.ire, wheelsetPos.Ewheel, params);
@@ -18852,7 +18931,7 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
      'vs(#%g#"Wheelset forward velocity{vMtr_gl:x,vx_{ws},state,LI.Traj}")' ...
      'vy(#%g#"Wheelset lateral velocity{vMws_tr:y,vy_{ws},state,LI.Traj}")' ...
@@ -18870,8 +18949,12 @@ end % Loop on list (clean X)
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'wheelsetVel');wheelsetVel=sdtu.ui.cleanEntry(LI.wheelsetVel);
+    else; wheelsetVel=struct;
+    end
+    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{wheelsetVel,CAM});
 
+    if isempty(CAM); LI.wheelsetVel=wheelsetVel;end
     switch wheelsetVel.Ewheel
      case {0,1} % Maintain
       params=[];
@@ -18879,10 +18962,12 @@ end % Loop on list (clean X)
       params=sdth.sfield('addselected',struct,wheelsetVel,{'vs', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
-      error('Wrong parameter')
+      if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
-    if ~ismember(wheelsetVel.Ewheel,[0,1]); LI.wheelsetVel=wheelsetVel;end %xxxgae
+    if ~ismember(wheelsetVel.Ewheel,[0,1]); LI.wheelsetVel=wheelsetVel;
+     if isempty(CAM);return;end
+    end 
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetvelocity(Global.ire, wheelsetVel.Ewheel, params);
