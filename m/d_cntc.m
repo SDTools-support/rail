@@ -341,7 +341,7 @@ C1=struct('X',{{LI.cur.j1,st1}}, ...
  'Xlab',{{'Step','Comp'}},'Y',[]);
 C1.Y=zeros(size(st1));
 l1=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
-C1.Y(:,6)=l1(LI.cur.j1);
+C1.Y(:,6)=l1(LI.cur.j1(end));
  % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
 if isfield(LI,'wheelsetDim')
  C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
@@ -362,7 +362,7 @@ l1=[0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
  0.7528,0.7042,0.6598,0.6215,0.5882,0.5599,0.5353,0.5156,0.4993,...
  0.4845,0.4702,0.4590,0.4515,0.4461,0.4445,0.4436,0.4432,0.4432,...
  0.4433,0.4434];
-C1.Y(:,15)=l1(LI.cur.j1);
+C1.Y(:,15)=l1(LI.cur.j1(end));
 nmap('Traj_WheelFlatCosim')=C1;
 
 %  #Traj_WheelflatR pen defined on the rail -2
