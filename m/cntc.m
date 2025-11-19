@@ -14822,7 +14822,10 @@ end % Loop on list (clean X)
     if nargin>1&&isempty(str)
      out=NL;return
     elseif strcmpi(CAM,'nlastable')
-     %% #nlastable -3 
+ %{
+```DocString  {module=rail,src=@sncf_ir/tex/gaetan/gae_cntc.tex#nlastable} -3
+nlAstable : generate tables for tex
+ %}
 
      st1={'Track','Friction'};
      cntc.settrackdimensions('');% Track
@@ -14841,7 +14844,7 @@ end % Loop on list (clean X)
       r3=r2.(st{j1});
       if ~isfield(r3,'ToolTip')||r3.ToolTip(end)~='}';continue;end
       [r3.ToolTip,r4]=sdtm.urnPar(r3.ToolTip,'{}{}');
-      if strcmpi(r4.Other{2},'param')&&length(r4.Other)==2
+      if length(r4.Other)==2&&strcmpi(r4.Other{2},'param')
        %% 
        if isempty(parM);parM=sdtu.ivec('ColList',st(j1));end
        fprintf('Not implemented %s=%s\n',st{j1},sdtm.toString(r2.(st{j1})))
