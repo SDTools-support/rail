@@ -14755,13 +14755,10 @@ end % Loop on list (clean X)
     if isempty(NL)||nargin==1
      NL=struct;
      NL.unllab={% label of cq+unl0
-      'xwE_tr';'yw_tr';'zw_tr';'rollw_tr';'yaww_tr';'0' % xxx MwE_tr
-      %Mws-tr
-      % MwE_ws
-      '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
+     %xxxgae automatic construction with X{1} and X{2}
       };
      NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl'};
+     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl';'Mw-gl';'Mr-gl'};
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
@@ -14772,8 +14769,10 @@ end % Loop on list (clean X)
       '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
       'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
-      's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_gl
-
+      's_ws'; '0';'0';           '0';       '0';'0' %Mtr_gl
+      's_ws';'dywhl';'dzwhl';   'drollw';'pitch_ws';'dyaww' %Mw-gl
+      '0';'dyrail';'dzrail'; 'drollr';'0';'0'};   %Mr-gl
+      
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
       unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
@@ -14783,16 +14782,20 @@ end % Loop on list (clean X)
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
-       '0';'0';'0';'0';'0';'0'};%Mtr_gl
+       '0';'0';'0';'0';'0';'0'%Mtr_gl
+       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
+       '0';'0';'0';'0';'0';'0'};%Mr_gl
      else
-     unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
-      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
-      '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
-      '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
-      '0';'0';'0';'0';'0';'0'%Mcp_w
-      '0';'0';'0';'0';'0';'0'%Mcp_r
-      '0';'0';'0';'0';'0';'0'};%Mtr_gl
+      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
+       '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
+       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
+       '0';'0';'0';'0';'0';'0'%Mcp_w
+       '0';'0';'0';'0';'0';'0'%Mcp_r
+       '0';'0';'0';'0';'0';'0';%Mtr_gl
+       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
+       '0';'0';'0';'0';'0';'0'};%Mr_gl
      end
 
      LI=cntc.call;r1=zeros(42,1);
@@ -14802,21 +14805,25 @@ end % Loop on list (clean X)
       else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
       end
      end
-     NL.unl.Y(1:6,1:7,2)=reshape(r1,[6 7]);
+     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);
      NL.vnllab= { '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
       'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwL-ws
       '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwL-wE
       '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
       '0';'0';'0';'0';'0';'0'                                  % vMcp_w
       '0';'0';'0';'0';'0';'0'                                  % Mcp_r
-      'vs';'0';'0';'0';'0';'0'};                               % vMtr_gl
+      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
+       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'        %Mw-gl
+      '0';'vyrail';'vzrail'; 'vrollr';'0';'0'};                %Mr-gl
      NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
       'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % MwL_ws xxx incoherent
       '0';'0';'0';   '0'; '0';  '0'                            % MwL-wE
-      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r                           
+      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
       'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
       'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'               % Mcp_r
-       '0';'0';'0';'0';'0';'0' };                              % Mtr_gl
+      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
+      '0';'0';'0';'0';'0';'0'                                  % Mw_gl
+      '0';'0';'0';'0';'0';'0'};                                % Mr_gl
     end
 
     if nargin>1&&isempty(str)
@@ -14891,18 +14898,18 @@ nlAstable : generate tables for tex
     elseif strcmp(str,'back') % get trajectories
      out=NL;  % NL.unl(:,:,2)=unl0
      out.cnl=cntc.getCurve(NL.cnllab);
-     out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     out.cnl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl'};
+     out.cnl.X{1}=NL.unl.X{1};
+     out.cnl.X{2}=NL.unl.X{2};
      out.Cunl=cntc.getCurve(NL.unllab);
      if isfield(NL,'vnllab')
       out.vnl=cntc.getCurve(NL.vnllab);
       out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
-      out.vnl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl'};
+      out.vnl.X{2}=NL.unl.X{2};
      end
      if isfield(NL,'snllab')
       out.snl=cntc.getCurve(NL.snllab);
       out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
-      out.snl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl'};
+      out.snl.X{2}=NL.unl.X{2};
      end
      return
     end
@@ -17016,21 +17023,13 @@ nlAstable : generate tables for tex
       end
 
       %% DataExch CNTC/FEM data input
-      
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws 
-       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws
-       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw 
-       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw 
-       '0';'dyrail';'dzrail';'drollr';'0';'0'; % Mr
-       '0';'vyrail';'vzrail';'vrollr''0';'0'};% vMr
       % warning CNTC convention {x,y,z,roll,yaw,pitch}
-      st2={'Mw:x';'0';'0';'0';'0';'Mw:ry';
-       'Mw:vrx';'0';'0';'0';'0';'Mw:vry'
-       '0';'Mw:y';'Mw:z';'Mw:rx';'Mw:rz';'0'
-       '0';'Mw:vy';'Mw:vz';'Mw:vrx';'Mw:rz';'0'
-       '0';'Mr:y';'Mr:z';'Mr:rx';'0';'0'
-       '0';'Mr:vy';'Mr:vz';'Mr:vrx';'0';'0'};
-
+      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';% pos'
+       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';        %vel     
+       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %flex'
+       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw';  
+       '0';'dyrail';'dzrail';'drollr';'0';'0'; %dev'
+       '0';'vyrail';'vzrail';'vrollr''0';'0'}; 
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
