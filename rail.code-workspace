@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../sncf_ir/tex/gaetan"
+		},
+		{
+			"path": "../dynavoie/tex"
 		}
 	]
 }

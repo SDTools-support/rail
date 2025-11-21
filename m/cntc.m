@@ -5,6 +5,7 @@ classdef cntc
  % <a href="matlab:methods cntc">methods cntc</a> for methods
  % <a href="matlab:sdtweb cntc">sdtweb cntc</a> for HTML documentation
  % <a href="matlab:sdtweb _taglist cntc">sdtweb _taglist cntc</a> for taglist
+ % <a href="matlab:cntc.tab">cntc.tab</a> current status
  %
  % For Linux you may have to set
  %    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/o3/APP/contact_v24.1/bin
@@ -80,8 +81,9 @@ cntc : interface between SDT and CONTACT
     if ~isempty(LI.libname)||libisloaded(LI.libname)
      cntc.closelibrary;
     end
-    evalin('base','LI=[]');LI=[];
-    LI=cntc.call;
+    clear cntc;
+    evalin('base','LI=vhandle.uo([]);');LI=vhandle.uo([]);
+    %LI=cntc.call;
    else
     disp('Error : LI is already empty')
    end
@@ -220,7 +222,7 @@ cntc : interface between SDT and CONTACT
    LI=cntc.call;
    % unload the library if it was loaded before (why ?)
    if libisloaded(libname)
-    LI.libname=libname;
+    LI.libname=libname;LI=cntc.call;
     cntc.closelibrary;
    end
    if nargin>0
@@ -234,15 +236,11 @@ cntc : interface between SDT and CONTACT
    end
    % load the library into Matlab
    if (~libisloaded(libname))
-    pathstr = [deblank(pathstr) filesep '..' filesep 'bin'];
-    if ispref('SDT','CONTACT_Path')
-     pathstr=getpref('SDT','CONTACT_Path');
-    end
+    pathstr=sdtdef('Contact_Path');
     fullname = fullfile(pathstr, [libname lib_ext]);
 
     if ~exist(fullname,'file')
      disp(['ERROR: cant find library: ', fullname]);
-     return
     else
      loadlibrary(fullname, 'contact_addon.h');
      LI.libname=libname;
@@ -570,7 +568,11 @@ cntc : interface between SDT and CONTACT
    wd=sdtu.f.firstdir({'D:\APP\win64\contact_v24.1\bin';
     'C:\Program Files\Vtech CMCC\contact_v24.1\bin';
     '/o/APP/contact_v24.1/bin'});
-   wd=sdtdef('Contact_Path-safe',wd);
+   if 1==2
+     wd=sdtu.f.firstdir(wd);
+     sdtdef('Contact_Path-setpref',wd);
+   end
+   wd=sdtdef('Contact_Path-safe',sdtu.f.firstdir(wd));
    cd(wd0);
    f1=sdtu.f.cffile(fullfile(wd,'../doc/user-guide.pdf'));
    if exist(f1,'file')
@@ -8294,7 +8296,7 @@ end % Loop on list (clean X)
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
         ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
-              RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mwc-ws')');
+              RO.Rot.Y(2,strcmpi(RO.M.X{2},'MwL-ws')');
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
         if strcmpi(X.bas,'w')
@@ -8395,10 +8397,10 @@ end % Loop on list (clean X)
         RB.text= cellfun(@(x)['O',x(2:end)],st,'uni',0);RB.text{1,4}='';
         sel=sdtu.fe.genSel(sdtm.rmfield(X,{'name','from'}),RB);
         % Some design features
-        if all(cellfun(@(k) any(contains(X.name, k)),{'Mws-','Mw-','Mwc-'}));
+        if all(cellfun(@(k) any(contains(X.name, k)),{'Mws-','MwE-','MwL-'}));
          Ows=X.bas(contains(X.name,'Mws-'),4:6);
-         Ow=X.bas(contains(X.name,'Mw-'),4:6);
-         Owc=X.bas(contains(X.name,'Mwc-'),4:6);
+         Ow=X.bas(contains(X.name,'MwE-'),4:6);
+         Owc=X.bas(contains(X.name,'MwL-'),4:6);
          Oc=Ows+[0 1 0]*Ow(2); % center of the wheel
          plot3(Oc(1),Oc(2),Oc(3),'+','DisplayName','Oc','LineWidth',2);
          C1=[Ows;Oc;Oc;Ow;Oc;Owc];
@@ -12078,8 +12080,8 @@ end % Loop on list (clean X)
      sdtm.indNearest(XYZ(:,XYZ(:,:,2)>-cntc.leftCoef(LI),3), ...
      LI.Track.gaught+zmax);
     yr_g=XYZ(:,ind,2);
-    Or_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax]; %(GaugeCalc)
-    p.Or_tr=Or_tr;p.Omax=Omax;
+    Mr_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax LI.Track.cant 0 0]; %(GaugeCalc)
+    p.Mr_tr=Mr_tr;p.Omax=Omax;
     else; error('Not implemented')
     end
    end
@@ -14737,7 +14739,191 @@ end % Loop on list (clean X)
   function out=getCurve(CAM,str)
    %% #getCurve 
    LI=cntc.call; 
-   if strcmpi(CAM,'mcp')
+   persistent NL
+   if isempty(NL)||nargin==1
+     NL=struct;
+     NL.unllab={% label of cq+unl0
+     %xxxgae automatic construction with X{1} and X{2}
+      };
+     NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
+     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl';'Mw-gl';'Mr-gl'};
+     NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
+     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
+     NL.unl.Xlab={'Comp';'Bas';'u'};
+     NL.cnllab= {% label of cq 
+      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws' %Mws-tr
+      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % MwL-ws
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwL-wE  
+      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
+      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
+      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
+      's_ws'; '0';'0';           '0';       '0';'0' %Mtr_gl
+      's_ws';'dywhl';'dzwhl';   'drollw';'pitch_ws';'dyaww' %Mw-gl
+      '0';'dyrail';'dzrail'; 'drollr';'0';'0'};   %Mr-gl
+      
+     if isfield(LI,'Track')&&isempty(LI.Track.raily0)
+      % offset in unl = [c]{q} + {unl0}
+      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
+       '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
+       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
+       '0';'0';'0';'0';'0';'0'%Mcp_w
+       '0';'0';'0';'0';'0';'0'%Mcp_r
+       '0';'0';'0';'0';'0';'0'%Mtr_gl
+       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
+       '0';'0';'0';'0';'0';'0'};%Mr_gl
+     else
+      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
+       '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
+       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
+       '0';'0';'0';'0';'0';'0'%Mcp_w
+       '0';'0';'0';'0';'0';'0'%Mcp_r
+       '0';'0';'0';'0';'0';'0';%Mtr_gl
+       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
+       '0';'0';'0';'0';'0';'0'};%Mr_gl
+     end
+
+     LI=cntc.call;r1=zeros(42,1);
+     for j1=1:length(unl0)  % Fill unl0 from LI content
+      r2=eval(unl0{j1});
+      if isscalar(r2); r1(j1)=r2;
+      else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
+      end
+     end
+     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);
+     NL.vnllab= { '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
+      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwL-ws
+      '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwL-wE
+      '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
+      '0';'0';'0';'0';'0';'0'                                  % vMcp_w
+      '0';'0';'0';'0';'0';'0'                                  % Mcp_r
+      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
+       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'        %Mw-gl
+      '0';'vyrail';'vzrail'; 'vrollr';'0';'0'};                %Mr-gl
+     NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
+      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % MwL_ws xxx incoherent
+      '0';'0';'0';   '0'; '0';  '0'                            % MwL-wE
+      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
+      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
+      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'               % Mcp_r
+      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
+      '0';'0';'0';'0';'0';'0'                                  % Mw_gl
+      '0';'0';'0';'0';'0';'0'};                                % Mr_gl
+
+     st1={'Track','Friction'};
+     cntc.settrackdimensions('');% Track
+     cntc.setwheelsetposition(''); % wheelsetPos
+     cntc.setwheelsetvelocity(''); % wheelsetVel
+     cntc.setwheelsetflexibility('');%wheelsetFlex
+  
+     r2=sdth.sfield('addmissing',sdtu.ui.EditT2struct(LI.Track), ...
+          sdtu.ui.EditT2struct(LI.wheelsetPos));
+     r2=sdth.sfield('addmissing',r2,sdtu.ui.EditT2struct(LI.wheelsetVel));
+     r2=sdth.sfield('addmissing',r2,sdtu.ui.EditT2struct(LI.wheelsetFlex));
+
+     st=fieldnames(r2);% intersect(fieldnames(r2),[NL.unllab(:);NL.vnllab(:);])
+     colM=[];parM=[]; tlabM=vhandle.nmap;
+     for j1=1:length(st)
+      r3=r2.(st{j1});
+      if ~isfield(r3,'ToolTip')||r3.ToolTip(end)~='}';continue;end
+      r4=r3.ToolTip;r3.ToolTip=regexprep(r3.ToolTip,'([^{]*).*','$1');
+      r4(1:length(r3.ToolTip))=''; [~,r4]=sdtm.urnPar(r4,'{}{}');
+      if length(r4.Other)==2&&strcmpi(r4.Other{2},'param')
+       %% 
+       if isempty(parM);parM=sdtu.ivec('ColList',st(j1));end
+       fprintf('Not implemented %s=%s\n',st{j1},sdtm.toString(r2.(st{j1})))
+       icol=parM(st{j1});parM.prop(icol)=r3;
+      elseif length(r4.Other)~=4;
+        fprintf('Not valid %s\n',sdtm.toString(r2.(st{j1})))
+      else
+       %% tooltip{tlab,TeX,state,LI position}
+       if isempty(colM);colM=sdtu.ivec('ColList',st(j1));end
+       r3.tlab=r4.Other{1};r3.Tex=r4.Other{2};
+       r3.param=r4.Other{3};r3.ipos=r4.Other{4};
+       r2.(st{j1})=r3;
+       icol=colM(st{j1});colM.prop(icol)=r3;
+       [i1,i2]=ismember(st{j1},NL.cnllab);
+       if strcmpi(r4.Other{3},'param');continue;end
+      end
+     end
+     for j1=1:numel(NL.cnllab)  % cnllab
+         [i1,i2]=ind2sub([6 numel(NL.cnllab)/6],j1);
+         tlabM([ NL.unl.X{2}{i2} ':' NL.unl.X{1}{i1}])=NL.cnllab{j1};
+     end
+     st2={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
+     for j1=1:numel(NL.snllab)  % snllab
+         [i1,i2]=ind2sub([6 numel(NL.cnllab)/6],j1);
+         tlabM([ NL.unl.X{2}{i2} ':' st2{i1}])=NL.snllab{j1};
+     end
+     st2={'vx';'vy';'vz';'vrx';'vry';'vrz'};
+     for j1=1:numel(NL.snllab)  % vnllab
+         [i1,i2]=ind2sub([6 numel(NL.vnllab)/6],j1);
+         tlabM([ NL.unl.X{2}{i2} ':' st2{i1}])=NL.vnllab{j1};
+     end
+     
+     NL.parM=parM; NL.colM=colM;NL.tlabM=tlabM; 
+     
+   end % persistent init
+
+   if strncmpi(CAM,'nl',2)
+    %% getCurve.NL
+    if nargin>1&&isempty(str)
+     out=NL;return
+    elseif strcmpi(CAM,'nlastable')
+ %{
+```DocString  {module=rail,src=@sncf_ir/tex/gaetan/gae_cntc.tex#nlastable} -3
+nlAstable : generate tables for tex
+ %}
+
+     %r2=sdtm.toStruct(Track.GHandle);r2.vrollr
+
+     taPre=struct('ColumnName',{[{'M/DOF'},NL.unl.X{1}(:,1)']}, ...
+         'table','');
+     taPre.table=[NL.unl.X{2};cellfun(@(x)['v' x],NL.unl.X{2}(:,1),'uni',0)
+         cellfun(@(x)['s' x],NL.unl.X{2}(:,1),'uni',0)];
+     taPre.table(:,2:7)=[reshape(NL.cnllab,6,[])';reshape(NL.vnllab,6,[])'
+         reshape(NL.snllab,6,[])'];
+     taPre.name='nl'; ta=vhandle.tab(taPre);
+
+     setdiff(NL.cnllab,fieldnames(r2))
+
+     asTab(ta)
+     st=strrep(asTex(ta),'_','\_');disp(st)
+
+     % now tex table
+     i2=containers.Map(colM.prop.name,colM.prop.Tex);
+     for j1=1:numel(ta.table)
+       if isKey(i2,ta.table{j1});
+           ta.table{j1}=['$' i2(ta.table{j1}) '$'];
+       end 
+     end
+     asTex(ta)
+
+     if nargout>0; out=ta;end
+     return
+
+    elseif strcmp(str,'back') % get trajectories
+     out=NL;  % NL.unl(:,:,2)=unl0
+     out.cnl=cntc.getCurve(NL.cnllab);
+     out.cnl.X{1}=NL.unl.X{1};
+     out.cnl.X{2}=NL.unl.X{2};
+     out.Cunl=cntc.getCurve(NL.unllab);
+     if isfield(NL,'vnllab')
+      out.vnl=cntc.getCurve(NL.vnllab);
+      out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
+      out.vnl.X{2}=NL.unl.X{2};
+     end
+     if isfield(NL,'snllab')
+      out.snl=cntc.getCurve(NL.snllab);
+      out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
+      out.snl.X{2}=NL.unl.X{2};
+     end
+     return
+    end
+   elseif strcmpi(CAM,'mcp')
     %% #PreMcp 1st column sdt sensor label, 2nd CNTC output lab -3
     PreMCp= {'Mcp_tr:x','xcp_tr';'Mcp_tr:y','ycp_tr';'Mcp_tr:z','zcp_tr';
      'Mcp_tr:rx','deltcp_tr';'Mcp_tr:ry','0';'Mcp_tr:rz','0'
@@ -14748,95 +14934,6 @@ end % Loop on list (clean X)
      };
     chan=PreMCp;RO.type='AtMarker';
 
-   elseif strcmpi(CAM,'nl')
-    persistent NL
-    if isempty(NL)||nargin==1
-     NL=struct;
-     NL.unllab={% label of cq+unl0
-      'xw_tr';'yw_tr';'zw_tr';'rollw_tr';'yaww_tr';'0' % xxx Mw_tr
-      %Mws-tr
-      % Mw_ws
-      '0';'yr_tr';'zr_tr';'rollr_tr';'0';'0'% Mr
-      };
-     NL.unl.X{1}={'x0';'y0';'z0';'rx0';'ry0';'rz0'};
-     NL.unl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
-     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
-     NL.unl.Xlab={'Comp';'Bas';'u'};
-     NL.cnllab= {% label of cq 
-      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; 'pitch_ws'; 'yaw_ws' %Mws-tr
-      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % Mwc-ws
-      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % Mwc-w  
-      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
-      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
-      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
-      's_ws'; '0';'0';           '0';       '0';'0'};%Mtr_gl
-
-     if isempty(LI.Track.raily0)
-      % offset in unl = [c]{q} + {unl0}
-      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
-       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
-       '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-       '0';'LI.prr.Or_tr(2)';'LI.prr.Or_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
-       '0';'0';'0';'0';'0';'0'%Mcp_w
-       '0';'0';'0';'0';'0';'0'%Mcp_r
-       '0';'0';'0';'0';'0';'0'};%Mtr_gl
-     else
-     unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
-      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      'LI.wheelsetDim.nomrad';'0';'0';'0'% Mwc_ws
-      '0';'0';'0';   '0'; '0';  '0'   % Mwc-w
-      '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
-      '0';'0';'0';'0';'0';'0'%Mcp_w
-      '0';'0';'0';'0';'0';'0'%Mcp_r
-      '0';'0';'0';'0';'0';'0'};%Mtr_gl
-     end
-
-     LI=cntc.call;r1=zeros(42,1);
-     for j1=1:length(unl0)  % Fill unl0 from LI content
-      r2=eval(unl0{j1});
-      if isscalar(r2); r1(j1)=r2;
-      else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
-      end
-     end
-     NL.unl.Y(1:6,1:7,2)=reshape(r1,[6 7]);
-     NL.vnllab= { 'vs' ;'vy' ;'vz' ;'vroll'  ;'vpitch';'vyaw'   %vMws-tr
-      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwc_ws
-      '0';'0';'0';   '0'; '0';  '0'                            % vMwc-w
-      '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr_tr
-      '0';'0';'0';'0';'0';'0'                                  %vMcp_w
-      '0';'0';'0';'0';'0';'0'                                  %Mcp_r
-      '0';'0';'0';'0';'0';'0'};                                %vMtr_gl
-     NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
-      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mwc_ws xxx incoherent
-      '0';'0';'0';   '0'; '0';  '0'                            % Mwc-w
-      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
-      '0';'0';'0';'0';'0';'0'                                  %Mcp_w
-      '0';'0';'0';'0';'0';'0'                                  %Mcp_r
-      '0';'0';'0';'0';'0';'0'};                                %Mtr_gl
-    end
-
-    if isempty(str)
-     out=NL;return
-    elseif strcmp(str,'back') % get trajectories
-     out=NL;  % NL.unl(:,:,2)=unl0
-     out.cnl=cntc.getCurve(NL.cnllab);
-     out.cnl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     out.cnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     out.Cunl=cntc.getCurve(NL.unllab);
-     if isfield(NL,'vnllab')
-      out.vnl=cntc.getCurve(NL.vnllab);
-      out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
-      out.vnl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     end
-     if isfield(NL,'snllab')
-      out.snl=cntc.getCurve(NL.snllab);
-      out.snl.X{1}={'Fx';'Fy';'Fz';'Mx';'My';'Mz'};
-      out.snl.X{2}={'Mws-tr';'Mwc-ws';'Mwc-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl'};
-     end
-     return
-    end
 
    elseif strcmpi(CAM,'lcp')
     %% #PreLcp : load = force-moment at contact point -3
@@ -14850,22 +14947,49 @@ end % Loop on list (clean X)
     chan=PreLCp;RO.type='AtMarker';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
+   elseif strcmpi(CAM,'cosim')
+    %% #PreCosim : get wheelE and railE marker information -3
+    chan=NodeDir2Lab({'Mw-gl';'Mw-gl:v';'Mr-gl';'Mw-gl:v'});
+    RO.type='AtMarker';
+    if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
+
+    % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
+
     elseif strcmpi(CAM,'trajws')
     %% #TrajWS Wheelset Trajectory in gl marker -3
     TrajWS= {'Mws_gl:x','s_ws';'Mws_gl:y','y_ws';'Mws_gl:z','z_ws';
      'Mws_gl:rx','roll_ws';'Mws_gl:ry','pitch_ws';'Mws_gl:rz','yaw_ws'
      };
     chan=TrajWS;RO.type='AtMarker';
+    elseif strcmpi(CAM,'cExchange')
+    %% #iExchange Wheelset Trajectory in gl marker -3
+    lab=str; if isfield(lab,'lab');lab=lab.lab; end
+    if ~all(isKey(NL.tlabM,lab)); error('Problem');end
+    st2=cellfun(@(x)NL.tlabM(x),lab,'uni',0);
+    st1=d_cntc('nmap.DataExchange');
+    [i1,i2]=ismember(st1,st2);
+    out=sparse(find(i1),i2(i1),1,length(st1),length(st2));return;
 
    elseif iscell(CAM);chan=CAM(:,[1 1]);RO.type='AtMarker';
    else;
     error('%s not known',CAM)
    end
+   if size(chan,2)==1
+    %% resolve tlab/CNCT pairing
+    [i1,i2]=ismember(chan,tlabM.keys);
+    if ~all(i1); error('Missing %s\n in %s',sdtm.toString(chan(~i1,:)'),...
+            sdtm.toString(tlabM));
+    end
+    chan(:,2)=cellfun(@(x)tlabM(x),chan(:,1),'uni',0);
+
+   end
+
    if ~isfield(RO,'name');RO.name='curve';end
    if strcmpi(RO.type,'AtMarker')
     C1=LI.Cmacro;  %% values in Cmacro
-    C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ...
-        regexprep(chan(1:6:end,1),':[FM]*x',''),C1.X{3}}}, ...
+    C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ... % component
+        regexprep(chan(1:6:end,1),{':[FM]*x',':vx'},{'',':v'}), ...% marker
+        C1.X{3}}}, ...
      'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[], ...
      'name',RO.name,'Ylab',1,'DimPos',[3 1 2]);
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
@@ -14892,14 +15016,14 @@ end % Loop on list (clean X)
    if nargin==0; it=(1:size(NL.cnl.Y,3))';cntc.getBasis(it);end %case it is a timestep
    if ischar(it)&&comstr(it,'roll') % rolling calculation
     qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
-    roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'Mwc-ws'),:)+ ...
-     qbas(5,strcmpi(NL.cnl.X{2},'Mwc-w'),:)); % (Rolling_wheel)
+    roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'MwL-ws'),:)+ ...
+     qbas(5,strcmpi(NL.cnl.X{2},'MwL-wE'),:)); % (Rolling_wheel)
     C1=roll; % rotation angles
    else 
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
     qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-     [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'Mwc-gl'};{'Mwc-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+     [NL.cnl.X{2};{'MwE-tr'};{'MwE-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
     C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
     C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
     for j1=1:size(it,1) %time loop
@@ -14911,14 +15035,14 @@ end % Loop on list (clean X)
      Ows_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1);
      Rws_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3]);
 
-     Owc_ws=C1.Y(1:3,strcmpi(C1.X{2},'Mwc-ws'),j1);
-     Rwc_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-ws'),j1),[3 3]);
+     OwL_ws=C1.Y(1:3,strcmpi(C1.X{2},'MwL-ws'),j1);
+     RwL_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-ws'),j1),[3 3]);
 
-     % We need Mw-wc but have Mwc-w
-     Rwc_w=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mwc-w'),j1),[3 3]);
-     Rw_wc=Rwc_w';
-     iwc_w=strcmpi(C1.X{2},'Mwc-w');
-     Ow_wc=(Rw_wc-eye(3))*Owc_ws; C1.Y(1:3,iwc_w,j1)= Ow_wc; % Correct
+     % We need MwE-wc but have MwL-wE
+     RwL_wE=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-wE'),j1),[3 3]);
+     RwL_wE=RwL_w';
+     iwL_w=strcmpi(C1.X{2},'MwL-wE');
+     OwL_wE=(RwL_wE-eye(3))*OwL_ws; C1.Y(1:3,iwL_wE,j1)= OwL_wE; % Correct
 
      Or_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
      Rr_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
@@ -14927,14 +15051,14 @@ end % Loop on list (clean X)
      Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3]);
 
      %% Tranformation composed basis
-     %Mw-tr
-     Ow_tr=Ows_tr+Rws_tr*Rwc_ws*Rw_wc*Owc_ws;
-     Rw_tr=Rwc_ws*Rws_tr*Rw_wc;
+     %MwE-tr
+     Ow_tr=Ows_tr+Rws_tr*RwL_ws*RwL_wE*OwL_ws;
+     Rw_tr=RwL_ws*Rws_tr*RwL_wE;
      C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
      C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
-     %Mw-gl
-     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*Owc_ws+Rtr_gl*Rws_tr*Rwc_ws*Ow_wc;
-     Rw_gl=Rtr_gl*Rws_tr*Rwc_ws*Rw_wc;
+     %MwE-gl
+     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws+Rtr_gl*Rws_tr*RwL_ws*OwL_wE;
+     Rw_gl=Rtr_gl*Rws_tr*RwL_ws*RwL_wE;
      C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
      C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
      %Mr-gl
@@ -14942,16 +15066,16 @@ end % Loop on list (clean X)
      Rr_gl=Rtr_gl*Rr_tr;
      C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
      C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
-     %Mwc-gl
-     Owc_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*Owc_ws;
-     Rwc_gl=Rtr_gl*Rws_tr*Rwc_ws;
-     C1.Y(1:3,size(qbas,2)+4,j1)= Owc_gl;
-     C1.Y(4:12,size(qbas,2)+4,j1)= Rwc_gl(:);
-     %Mwc-tr
-     Owc_tr=Ows_tr+Rws_tr*Owc_ws;
-     Rwc_tr=Rws_tr*Rwc_ws;
-     C1.Y(1:3,size(qbas,2)+5,j1)= Owc_tr;
-     C1.Y(4:12,size(qbas,2)+5,j1)= Rwc_tr(:);
+     %MwL-gl
+     OwL_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws;
+     RwL_gl=Rtr_gl*Rws_tr*RwL_ws;
+     C1.Y(1:3,size(qbas,2)+4,j1)= OwL_gl;
+     C1.Y(4:12,size(qbas,2)+4,j1)= RwL_gl(:);
+     %MwL-tr
+     OwL_tr=Ows_tr+Rws_tr*OwL_ws;
+     RwL_tr=Rws_tr*RwL_ws;
+     C1.Y(1:3,size(qbas,2)+5,j1)= OwL_tr;
+     C1.Y(4:12,size(qbas,2)+5,j1)= RwL_tr(:);
      %Mws-gl
      Ows_gl=Otr_gl+Rtr_gl*Ows_tr;
      Rws_gl=Rtr_gl*Rws_tr;
@@ -14967,7 +15091,7 @@ end % Loop on list (clean X)
   function out=getMacro(varargin)
    %% #getMacro : get macro field content -2
    LI=cntc.call;
-   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(:,1));
+   [i1,i2]=ismember(varargin{1},LI.Cmacro.X{1}(2:end,1)); %xxx why first line is an empty double
    out=zeros(length(varargin{1}),length(varargin{2}));
    out(i1,:)=LI.Cmacro.Y(i2(i1),varargin{2});
   end
@@ -16649,13 +16773,14 @@ end % Loop on list (clean X)
    % category 2: m=1, wtd    - no icp needed
    % #getwheelsetposition
 
-   l1={
-    1, 'S_WS','mm', 's-position of the wheelset center of mass along the track center line'
-    2, 'Y_WS','mm', 'lateral y-position of the wheelset center of mass in track coordinates'
-    3, 'Z_WS','mm', ' vertical z-position of the wheelset center of mass in track coordinates'
-    4, 'ROLL_WS','rad', 'wheelset roll angle with respect to the track plane'
-    5, 'YAW_WS','rad', 'wheelset yaw angle with respect to the track center line x_tr'
-    6, 'PITCH_WS','rad', 'wheelset pitch angle, i.e. rotation about the wheelset axle'
+   ColumnName={'Index','CNTCname','unit','ToolTip','tlab','TeX'};
+   l1={ 
+    1, 'S_WS','mm', 's-position of the wheelset center of mass along the track center line','ws:x','x_{ws}'
+    2, 'Y_WS','mm', 'lateral y-position of the wheelset center of mass in track coordinates','ws:y','y_{ws}'
+    3, 'Z_WS','mm', ' vertical z-position of the wheelset center of mass in track coordinates','ws:z','z_{ws}'
+    4, 'ROLL_WS','rad', 'wheelset roll angle with respect to the track plane','ws:rx','rx_{ws}'
+    5, 'YAW_WS','rad', 'wheelset yaw angle with respect to the track center line x_tr','ws:rz','rz_{ws}'
+    6, 'PITCH_WS','rad', 'wheelset pitch angle, i.e. rotation about the wheelset axle','ws:ry','ry_{ws}'
     };l1(:,2)=lower(l1(:,2));
 
    if (nargin<1 | isempty(ire))
@@ -16701,13 +16826,13 @@ end % Loop on list (clean X)
 
    % category 2: m=1, wtd    - no icp needed
    % #getwheelsetvelocity
-
-   l1={1, 'VS_WS'  ,'[mm/s]' ,'s-velocity of the wheelset center of mass along the track center line'
-    2, 'VY_WS'     ,'[mm/s]' ,'velocity in lateral y-direction of the wheelset center of mass (track coordinates)'
-    3, 'VZ_WS'     ,'[mm/s]' ,'velocity in vertical z-direction of the wheelset center of mass (track coordinates)'
-    4, 'VROLL_WS'  ,'[mm/s]' ,'wheelset roll velocity, angular velocity with respect to the track plane'
-    5, 'VYAW_WS'   ,'[mm/s]' ,'wheelset yaw velocity, angular velocity with respect to the track center line x_tr'
-    6, 'VPITCH_WS' ,'[mm/s]' , 'wheelset pitch velocity, i.e. angular velocity about the wheelset axle'
+   ColumnName={'Index','CNTCname','unit','ToolTip','tlab','TeX'};
+   l1={1, 'VS_WS'  ,'[mm/s]' ,'s-velocity of the wheelset center of mass along the track center line','vws:x','vx_{ws}'
+    2, 'VY_WS'     ,'[mm/s]' ,'velocity in lateral y-direction of the wheelset center of mass (track coordinates)','vws:y','vy_{ws}'
+    3, 'VZ_WS'     ,'[mm/s]' ,'velocity in vertical z-direction of the wheelset center of mass (track coordinates)','vws:z','vz_{ws}'
+    4, 'VROLL_WS'  ,'[mm/s]' ,'wheelset roll velocity, angular velocity with respect to the track plane','vws:rx','vrx_{ws}'
+    5, 'VYAW_WS'   ,'[mm/s]' ,'wheelset yaw velocity, angular velocity with respect to the track center line x_tr','vws:rz','vrz_{ws}'
+    6, 'VPITCH_WS' ,'[mm/s]' , 'wheelset pitch velocity, i.e. angular velocity about the wheelset axle','vws:y','vry_{ws}'
     };l1(:,2)=lower(l1(:,2));
 
    if (nargin<1 | isempty(ire))
@@ -16728,7 +16853,7 @@ end % Loop on list (clean X)
   end % cntc.getwheelsetvelocity
 
   %------------------------------------------------------------------------------------------------------------
-  function []=set(list)
+  function []=set(list,RT)
    %% #SetSDT : SDT distribution to CNTC set commands -1
    if ~iscell(list);list={list};end
    LI=cntc.call;
@@ -16756,18 +16881,44 @@ end % Loop on list (clean X)
 
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage
-      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1], LI.Traj.X{1}}},'Y',[], ...
-       'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}},'DimPos',[3 1 2]);
-      Cfield.Y(1,1,1,1,size(Cfield.X{5},1))=0;
-      LI.Cfield=Cfield;
+      if ~isfield(LI.Traj,'Y')
+       step=LI.Traj.J1;
+      else
+       step=LI.Traj.X{1};
+      end
+
+       Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1],step}},'Y',[], ...
+        'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}},'DimPos',[3 1 2]);
+       Cfield.Y(1,1,1,1,size(Cfield.X{5},1))=0;
+       LI.Cfield=Cfield;
 
       % get detailed results per contact patch, if there is more than one
       % contact between the wheel and the rail
       LI.Cmacro.rowM=sdtu.ivec('ColList', {'lab'}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
-      LI.Cmacro.X={{},[],LI.Traj.X{1}};
+      LI.Cmacro.X={{},[],step};
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
       setCMacro;
+     case 'getloads'
+      if isempty(evt);
+       j1=LI.cur.j1;iwhe=LI.cur.iwhe;
+      else;iwhe=evt.iwhe;icase=evt.j1;  
+      end
+      if LI.cur.j1==1;   cntc.set('initout{}');  end
+
+      % Definition of LI.Cmacro.X{2} then called ind
+      if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
+      else      % Need to extend contact dimension
+       i2=(1:cntc.getnumcontactpatches(iwhe))'*[0 0 1];
+       i2(:,2)=iwhe; i2(:,1)=size(LI.Cmacro.X{2},1)+(1:size(i2,1));
+       LI.Cmacro.X{2}=[LI.Cmacro.X{2};i2];
+      end
+      ind=LI.Cmacro.X{2};ind=ind(ind(:,2)==iwhe,:);
+      for jre=1:size(ind,1); % icp = 1 : LI.results{iwhe}.npatch(icase)
+       ire=ind(jre,1); iwhe=ind(jre,2);icp=ind(jre,3);
+       cntc.getglobalforces(ire,icp,LI);
+       cntc.getcontactlocation(ire,icp,LI);
+      end
 
      case 'getout'
       %% #set.GetOut Get results -2
@@ -16906,38 +17057,34 @@ end % Loop on list (clean X)
       % increment icase = j1 in fe_time
       %NL=cntc.SDTLoop;
       %[NL.unllab NL.vnllab NL.snllab]
-      st1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
-       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';
-       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw';
-       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw';
-       'dyrail';'dzrail';'drollr'; % Mr
-       'vyrail';'vzrail';'vrollr'};% vMr
-      if ~isequal(LI.Traj.X{2}(:,1),st1)
-       [i1,i2]=ismember(LI.Traj.X{2}(:,1),st1);
-       C2=LI.Traj; C2.X{2}=st1;
-       C2.Y=zeros(size(C2.Y,1),length(st1));C2.Y(:,i2)=LI.Traj.Y;
-       C2.X{2}(i2,1:size(LI.Traj.X{2},2))=LI.Traj.X{2};
-       LI.Traj=C2;
+      % Be careful CNTC convention {x y z rx rz ry}
+
+      if LI.cur.j1==1 % Full traj init
+       cntc.set('initcalc{}',RT)
+      elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
+       cntc.set('initcalc{maintain}',RT)
       end
 
+      %% DataExch CNTC/FEM data input
+      % warning CNTC convention {x,y,z,roll,yaw,pitch}
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
+      uvnl=LI.Traj.cExchange*LI.Traj.def(:,icase); % evt.j1=icase
+      % LI.Traj=C2; WRONG do not modify LI.Traj just use it
 
-      % Wheel trajectory % i1=1:6;[ st1(i1) num2cell(pos)']
-      pos=LI.Traj.Y(icase,1:6);
+      % Wheelset trajectory and speed 
+      pos=uvnl(1:6);
+      vel=uvnl(7:12);
+      % Rail Traj and speed
+      dev=uvnl(25:30);
+      % Wheel Traj and speed
+      flex=uvnl(13:24);%[ st1(i1) num2cell(flex)']
+      % CNTC input functions
       cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
-
-      vel=LI.Traj.Y(icase,7:12);
       cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
-
-      i1=13:24;flex=LI.Traj.Y(icase,i1);%[ st1(i1) num2cell(flex)']
       cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
-
-      % Rail Traj
-      dev=LI.Traj.Y(icase,25:30);
-      % Track Definition at first timestep
       if icase==1
        params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
         'railz0', 'cant', 'nomrad'}); params=struct2cell(params);
@@ -16946,100 +17093,112 @@ end % Loop on list (clean X)
       else
        cntc.settrackdimensions(iwhe, 2, dev); %  New Devia, deviation definition only
       end
+      eval(iigui({'RT'},'SetInCaller'));
+
+     case 'initcalc'
+      %% #set.InitCalc initialize CNTC Calculation -2
+      LI=cntc.call;cntc.init;  %eval(iigui({'RT'},'GetInCaller')); %xxgae
+      RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+      RT.flags=d_cntc('nmap.Global_flags');
+      if isfield(RT,'cur')
+       RT.cur.iwhe=RT.flags.iwhe; LI.cur=RT.cur;
+      end
+      if ~isfield(LI.cur,'state')
+       st=d_cntc('nmap.DataExchange');
+       
+      end
+      if contains(list{j1},'maintain')
+       %% After first step maintain parameters as constant XXXGAE
+       list={'Solver{GauSei maintain}'
+        'Friction{FrcLaw Maintain}'
+        'Track{Design Maintain}'
+        'wheelsetDim{Ewheel NewFlexVelPos}'};
+       for i1=1:size(RT.Model,1)
+        st3=RT.Model;
+        if comstr(st3,'PotCntc')
+         list{end+1}=st3;
+        elseif comstr(st3,'Rolling')
+         list{end+1}=st3;
+        elseif comstr(st3,'Mat')
+         list{end+1}=st3;
+        end
+       end
+       RT.Model=list;
+       cntc.set(RT.Model);
+      else
+       %% Initialize model and Traj from info in caller
+       cntc.init; 
+       LI.ProjectWd=RT.ProjectWd; 
+       LI.Traj=RT.Traj; RT=rmfield(RT,'Traj');
+       LI.flags=RT.flags;
+       cntc.initializeflags; %initialize Global_flags
+       cntc.setflags;
+       cntc.set(RT.Model);
+      end
+      %xxxgae inside or outside of the if
+      % call the profiler
+      if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end 
+      if RT.profile;try;profile('clear');end;profile('on');end
+      if isfield(LI.Traj,'Y')
+       d1=struct('def',reshape(LI.Traj.Y,size(LI.Traj.Y,1)*size(LI.Traj.Y,2), ...
+           size(LI.Traj.Y,3)),'DOF',[],'lab',{NodeDir2Lab(LI.Traj.X{2})});
+       d1.cExchange=cntc.getCurve('cExchange',d1);
+       LI.Traj=d1; 
+      end
+      eval(iigui({'RT'},'SetInCaller'));
     end
    end
   end
-
+  
   function []= TimeLoop(RT)
    %% #TimeLoop -2
-   cntc.init; LI=cntc.call;LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj;
-   LI.flags=RT.flags;
-   % Initialize
-   cntc.initializeflags; %initialize Global_flags
-   cntc.setflags;
-   cntc.set(RT.Model);
-   li=RT.LoopParam;
-   if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
-   if RT.profile;try;profile('clear');end;profile('on');end
-   if comstr(lower(li{1}),'traj');
-    for j1 = 1:size(RT.Traj.Y,1) % Loop on traj, In fe_time step is called j1 here icase
-     if j1==2
-      %% After first step maintain parameters as constant
-      list={'Solver{GauSei maintain}'
-       'Friction{FrcLaw Maintain}'
-       'Track{Design Maintain}'
-       'wheelsetDim{Ewheel NewFlexVelPos}'
-       };
-      for i1=1:size(RT.Model,1)
-       st3=RT.Model;
-       if comstr(st3,'PotCntc')
-        list{end+1}=st3;
-       elseif comstr(st3,'Rolling')
-        list{end+1}=st3;
-       elseif comstr(st3,'Mat')
-        list{end+1}=st3;
-       end
-      end
-      RT.Model=list;
-      cntc.set(RT.Model);
-     end
-     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-     LI.cur=st2; li{1}=st2;
-     % sdtweb cntc set.traj
-     cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
-    end % icase j1
-   else
-    error('Trajectory must be define first')
-   end
-   if RT.profile;profile('viewer'),end
+   LI=cntc.call;
+   for j1 = 1:size(RT.Traj.Y,3) % Loop on traj, In fe_time step is called j1 here icase
+    % sdtweb cntc set.traj
+    if ~isfield(RT,'cur')
+     RT.cur=struct('type','Traj','j1',1,'iwhe',[]); 
+    else
+     RT.cur.j1=j1;LI.cur=RT.cur;
+    end
+    li=RT.LoopParam;
+    cntc.set(li,RT); % Do steps typically Traj/calculate/getout/getsol
+   end % icase j1
+   if isfield(RT,'profile');profile('viewer');end
    eval(iigui({'RT'},'SetInBaseC'));
 
   end
 
-
-  function [out]= SDTLoop(C1)
+  function [out]= SDTLoop(RT)
    %% #SDTLoop -2
    % CNTC script, wheel/rail position ->
    % initialize
-   
-   LI=cntc.call;  RT.ProjectWd=sdtu.f.firstdir({cntc.help('@examples')});
-   RT.flags=d_cntc('nmap.Global_flags');
-   RT.Model=d_cntc('nmap.Mod_WheelflatPB');
+     
+   %Y=[1 0 0.6 0 0 0; 1 0 0 0 0 0];
+   j1=1;
 
-  
+   l1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
+       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws
+       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw
+       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw
+       '0';'dyrail';'dzrail';'drollr';'0';'0' % Mr
+       '0';'vyrail';'vzrail';'vrollr';'0';'0'};% vMr
    % Trajectory definition
-   RT.Traj=struct('X',{{[],l1}}, 'Xlab',{{'Step','Comp'}},'Y',[]);
-   C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
-   % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
-   if isfield(LI,'wheelsetDim')
-    C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
-   end
-   C1.X{1}=(1:size(C1.Y,1))';
-   C1.Y(:,3)=2000; % set vs [mm/s]
-   C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]   
+   l1={'s_ws';'pitch_ws';%Mws
+    'dywhl';'dzwhl';'drollw';'dyaww'; % Mw
+    'dyrail';'dzrail';'drollr'};% Mr
+   C1=struct('X',{{j1,l1}}, 'Xlab',{{'step','Comp'}},'Y',[]);
+   C1.zeros()
+   C1.Y=[1;0;
+          0;0.6;0;0;
+          0;0;0]';
+   RT.Traj=C1;
 
-   
-   RT.LoopParam={'traj{}';'calculate{}';'getout{}';'getsol{}'};
-   cntc.set(li);
-
+   RT.LoopParam= {'traj{cosim}';'calculate{}';'getout{}'};
    cntc.TimeLoop(RT) % Temporal Loop
-
-   cntc.init; LI.ProjectWd=RT.ProjectWd; LI.Traj=RT.Traj; LI.flags=RT.flags;
-   cntc.initializeflags;  cntc.setflags; cntc.set(RT.Model);
-
-   cntc.set(RT.Model);
-   li=RT.LoopParam;
-
-      
-     st2=struct('type','Traj','j1',j1,'iwhe',RT.flags.iwhe);
-     LI.cur=st2; li{1}=st2;
-     % sdtweb cntc set.traj
-     cntc.set(li); % Do steps typically Traj/calculate/getout/getsol
-    % icase j1
    eval(iigui({'RT'},'SetInBaseC'));
-
-   LI.Fmacro.F_r=cntc.getMacro({'fx_r','fy_r','fz_r','mx_r_r','my_r_r','mz_r_r'},RC.j1);
-   LI.Fmacro.F_w=cntc.getMacro({'fx_w','fy_w','fz_w','mx_w_w','my_w_w','mz_w_w'},RC.j1);
+   LI=cntc.call;
+   Fr=cntc.getMacro({'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'},1);
+   Fw=cntc.getMacro({'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w'},1);
    LI.Fmacro.Pos_w=zeros(6,1);
    LI.Fmacro.Pos_w(1:4)=cntc.getMacro({'xcp_r','ycp_r','zcp_r','deltcp_r'},RC.j1);
    LI.Fmacro.Pos_r=zeros(6,1);
@@ -17068,7 +17227,7 @@ end % Loop on list (clean X)
    st=[st1;setdiff(st,st1)];
 
    r2=sdth.sfield('addselected',struct,LI,st);
-   vhandle.tab(r2,struct('asTree',1,'name','LI','gf','SDT Root'))
+   vhandle.tab(r2,struct('asTree',1,'name','LI','gf','SDT Root'));
 
    %ua=struct('ColumnName',{{'Name','value','ToolTip'}},)
   end
@@ -17223,7 +17382,7 @@ end % Loop on list (clean X)
 
 
   %------------------------------------------------------------------------------------------------------------
-  function []=setfrictionmethod(ire, icp, imeth, params)
+  function [out]=setfrictionmethod(ire, icp, imeth, params)
    % [ ] = cntc.setfrictionmethod(ire, icp, imeth, params)
    %  imeth          - type of friction law used: 10 * V-digit + 1 * L-digit
    %  params         - depending on method that is used
@@ -17278,7 +17437,7 @@ end % Loop on list (clean X)
      'nvf(#%g#"Number of control points for friction variation")' ...
      'alphvf(#%g#"Rail surface inclinations at the control points")'];
 
-    if nargin==0; CAM='';else; CAM=ire;end
+    if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     %xxxeb commented because doesn't work
@@ -17918,7 +18077,7 @@ end % Loop on list (clean X)
     if ProfileFname.iswheel == 1
      LI.WheelProfile=ProfileFname;
      LI.prw = cntc.read_profile(LI.WheelProfile.fname, 1, 0);
-     LI.prw.bas='Mwc';LI.prw.LeftCoef=cntc.leftCoef(LI);
+     LI.prw.bas='MwL';LI.prw.LeftCoef=cntc.leftCoef(LI);
     else
      LI.RailProfile=ProfileFname;
      LI.prr = cntc.read_profile(LI.RailProfile.fname, 0, 0);
@@ -18390,7 +18549,7 @@ end % Loop on list (clean X)
    %    3: new dimensions & track deviations for current side of the track
    %                                     params = params(1:5) cf. Z=1 followed by params(6:11) cf. Z=2;
    %                                              additionally, [kyrail, fyrail, kzrail, fzrail]
-   %
+   %dyrail
    % dimensions: gaught, gaugwd, raily0, railz0, nomrad, dyrail, dzrail [length],    cant, drollr [angle]
    %                                                     vyrail, vzrail [veloc],           vrollr [ang.veloc]
    %                                                kyrail, kzrail [force/length], fyrail, fzrail [force]
@@ -18406,27 +18565,30 @@ end % Loop on list (clean X)
    if nargin==0||ischar(ire)
     % settrackdimensions package SDT options 
     DoOpt=['Design(0#vd{0,Maintain,1,NewDim,2,NewDevia,3,NewBoth}#"Track dimension and deviation options")' ...
-     'gaught(#%g#"Height below the track plane at which the gauge width is measured.{$G_ht$,param}")' ...
-     'gaugwd(#%g#"Distance between the inner faces of the two rails.{$G_wd$,param}")' ...
-     'gaugsq(#%g#"Reserved for selecting second or further gauge faces instead of the leftmost one")' ...
-     'nomrad(#%g#"Nominal radius of the rollers")' ...
-     'dyrail(#%g#"Offset Δyrail of the rail profile reference from the design")' ...
-     'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design{$xxx$,unl}")' ...
-     'cant(#%g#"Rail cant  rotation angle (0.05) (rad)")' ...
-     'drollr(#%g#"Rotation Δφrail of the rail profile")'...
-     'vyrail(#%g#"Velocity vrail  y of the rail origin")' ...
-     'vzrail(#%g#"Velocity vrail  z of the rail origin")' ...
-     'raily0(#%g#"Position y of the rail origin with respect to track coordinates")' ...
-     'railz0(#%g#"Position z of the rail origin with respect to track coordinates")' ...
-     'vrollr(#%g#"Angular velocity vrailφ of the rail origin")' ...
-     'kyrail(#%g#"xxx")' ...
-     'kzrail(#%g#"xxx")' ...
-     'fyrail(#%g#"xxx")' ...
-     'fzrail(#%g#"xxx")' ];
+     'gaught(#%g#"Height below the track plane at which the gauge width is measured.{ ,G_{ht},param,LI.Track}")' ...
+     'gaugwd(#%g#"Distance between the inner faces of the two rails.{ ,G_{wd},param,LI.Track}")' ...
+     'gaugsq(#%g#"Reserved for selecting second or further gauge faces instead of the leftmost one{ , ,param,LI.Track}")' ...
+     'nomrad(#%g#"Nominal radius of the rollers{ , ,param,LI.Track}")' ...
+     'raily0(#%g#"Position y of the rail origin with respect to track coordinates{ , ,param,LI.Track}")' ...
+     'railz0(#%g#"Position z of the rail origin with respect to track coordinates{ , ,param,LI.Track}")' ...
+     'cant(0.05#%g#"Rail cant  rotation angle (0.05) (rad){ , ,param,LI.Track}")' ...
+     'dyrail(#%g#"Offset Δyrail of the rail profile reference from the design{Mr_tr:y,y_{dr},state,LI.Traj}")' ...
+     'dzrail(#%g#"Offset Δzrail of the rail profile reference from the design{Mr_tr:z,z_{dr},state,LI.Traj}")' ...
+     'drollr(#%g#"Rotation Δφrail of the rail profile{Mr_tr:rx,rx_{dr},state,LI.Traj}")'...
+     'vyrail(#%g#"Velocity vrail  y of the rail origin{vMr_tr:y,vy_{dr},state,LI.Traj}")' ...
+     'vzrail(#%g#"Velocity vrail  z of the rail origin{vMr_tr:z,vz_{dr},state,LI.Traj}")' ...
+     'vrollr(#%g#"Angular velocity vrailφ of the rail origin{vMr_tr:rx,rx_{dr},state,LI.Traj}")' ...
+     'kyrail(#%g#"xxx{ , ,param,LI.Track}")' ...
+     'kzrail(#%g#"xxx{ , ,param,LI.Track}")' ...
+     'fyrail(#%g#"xxx{ , ,param,LI.Track}")' ...
+     'fzrail(#%g#"xxx{ , ,param,LI.Track}")' ];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    Track=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'Track');Track=sdtu.ui.cleanEntry(LI.Track);
+    else; Track=struct;
+    end
+    Track=cingui('paramedit -doclean2',DoOpt,{Track,CAM});
     % XXXGAE EB
     switch Track.Design
      case 0; params=[];% 0 Maintain
@@ -18459,7 +18621,9 @@ end % Loop on list (clean X)
     if Track.Design~=0;LI.Track=Track;end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if ~isempty(params);params=struct2cell(params);params=horzcat(params{:});end
+    if ~isempty(CAM)
     cntc.settrackdimensions(Global.ire, Track.Design, params); % config solver Gauss-Seidel
+    end
     return
     % end SDT packaging
 
@@ -18589,12 +18753,14 @@ end % Loop on list (clean X)
      ',NewFlexVelPos,5,NewAll}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset{$fb_dist$,param,LI.wheelsetDim}")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow{$fb_pos$,param,LI.wheelsetDim}")' ...
-     'nomrad(#%g#"z distance between o_w and o_ws (revolution center){$r_wnom$,param,LI.wheelsetDim}")'];
+     'nomrad(#%g#"z distance between o_wE and o_ws (revolution center){$r_wnom$,param,LI.wheelsetDim}")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-
+    if ~isfield(LI.prw,'MwE_tr')
+     LI.prw.MwE_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0 0 0 0];%xxxgae sign fbpos
+    end
     switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
      case {3,5}; params=sdth.sfield('addselected',struct,wheelsetDim, ...
@@ -18655,24 +18821,28 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
-     'dxwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{$x_flx$,state,LI.Traj}")' ...
-     'dywhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{$y_flx$,state,LI.Traj}")' ...
-     'dzwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{$z_flx$,state,LI.Traj}")' ...
-     'drollw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{$rx_flx$,state,LI.Traj}")' ...
-     'dyaww(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{$rz_flx$,state,LI.Traj}")' ...
-     'dpitchw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{$ry_flx$,state,LI.Traj}")'...
-     'vxwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vx_flx$,state,LI.Traj}")' ...
-     'vywhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vy_flx$,state,LI.Traj}")' ...
-     'vzwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vz_flx$,state,LI.Traj}")' ...
-     'vrollw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vrx_flx$,state,LI.Traj}")' ...
-     'vyaww(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vrz_flx$,state,LI.Traj}")' ...
-     'vpitchw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{$vry_flx$,state,LI.Traj}")'];
+     'dxwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:x,x_{w},state,LI.Traj}")' ...
+     'dywhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:y,y_{w},state,LI.Traj}")' ...
+     'dzwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:z,z_{w},state,LI.Traj}")' ...
+     'drollw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:rx,rx_{w},state,LI.Traj}")' ...
+     'dyaww(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:rz,rz_{w},state,LI.Traj}")' ...
+     'dpitchw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:ry,ry_{w},state,LI.Traj}")'...
+     'vxwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:x,vx_{w},state,LI.Traj}")' ...
+     'vywhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:y,vy_{w},state,LI.Traj}")' ...
+     'vzwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:z,vz_{w},state,LI.Traj}")' ...
+     'vrollw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:rx,vrx_{w},state,LI.Traj}")' ...
+     'vyaww(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:rz,vrz_{w},state,LI.Traj}")' ...
+     'vpitchw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:ry,vry_{w},state,LI.Traj}")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'wheelsetFlex');wheelsetFlex=sdtu.ui.cleanEntry(LI.wheelsetFlex);
+    else; wheelsetFlex=struct;
+    end
+
+    wheelsetFlex=cingui('paramedit -doclean2',DoOpt,{wheelsetFlex,CAM});
 
     switch wheelsetFlex.Ewheel;
      case 0; params=[];% Maintain
@@ -18680,7 +18850,8 @@ end % Loop on list (clean X)
      case {4,5}; % New flexibilities with symmetry
       params={'dxwhl', 'dywhl', 'dzwhl','drollw', 'dyaww', 'dpitchw', 'vxwhl', ...
        'vywhl', 'vzwhl', 'vrollw', 'vyaww', 'vpitchw'};
-     otherwise; error('Wrong parameter')
+     otherwise; 
+       if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
     if wheelsetFlex.Ewheel~=0;LI.wheelsetFlex=wheelsetFlex;end;
@@ -18734,18 +18905,21 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
-     's_ws(#%g#"Wheelset position along the track center line{$s_ws$,state,LI.Traj}")' ...
-     'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.{$y_ws$,state,LI.Traj}")' ...
-     'z_ws(#%g#"Vertical position zws of the wheelset center{$z_ws$,state,LI.Traj}")' ...
-     'roll_ws(#%g#"Wheelset roll angle with respect to the track plane.{$rx_ws$,state,LI.Traj}")' ...
-     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{$rz_ws$,state,LI.Traj}")' ...
-     'pitch_ws(#%g#"Wheelset pitch angle, i.e. rotation about the wheelset axle{$ry_ws$,state,LI.Traj}")'];
+     's_ws(#%g#"Wheelset position along the track center line{Mtr_gl:x,x_{ws},state,LI.Traj}")' ...
+     'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.{Mws_tr:y,y_{ws},state,LI.Traj}")' ...
+     'z_ws(#%g#"Vertical position zws of the wheelset center{Mws_tr:z,z_{ws},state,LI.Traj}")' ...
+     'roll_ws(#%g#"Wheelset roll angle with respect to the track plane.{Mws_tr:rx,rx_{ws},state,LI.Traj}")' ...
+     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{MwL_wE:rz,rz_{ws},state,LI.Traj}")' ...
+     'pitch_ws(#%g#"Wheelset pitch angle, i.e. rotation about the wheelset axle{Mws_tr:ry,ry_{ws},state,LI.Traj}")'];
 
-    if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetPos=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if nargin==0; CAM='';else; CAM=ire ;end
+    if isempty(CAM)&&isfield(LI,'wheelsetPos');wheelsetPos=sdtu.ui.cleanEntry(LI.wheelsetPos);
+    else; wheelsetPos=struct;
+    end
+    wheelsetPos=cingui('paramedit -doclean2',DoOpt,{wheelsetPos,CAM});
 
     switch wheelsetPos.Ewheel
      case 0 % Maintain
@@ -18754,10 +18928,12 @@ end % Loop on list (clean X)
       params=sdth.sfield('addselected',struct,wheelsetPos,{'s_ws', 'y_ws', 'z_ws', ...
        'roll', 'yaw', 'pitch'});
      otherwise
-      error('Wrong parameter')
+      if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
-    if wheelsetPos.Ewheel~=0;LI.wheelsetPos=wheelsetPos;end
+    if wheelsetPos.Ewheel~=0;LI.wheelsetPos=wheelsetPos;
+        if isempty(CAM);return;end
+    end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetposition(Global.ire, wheelsetPos.Ewheel, params);
@@ -18811,26 +18987,30 @@ end % Loop on list (clean X)
 
    if nargin==0||ischar(ire)
     % package SDT options
-    DoOpt=['Ewheel(#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
+    DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
-     'vs(#%g#"Wheelset forward velocity{$vs$,state,LI.Traj}")' ...
-     'vy(#%g#"Wheelset lateral velocity{$vy$,state,LI.Traj}")' ...
-     'vz(#%g#"Wheelset vertical velocity{$vz$,state,LI.Traj}")' ...
-     'vroll(#%g#"Wheelset rate of roll{$vrx$,state,LI.Traj}")' ...
-     'vyaw(#%g#"Wheelset yaw rate{$vrz$,state,LI.Traj}")' ...
-     'vpitch(#%g#"Wheelset angular velocity{$vry$,state,LI.Traj}")'...
-     'shft_sws(#%g#"Wheelset forward position increment")' ...
-     'shft_yws(#%g#"Wheelset lateral position increment")' ...
-     'shft_zws(#%g#"Wheelset vertical position increment")' ...
-     'shft_rol(#%g#"Wheelset roll angle increment")' ...
-     'shft_yaw(#%g#"Wheelset yaw angle increment")' ...
-     'shft_pit(#%g#"Wheelset pitch angle icrement")'...
-     'rpitch(#%g#"Roller pitch angle increment")'];
+     'vs(#%g#"Wheelset forward velocity{vMtr_gl:x,vx_{ws},state,LI.Traj}")' ...
+     'vy(#%g#"Wheelset lateral velocity{vMws_tr:y,vy_{ws},state,LI.Traj}")' ...
+     'vz(#%g#"Wheelset vertical velocity{vMws_tr:z,vz_{ws},state,LI.Traj}")' ...
+     'vroll(#%g#"Wheelset rate of roll{vMws_tr:rx,vrx_{ws},state,LI.Traj}")' ...
+     'vyaw(#%g#"Wheelset yaw rate{vMwE_tr:rz,vrz_{ws},state,LI.Traj}")' ...
+     'vpitch(#%g#"Wheelset angular velocity{vMws_tr:ry,vry_{ws},state,LI.Traj}")'...
+     'shft_sws(#%g#"Wheelset forward position increment{ , ,param, }")' ...
+     'shft_yws(#%g#"Wheelset lateral position increment{ , ,param, }")' ...
+     'shft_zws(#%g#"Wheelset vertical position increment{ , ,param, }")' ...
+     'shft_rol(#%g#"Wheelset roll angle increment{ , ,param, }")' ...
+     'shft_yaw(#%g#"Wheelset yaw angle increment{ , ,param, }")' ...
+     'shft_pit(#%g#"Wheelset pitch angle icrement{ , ,param, }")'...
+     'rpitch(#%g#"Roller pitch angle increment{ , ,param, }")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
-    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
+    if isempty(CAM)&&isfield(LI,'wheelsetVel');wheelsetVel=sdtu.ui.cleanEntry(LI.wheelsetVel);
+    else; wheelsetVel=struct;
+    end
+    wheelsetVel=cingui('paramedit -doclean2',DoOpt,{wheelsetVel,CAM});
 
+    if isempty(CAM); LI.wheelsetVel=wheelsetVel;end
     switch wheelsetVel.Ewheel
      case {0,1} % Maintain
       params=[];
@@ -18838,10 +19018,12 @@ end % Loop on list (clean X)
       params=sdth.sfield('addselected',struct,wheelsetVel,{'vs', 'vy', 'vz', ...
        'vrol', 'vyaw', 'vpit'});
      otherwise
-      error('Wrong parameter')
+      if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
-    if ~ismember(wheelsetVel.Ewheel,[0,1]); LI.wheelsetVel=wheelsetVel;end %xxxgae
+    if ~ismember(wheelsetVel.Ewheel,[0,1]); LI.wheelsetVel=wheelsetVel;
+     if isempty(CAM);return;end
+    end 
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=struct2cell(params);params=horzcat(params{:});
     cntc.setwheelsetvelocity(Global.ire, wheelsetVel.Ewheel, params);
@@ -19263,7 +19445,6 @@ end % Loop on list (clean X)
  end % Static
 end
 
-
 function  setCMacro(LI,val,ire,j1)
 %% #setCMacro efficient storage into CMacro
 persistent iMap
@@ -19273,7 +19454,7 @@ end
 st=dbstack;st=st(2).name;
 if ~isKey(iMap,st) % Increment the X{1} to contain keys
  l1=evalin('caller','l1');
- i2=LI.Cmacro.rowM(l1(:,2));
+ i2=LI.Cmacro.rowM(l1(:,2)); % xxxEB first line empty ???
  if ~iscell(LI.Cmacro.X{1});LI.Cmacro.X{1}={};end
  LI.Cmacro.X{1}(i2,1)=l1(:,2); % set labels
  if size(l1,2)>=3
@@ -19288,3 +19469,13 @@ LI=builtin('subsasgn',LI,S,val(i2.iVal));
 %LI.Cmacro.Y(i2.iY,ire,j1)=val(i2.iVal);
 end
 
+
+
+
+function lab=NodeDir2Lab(M,di)
+
+if nargin==1; di={'x';'y';'z';'rx';'ry';'rz'};end
+lab=cellfun(@(x,y)[x ':' y],reshape(repmat(M(:,1)',6,1),[],1), ...
+    reshape(repmat(di,1,size(M,1)),[],1),'UniformOutput',false);
+lab=strrep(lab,':v:',':v');
+end
