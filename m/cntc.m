@@ -8087,7 +8087,7 @@ cntc : interface between SDT and CONTACT
      iimouse('on')
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
 
-     plot(LI.prr.ProfileY,LI.prr.ProfileZ,'.',DisplayName='Rail profile');
+     plot(LI.prr.ProfileY,LI.prr.ProfileZ,'.','DisplayName','Rail profile');
 
     end
 
