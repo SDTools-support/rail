@@ -8119,8 +8119,8 @@ for i1=1:length(RO.list)
           [~,RP]=sdtm.urnPar(X,'{}{}');
           r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
            'Otr',[0 0 0]
-           'Or',LI.prr.Or_tr
-           'Omax',squeeze(LI.prr.Omax)'+LI.prr.Or_tr};
+           'Or',LI.prr.Mr_tr(1:3)
+           'Omax',squeeze(LI.prr.Omax)'+LI.prr.Mr_tr(1:3)};
    X=struct('from','traj','XYZ',reshape(vertcat(r1{:,2}),1,[],3), ...
        'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
     'LineStyle','none','marker','+','Linewidth',2}});
@@ -8397,9 +8397,9 @@ end % Loop on list (clean X)
         RB.text= cellfun(@(x)['O',x(2:end)],st,'uni',0);RB.text{1,4}='';
         sel=sdtu.fe.genSel(sdtm.rmfield(X,{'name','from'}),RB);
         % Some design features
-        if all(cellfun(@(k) any(contains(X.name, k)),{'Mws-','MwE-','MwL-'}));
+        if all(cellfun(@(k) any(contains(X.name, k)),{'Mws-','Mw-','MwL-'}));
          Ows=X.bas(contains(X.name,'Mws-'),4:6);
-         Ow=X.bas(contains(X.name,'MwE-'),4:6);
+         Ow=X.bas(contains(X.name,'Mw-'),4:6);
          Owc=X.bas(contains(X.name,'MwL-'),4:6);
          Oc=Ows+[0 1 0]*Ow(2); % center of the wheel
          plot3(Oc(1),Oc(2),Oc(3),'+','DisplayName','Oc','LineWidth',2);
@@ -14742,18 +14742,16 @@ end % Loop on list (clean X)
    persistent NL
    if isempty(NL)||nargin==1
      NL=struct;
-     NL.unllab={% label of cq+unl0
-     %xxxgae automatic construction with X{1} and X{2}
-      };
      NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-wE';'Mr-tr';'Mcp-wE';'Mcp-r';'Mtr-gl';'Mw-gl';'Mr-gl'};
+     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl';'Mw-gl';'Mr-gl'};
+     NL.unllab=append(append(NL.unl.X{2},':'),NL.unl.X{1}')';% label of cq+unl0
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {% label of cq 
       '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws' %Mws-tr
       'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % MwL-ws
-      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwL-wE  
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwL-w  
       '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
       'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
@@ -14766,7 +14764,7 @@ end % Loop on list (clean X)
       unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
+       '0';'0';'0';   '0'; '0';  '0'   % MwL-w
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
@@ -14777,7 +14775,7 @@ end % Loop on list (clean X)
       unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwL-wE
+       '0';'0';'0';   '0'; '0';  '0'   % MwL-w
        '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'%Mcp_r
@@ -14796,7 +14794,7 @@ end % Loop on list (clean X)
      NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);
      NL.vnllab= { '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
       'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwL-ws
-      '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwL-wE
+      '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwL-w
       '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
       '0';'0';'0';'0';'0';'0'                                  % vMcp_w
       '0';'0';'0';'0';'0';'0'                                  % Mcp_r
@@ -14805,7 +14803,7 @@ end % Loop on list (clean X)
       '0';'vyrail';'vzrail'; 'vrollr';'0';'0'};                %Mr-gl
      NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
       'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % MwL_ws xxx incoherent
-      '0';'0';'0';   '0'; '0';  '0'                            % MwL-wE
+      '0';'0';'0';   '0'; '0';  '0'                            % MwL-w
       'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
       'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
       'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'               % Mcp_r
@@ -15017,13 +15015,13 @@ nlAstable : generate tables for tex
    if ischar(it)&&comstr(it,'roll') % rolling calculation
     qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
     roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'MwL-ws'),:)+ ...
-     qbas(5,strcmpi(NL.cnl.X{2},'MwL-wE'),:)); % (Rolling_wheel)
+     qbas(5,strcmpi(NL.cnl.X{2},'MwL-w'),:)); % (Rolling_wheel)
     C1=roll; % rotation angles
    else 
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
     qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-     [NL.cnl.X{2};{'MwE-tr'};{'MwE-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+     [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
     C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
     C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
     for j1=1:size(it,1) %time loop
@@ -15038,11 +15036,11 @@ nlAstable : generate tables for tex
      OwL_ws=C1.Y(1:3,strcmpi(C1.X{2},'MwL-ws'),j1);
      RwL_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-ws'),j1),[3 3]);
 
-     % We need MwE-wc but have MwL-wE
-     RwL_wE=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-wE'),j1),[3 3]);
-     RwL_wE=RwL_w';
-     iwL_w=strcmpi(C1.X{2},'MwL-wE');
-     OwL_wE=(RwL_wE-eye(3))*OwL_ws; C1.Y(1:3,iwL_wE,j1)= OwL_wE; % Correct
+     % We need Mw-wc but have MwL-w
+     RwL_w=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-w'),j1),[3 3]);
+     RwL_w=RwL_w';
+     iwL_w=strcmpi(C1.X{2},'MwL-w');
+     OwL_w=(RwL_w-eye(3))*OwL_ws; C1.Y(1:3,iwL_w,j1)= OwL_w; % Correct
 
      Or_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
      Rr_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
@@ -15051,14 +15049,14 @@ nlAstable : generate tables for tex
      Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3]);
 
      %% Tranformation composed basis
-     %MwE-tr
-     Ow_tr=Ows_tr+Rws_tr*RwL_ws*RwL_wE*OwL_ws;
-     Rw_tr=RwL_ws*Rws_tr*RwL_wE;
+     %Mw-tr
+     Ow_tr=Ows_tr+Rws_tr*RwL_ws*RwL_w*OwL_ws;
+     Rw_tr=RwL_ws*Rws_tr*RwL_w;
      C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
      C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
-     %MwE-gl
-     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws+Rtr_gl*Rws_tr*RwL_ws*OwL_wE;
-     Rw_gl=Rtr_gl*Rws_tr*RwL_ws*RwL_wE;
+     %Mw-gl
+     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws+Rtr_gl*Rws_tr*RwL_ws*OwL_w;
+     Rw_gl=Rtr_gl*Rws_tr*RwL_ws*RwL_w;
      C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
      C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
      %Mr-gl
@@ -18753,13 +18751,13 @@ nlAstable : generate tables for tex
      ',NewFlexVelPos,5,NewAll}#"Wheelset options")' ...
      'fbdist(#%g#"Lateral distance between the flange backs of the two wheels of the wheelset{$fb_dist$,param,LI.wheelsetDim}")' ...
      'fbpos(#%g#"Lateral position of the flange back with respect to the wheel profile origin Ow{$fb_pos$,param,LI.wheelsetDim}")' ...
-     'nomrad(#%g#"z distance between o_wE and o_ws (revolution center){$r_wnom$,param,LI.wheelsetDim}")'];
+     'nomrad(#%g#"z distance between o_w and o_ws (revolution center){$r_wnom$,param,LI.wheelsetDim}")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
     wheelsetDim=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    if ~isfield(LI.prw,'MwE_tr')
-     LI.prw.MwE_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0 0 0 0];%xxxgae sign fbpos
+    if ~isfield(LI.prw,'Mw_tr')
+     LI.prw.Mw_tr=[0 wheelsetDim.fbpos+cntc.leftCoef(LI)* wheelsetDim.fbdist/2 0 0 0 0];%xxxgae sign fbpos
     end
     switch wheelsetDim.Ewheel
      case {0,1,2,4}; params=[];    % 0 Maintain
@@ -18823,18 +18821,18 @@ nlAstable : generate tables for tex
     % package SDT options
     DoOpt=['Ewheel(NewAll#vd{0,Maintain,1,NewPos,2,NewPosVel,3,NewDimProfPosVel,4,' ...
      'NewPosVelFlex,5,NewAll}#"Wheelset options")' ...
-     'dxwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:x,x_{w},state,LI.Traj}")' ...
-     'dywhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:y,y_{w},state,LI.Traj}")' ...
-     'dzwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:z,z_{w},state,LI.Traj}")' ...
-     'drollw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:rx,rx_{w},state,LI.Traj}")' ...
-     'dyaww(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:rz,rz_{w},state,LI.Traj}")' ...
-     'dpitchw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{MwE_ws:ry,ry_{w},state,LI.Traj}")'...
-     'vxwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:x,vx_{w},state,LI.Traj}")' ...
-     'vywhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:y,vy_{w},state,LI.Traj}")' ...
-     'vzwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:z,vz_{w},state,LI.Traj}")' ...
-     'vrollw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:rx,vrx_{w},state,LI.Traj}")' ...
-     'vyaww(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:rz,vrz_{w},state,LI.Traj}")' ...
-     'vpitchw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMwE_ws:ry,vry_{w},state,LI.Traj}")'];
+     'dxwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:x,x_{w},state,LI.Traj}")' ...
+     'dywhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:y,y_{w},state,LI.Traj}")' ...
+     'dzwhl(#%g#"Displacement of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:z,z_{w},state,LI.Traj}")' ...
+     'drollw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:rx,rx_{w},state,LI.Traj}")' ...
+     'dyaww(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:rz,rz_{w},state,LI.Traj}")' ...
+     'dpitchw(#%g#"Rotation of the wheel profile reference point from the design to the actual position in wheelset coordinates{Mw_ws:ry,ry_{w},state,LI.Traj}")'...
+     'vxwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:x,vx_{w},state,LI.Traj}")' ...
+     'vywhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:y,vy_{w},state,LI.Traj}")' ...
+     'vzwhl(#%g#"Velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:z,vz_{w},state,LI.Traj}")' ...
+     'vrollw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:rx,vrx_{w},state,LI.Traj}")' ...
+     'vyaww(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:rz,vrz_{w},state,LI.Traj}")' ...
+     'vpitchw(#%g#"Angular velocity of the wheel profile reference point from the design to the actual position in wheelset coordinates{vMw_ws:ry,vry_{w},state,LI.Traj}")'];
 
     if nargin==0; CAM='';else; CAM=ire ;end
     LI=cntc.call;
@@ -18911,7 +18909,7 @@ nlAstable : generate tables for tex
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.{Mws_tr:y,y_{ws},state,LI.Traj}")' ...
      'z_ws(#%g#"Vertical position zws of the wheelset center{Mws_tr:z,z_{ws},state,LI.Traj}")' ...
      'roll_ws(#%g#"Wheelset roll angle with respect to the track plane.{Mws_tr:rx,rx_{ws},state,LI.Traj}")' ...
-     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{MwL_wE:rz,rz_{ws},state,LI.Traj}")' ...
+     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{MwL_w:rz,rz_{ws},state,LI.Traj}")' ...
      'pitch_ws(#%g#"Wheelset pitch angle, i.e. rotation about the wheelset axle{Mws_tr:ry,ry_{ws},state,LI.Traj}")'];
 
     LI=cntc.call;
@@ -18993,7 +18991,7 @@ nlAstable : generate tables for tex
      'vy(#%g#"Wheelset lateral velocity{vMws_tr:y,vy_{ws},state,LI.Traj}")' ...
      'vz(#%g#"Wheelset vertical velocity{vMws_tr:z,vz_{ws},state,LI.Traj}")' ...
      'vroll(#%g#"Wheelset rate of roll{vMws_tr:rx,vrx_{ws},state,LI.Traj}")' ...
-     'vyaw(#%g#"Wheelset yaw rate{vMwE_tr:rz,vrz_{ws},state,LI.Traj}")' ...
+     'vyaw(#%g#"Wheelset yaw rate{vMw_tr:rz,vrz_{ws},state,LI.Traj}")' ...
      'vpitch(#%g#"Wheelset angular velocity{vMws_tr:ry,vry_{ws},state,LI.Traj}")'...
      'shft_sws(#%g#"Wheelset forward position increment{ , ,param, }")' ...
      'shft_yws(#%g#"Wheelset lateral position increment{ , ,param, }")' ...
