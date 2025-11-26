@@ -361,13 +361,13 @@ qOw(3,:)=[0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
 qOw(5,:)=-pi/180*linspace(0,50,100)';
 
 if isfield(LI,'wheelsetDim')
- qOw(1,:)=-qOw(5,:)*LI.wheelsetDim.nomrad; 'xxxgae missing comment'
+ qOw(1,:)=-qOw(5,:)*LI.wheelsetDim.nomrad; 'xxxgae missing comment' %sdt
 end
 vOw(1,:)=2000; % set vs [mm/s]
 vOw(5,:)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
-C1=struct('X',{{{'x','y','z','rx','ry','rz'}',{'Mw-gl','Mw-gl:v','Mr-gl','Mw-gl:v'}'}}, ...
+C1=struct('X',{{{'x','y','z','rx','ry','rz'}',{'Mw-gl','Mr-gl','Mw-gl:v','Mr-gl:v'}'}}, ...
      'Xlab',{{'Comp','Bas','iTime'}}, ...
-     'Y',reshape([qOw;vOw;qOr;vOr],6,4,[]));
+     'Y',reshape([qOw;qOr;vOw;vOr],6,4,[]));
 nmap('Traj_WheelFlatCosim')=C1;
 
 %  #Traj_WheelflatR pen defined on the rail -2

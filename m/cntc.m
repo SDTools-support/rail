@@ -8296,7 +8296,7 @@ end % Loop on list (clean X)
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
         ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
-              RO.Rot.Y(2,strcmpi(RO.M.X{2},'MwL-ws')');
+              RO.Rot.Y(2,strcmpi(RO.M.X{2},'MwsL-ws')');
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
         if strcmpi(X.bas,'w')
@@ -14743,45 +14743,50 @@ end % Loop on list (clean X)
    if isempty(NL)||nargin==1
      NL=struct;
      NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     NL.unl.X{2}={'Mws-tr';'MwL-ws';'MwL-w';'Mr-tr';'Mcp-w';'Mcp-r';'Mtr-gl';'Mw-gl';'Mr-gl'};
+     NL.unl.X{2}={'Mw-gl';'Mr-gl';'Mtr-gl';'Mr-tr';'Mws-tr';'Mw-ws';'MwsL-ws';'Mcp-w';'Mcp-r'};
      NL.unllab=append(append(NL.unl.X{2},':'),NL.unl.X{1}')';% label of cq+unl0
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {% label of cq 
-      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws' %Mws-tr
-      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'   % MwL-ws
-      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwL-w  
-      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0' %Mr_tr
-      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'%Mcp_w
-      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' %Mcp_r
-      's_ws'; '0';'0';           '0';       '0';'0' %Mtr_gl
-      's_ws';'dywhl';'dzwhl';   'drollw';'pitch_ws';'dyaww' %Mw-gl
-      '0';'dyrail';'dzrail'; 'drollr';'0';'0'};   %Mr-gl
-      
+      's_ws';'dywhl';'dzwhl';   'drollw';'0';'dyaww'           %Mw-gl
+      's_ws';'dyrail';'dzrail'; 'drollr';'0';'0'               %Mr-gl
+      's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
+      '0';    'dyrail';'dzrail'; 'drollr';  '0';'0'            %Mr_tr
+      '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws'      %Mws-tr
+      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
+      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
+      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
+      % 'LI.wheelsetDim.nomrad*sin(pitch_ws)';'-LI.wheelsetDim.nomrad*(1-cos(pitch_ws))';
+      % '0';'0';'pitch_ws','0'; %Mw_ws:xxxeb
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
-      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
-       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-       'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwL-w
+      unl0={% geometric Gauge Ow position 
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
+       '0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
+       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0';%Mr_gl
+       '0';'0';'0';'0';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
-       '0';'0';'0';'0';'0';'0'%Mcp_w
-       '0';'0';'0';'0';'0';'0'%Mcp_r
-       '0';'0';'0';'0';'0';'0'%Mtr_gl
-       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
-       '0';'0';'0';'0';'0';'0'};%Mr_gl
-     else
-      unl0={'0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Nws_tr
+       '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-       'LI.wheelsetDim.nomrad';'0';'0';'0'% MwL_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwL-w
-       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %(gaugePoint)
-       '0';'0';'0';'0';'0';'0'%Mcp_w
-       '0';'0';'0';'0';'0';'0'%Mcp_r
-       '0';'0';'0';'0';'0';'0';%Mtr_gl
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
+       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
+       '0';'0';'0';'0';'0';'0' %Mcp_w
+       '0';'0';'0';'0';'0';'0'}; %Mcp_r
+       
+     else
+      unl0={ % geometric absolut Ow position 
        '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
-       '0';'0';'0';'0';'0';'0'};%Mr_gl
+       '0';'0';'0';'0';'0';'0';%Mr_gl
+       '0';'0';'0';'0';'0';'0';%Mtr_gl
+       '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
+       '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
+       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
+       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
+       '0';'0';'0';'0';'0';'0'%Mcp_w
+       '0';'0';'0';'0';'0';'0'};%Mcp_r
      end
 
      LI=cntc.call;r1=zeros(42,1);
@@ -14792,24 +14797,27 @@ end % Loop on list (clean X)
       end
      end
      NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);
-     NL.vnllab= { '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
-      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMwL-ws
-      '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwL-w
-      '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
-      '0';'0';'0';'0';'0';'0'                                  % vMcp_w
-      '0';'0';'0';'0';'0';'0'                                  % Mcp_r
-      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
-       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'        %Mw-gl
-      '0';'vyrail';'vzrail'; 'vrollr';'0';'0'};                %Mr-gl
-     NL.snllab= {'0';'0';'0';'0';'0';'0'                       % snl Mws_tr
-      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % MwL_ws xxx incoherent
-      '0';'0';'0';   '0'; '0';  '0'                            % MwL-w
-      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_r
-      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
-      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'               % Mcp_r
-      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
+     NL.vnllab= { 
+      'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'       % vMw-gl
+      '0';'vyrail';'vzrail'; 'vrollr';'0';'0';                % vMr-gl
+           'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
+     '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
+     '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
+     'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMw-ws
+     '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwsL-ws
+     '0';'0';'0';'0';'0';'0'                                  % vMcp_w
+     '0';'0';'0';'0';'0';'0' };                                 % vMcp_r
+
+     NL.snllab= {%snl 
       '0';'0';'0';'0';'0';'0'                                  % Mw_gl
-      '0';'0';'0';'0';'0';'0'};                                % Mr_gl
+      '0';'0';'0';'0';'0';'0';                                 % Mr_gl
+      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
+      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
+      '0';'0';'0';'0';'0';'0'                                  % Mws_tr
+      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mw_ws
+      '0';'0';'0';   '0'; '0';  '0'                            % MwsL-ws
+      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
+      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'};             % Mcp_r
 
      st1={'Track','Friction'};
      cntc.settrackdimensions('');% Track
@@ -14947,7 +14955,7 @@ nlAstable : generate tables for tex
 
    elseif strcmpi(CAM,'cosim')
     %% #PreCosim : get wheelE and railE marker information -3
-    chan=NodeDir2Lab({'Mw-gl';'Mw-gl:v';'Mr-gl';'Mw-gl:v'});
+    chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'Mw-gl:v';'Mr-gl:v'});
     RO.type='AtMarker';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
@@ -15014,14 +15022,15 @@ nlAstable : generate tables for tex
    if nargin==0; it=(1:size(NL.cnl.Y,3))';cntc.getBasis(it);end %case it is a timestep
    if ischar(it)&&comstr(it,'roll') % rolling calculation
     qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
-    roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'MwL-ws'),:)+ ...
-     qbas(5,strcmpi(NL.cnl.X{2},'MwL-w'),:)); % (Rolling_wheel)
+    roll=squeeze(qbas(5,strcmpi(NL.cnl.X{2},'MwsL-ws'),:)+ ...
+     qbas(5,strcmpi(NL.cnl.X{2},'Mw-ws'),:)); % (Rolling_wheel)
     C1=roll; % rotation angles
    else 
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
     qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-     [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+     [NL.cnl.X{2};{'Mw-tr'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+     % [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
     C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
     C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
     for j1=1:size(it,1) %time loop
@@ -15033,14 +15042,14 @@ nlAstable : generate tables for tex
      Ows_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mws-tr'),j1);
      Rws_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mws-tr'),j1),[3 3]);
 
-     OwL_ws=C1.Y(1:3,strcmpi(C1.X{2},'MwL-ws'),j1);
-     RwL_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-ws'),j1),[3 3]);
+     OwsL_ws=C1.Y(1:3,strcmpi(C1.X{2},'MwsL-ws'),j1);
+     RwsL_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwsL-ws'),j1),[3 3]);
 
-     % We need Mw-wc but have MwL-w
-     RwL_w=reshape(C1.Y(4:12,strcmpi(C1.X{2},'MwL-w'),j1),[3 3]);
-     RwL_w=RwL_w';
-     iwL_w=strcmpi(C1.X{2},'MwL-w');
-     OwL_w=(RwL_w-eye(3))*OwL_ws; C1.Y(1:3,iwL_w,j1)= OwL_w; % Correct
+     % We need Mw-wc but have Mw-ws
+     Rw_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mw-ws'),j1),[3 3]);
+     Rw_ws=Rw_ws';
+     iw_ws=strcmpi(C1.X{2},'Mw-ws');
+     Ow_ws=(Rw_ws-eye(3))*OwsL_ws; C1.Y(1:3,iw_ws,j1)= Ow_ws; % Correct
 
      Or_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
      Rr_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
@@ -15049,29 +15058,30 @@ nlAstable : generate tables for tex
      Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3]);
 
      %% Tranformation composed basis
+     %xxxeb basis
      %Mw-tr
-     Ow_tr=Ows_tr+Rws_tr*RwL_ws*RwL_w*OwL_ws;
-     Rw_tr=RwL_ws*Rws_tr*RwL_w;
+     Ow_tr=Ows_tr+Rws_tr*RwsL_ws*Rw_ws*OwsL_ws;
+     Rw_tr=RwsL_ws*Rws_tr*Rw_ws;
      C1.Y(1:3,size(qbas,2)+1,j1)= Ow_tr;
      C1.Y(4:12,size(qbas,2)+1,j1)= Rw_tr(:);
-     %Mw-gl
-     Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws+Rtr_gl*Rws_tr*RwL_ws*OwL_w;
-     Rw_gl=Rtr_gl*Rws_tr*RwL_ws*RwL_w;
-     C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
-     C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
-     %Mr-gl
-     Or_gl=Otr_gl+Rtr_gl*Or_tr;
-     Rr_gl=Rtr_gl*Rr_tr;
-     C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
-     C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
-     %MwL-gl
-     OwL_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwL_ws;
-     RwL_gl=Rtr_gl*Rws_tr*RwL_ws;
-     C1.Y(1:3,size(qbas,2)+4,j1)= OwL_gl;
-     C1.Y(4:12,size(qbas,2)+4,j1)= RwL_gl(:);
+     % %Mw-gl
+     % Ow_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwsL_ws+Rtr_gl*Rws_tr*RwsL_ws*Ow_ws;
+     % Rw_gl=Rtr_gl*Rws_tr*RwsL_ws*Rw_ws;
+     % C1.Y(1:3,size(qbas,2)+2,j1)= Ow_gl;
+     % C1.Y(4:12,size(qbas,2)+2,j1)= Rw_gl(:);
+     % %Mr-gl
+     % Or_gl=Otr_gl+Rtr_gl*Or_tr;
+     % Rr_gl=Rtr_gl*Rr_tr;
+     % C1.Y(1:3,size(qbas,2)+3,j1)= Or_gl;
+     % C1.Y(4:12,size(qbas,2)+3,j1)= Rr_gl(:);
+     % % MwL-gl
+     % OwsL_gl=Otr_gl+Rtr_gl*Ows_tr+Rtr_gl*Rws_tr*OwsL_ws;
+     % RwL_gl=Rtr_gl*Rws_tr*RwsL_ws;
+     % C1.Y(1:3,size(qbas,2)+4,j1)= OwL_gl;
+     % C1.Y(4:12,size(qbas,2)+4,j1)= RwL_gl(:);
      %MwL-tr
-     OwL_tr=Ows_tr+Rws_tr*OwL_ws;
-     RwL_tr=Rws_tr*RwL_ws;
+     OwL_tr=Ows_tr+Rws_tr*OwsL_ws;
+     RwL_tr=Rws_tr*RwsL_ws;
      C1.Y(1:3,size(qbas,2)+5,j1)= OwL_tr;
      C1.Y(4:12,size(qbas,2)+5,j1)= RwL_tr(:);
      %Mws-gl
@@ -17103,7 +17113,6 @@ nlAstable : generate tables for tex
       end
       if ~isfield(LI.cur,'state')
        st=d_cntc('nmap.DataExchange');
-       
       end
       if contains(list{j1},'maintain')
        %% After first step maintain parameters as constant XXXGAE
@@ -17125,7 +17134,6 @@ nlAstable : generate tables for tex
        cntc.set(RT.Model);
       else
        %% Initialize model and Traj from info in caller
-       cntc.init; 
        LI.ProjectWd=RT.ProjectWd; 
        LI.Traj=RT.Traj; RT=rmfield(RT,'Traj');
        LI.flags=RT.flags;
@@ -17154,7 +17162,7 @@ nlAstable : generate tables for tex
    for j1 = 1:size(RT.Traj.Y,3) % Loop on traj, In fe_time step is called j1 here icase
     % sdtweb cntc set.traj
     if ~isfield(RT,'cur')
-     RT.cur=struct('type','Traj','j1',1,'iwhe',[]); 
+     RT.cur=struct('type','Traj','j1',1,'iwhe',[]);LI.cur=RT.cur; 
     else
      RT.cur.j1=j1;LI.cur=RT.cur;
     end
@@ -18852,7 +18860,9 @@ nlAstable : generate tables for tex
        if ~isempty(CAM);error('Wrong parameter');end
       %% xxxGAE
     end
-    if wheelsetFlex.Ewheel~=0;LI.wheelsetFlex=wheelsetFlex;end;
+    if wheelsetFlex.Ewheel~=0;LI.wheelsetFlex=wheelsetFlex;
+    if isempty(CAM);return;end;end
+
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     params=sdth.sfield('addselected',struct,wheelsetFlex,params);
     params=struct2cell(params);params=horzcat(params{:});
@@ -18909,7 +18919,7 @@ nlAstable : generate tables for tex
      'y_ws(#%g#"Lateral position of the wheelset center in track coordinates.{Mws_tr:y,y_{ws},state,LI.Traj}")' ...
      'z_ws(#%g#"Vertical position zws of the wheelset center{Mws_tr:z,z_{ws},state,LI.Traj}")' ...
      'roll_ws(#%g#"Wheelset roll angle with respect to the track plane.{Mws_tr:rx,rx_{ws},state,LI.Traj}")' ...
-     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{MwL_w:rz,rz_{ws},state,LI.Traj}")' ...
+     'yaw_ws(#%g#"Wheelset yaw angle with respect to the track center line{Mw_ws:rz,rz_{ws},state,LI.Traj}")' ...
      'pitch_ws(#%g#"Wheelset pitch angle, i.e. rotation about the wheelset axle{Mws_tr:ry,ry_{ws},state,LI.Traj}")'];
 
     LI=cntc.call;
