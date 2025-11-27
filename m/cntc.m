@@ -15029,12 +15029,17 @@ nlAstable : generate tables for tex
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
     qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-     [NL.cnl.X{2};{'Mw-tr'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
+     [NL.cnl.X{2};{'Mw-tr=Mw-gl/Mtr-gl'; ...
+     'MwL-gl=xxx';'MwL-tr=xxx';'Mws-gl=Mtr-gl*Mws-tr'}], it}}, ...
+      'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
      % [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
     C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
     C1.Y(1:3,1:size(qbas,2),:)=qbas(1:3,:,:);
+
+    C1.X{2}(size(qbas,2)+1:end)
+
     for j1=1:size(it,1) %time loop
-     for m=1:size(qbas,2) % marker loop
+     for m=1:size(qbas,2) % marker loop some (qbas contains those already know)
       R=cntc.getRot(qbas(:,m,j1));
       C1.Y(4:12,m,j1)=R(:);
      end
