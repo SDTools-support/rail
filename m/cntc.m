@@ -15029,8 +15029,7 @@ nlAstable : generate tables for tex
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
     qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
-     [NL.cnl.X{2};{'Mw-tr=Mw-gl/Mtr-gl'; ...
-     'MwL-gl=xxx';'MwL-tr=xxx';'Mws-gl=Mtr-gl*Mws-tr'}], it}}, ...
+     [NL.cnl.X{2};{'Mw-tr=Mw-gl/Mtr-gl';'Mws-gl=Mtr-gl*Mws-tr'}], it}}, ...
       'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
      % [NL.cnl.X{2};{'Mw-tr'};{'Mw-gl'};{'Mr-gl'};{'MwL-gl'};{'MwL-tr'};{'Mws-gl'}], it}},'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
     C1.Y=zeros([12 size(qbas,2)+5 size(it,1)]); % +5 the composed marker transformation
@@ -15056,11 +15055,23 @@ nlAstable : generate tables for tex
      iw_ws=strcmpi(C1.X{2},'Mw-ws');
      Ow_ws=(Rw_ws-eye(3))*OwsL_ws; C1.Y(1:3,iw_ws,j1)= Ow_ws; % Correct
 
+     % We need Mw-wc but have Mw-ws
+     Rw_ws=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mw-ws'),j1),[3 3]);
+     Rw_ws=Rw_ws';
+     iw_ws=strcmpi(C1.X{2},'Mw-ws');
+     Ow_ws=(Rw_ws-eye(3))*OwsL_ws; C1.Y(1:3,iw_ws,j1)= Ow_ws; % Correct
+
      Or_tr=C1.Y(1:3,strcmpi(C1.X{2},'Mr-tr'),j1);
      Rr_tr=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-tr'),j1),[3 3]);
 
      Otr_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mtr-gl'),j1);
      Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mtr-gl'),j1),[3 3]);
+
+     Otr_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mw-gl'),j1);
+     Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mw-gl'),j1),[3 3]);
+    
+     Otr_gl=C1.Y(1:3,strcmpi(C1.X{2},'Mr-gl'),j1);
+     Rtr_gl=reshape(C1.Y(4:12,strcmpi(C1.X{2},'Mr-gl'),j1),[3 3]);
 
      %% Tranformation composed basis
      %xxxeb basis
@@ -15087,13 +15098,13 @@ nlAstable : generate tables for tex
      %MwL-tr
      OwL_tr=Ows_tr+Rws_tr*OwsL_ws;
      RwL_tr=Rws_tr*RwsL_ws;
-     C1.Y(1:3,size(qbas,2)+5,j1)= OwL_tr;
-     C1.Y(4:12,size(qbas,2)+5,j1)= RwL_tr(:);
+     C1.Y(1:3,size(qbas,2)+2,j1)= OwL_tr;
+     C1.Y(4:12,size(qbas,2)+2,j1)= RwL_tr(:);
      %Mws-gl
      Ows_gl=Otr_gl+Rtr_gl*Ows_tr;
      Rws_gl=Rtr_gl*Rws_tr;
-     C1.Y(1:3,size(qbas,2)+6,j1)= Ows_gl;
-     C1.Y(4:12,size(qbas,2)+6,j1)= Rws_gl(:);
+     C1.Y(1:3,size(qbas,2)+3,j1)= Ows_gl;
+     C1.Y(4:12,size(qbas,2)+3,j1)= Rws_gl(:);
 
     end
    end
