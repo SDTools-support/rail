@@ -395,7 +395,7 @@ if isempty(gnmap)||isequal(opt,'reset')
   propM=vhandle.nmap;
   gnmap('Map:OProp')=propM;
   propM.append({'RailGl', struct('ToolTip','Rail surface in Larangian/global/iSys frame', ...
-       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('iSys'),'FaceAlpha',0.3}});
+       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('gl'),'FaceAlpha',0.3}});
    'RailTR',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
        'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('r'),'FaceAlpha',0.5}});
    'prwEulSurf',struct('ToolTip','Wheel surface in Eulerian/w frame WheelW', ...
@@ -414,8 +414,11 @@ if isempty(gnmap)||isequal(opt,'reset')
 
   propM('prrEulSurf')=struct('alias','RailTR');
   propM('prrLagSurf')=struct('alias','RailGl');
+  propM('prrSlice')=struct('alias','prrLine');
   propM('prwLagSurf')=struct('alias','WheelWc');
-  propM('WheelW')=struct('alias','prwEulSurf');
+  propM('prwEulSurf')=struct('alias','prwEulSurf');
+  propM('prwSlice')=struct('alias','prwLine');
+  
   % xxx alias
   %railu.prop({'WheelW',''prwEulSurf'')
   propM.append(d_cntc('nmap.Map:OProp'))

@@ -7824,18 +7824,14 @@ cntc : interface between SDT and CONTACT
    if comstr(Cam,'sol');[CAM,Cam]=comstr(CAM,4);
     %{
 ```DocString {module=rail,src@onedrive/*/SNC*/doc/R25_SNCF_Guillet.docx} -2
- plot : SDT adaptation of plot commands
+ plot : SDT adaptation of CNTC plot commands
     %}
     LI=cntc.call;
     if isempty(LI)||~isfield(LI,'sol')
      wd=sdtu.f.safe('@onedrive/*/SNC*/exchange');cd(wd);
      load('LI.mat'); cntc.call(LI);
     end
-
-    if comstr(Cam,'1');[CAM,Cam]=comstr(CAM,2);
-     % #CNTCPlotSol1 : px -3
-
-     cntc.plot3d([],'{typplot=surf,field=px,rw_surfc=prw,ch1,gf10}')
+     cntc.plot3d([],'{typplot=surf,field=px,rw_surfc=prw,ch1,gf10}')% #CNTCPlotSol1 : px -3
 
      if 1==2 % Low level tests for EB
       x=cellfun(@(x)x.x,LI.sol,'uni',0)';x=unique(horzcat(x{:}));
@@ -7853,7 +7849,6 @@ cntc : interface between SDT and CONTACT
       surface(squeeze(a.prw.Y(:,1,:)),squeeze(a.prw.Y(:,2,:)),squeeze(a.prw.Y(:,3,:)))
       set(gca,'DataAspectRatio',[1 1 1]);grid on;title('rail profile')
      end
-    end
    elseif comstr(Cam,'wheel');[CAM,Cam]=comstr(CAM,6);
     %% #Plot.wheel wheel profile or 3D wheel model -3
     LI=cntc.call;
@@ -7904,7 +7899,6 @@ cntc : interface between SDT and CONTACT
      xlabel('x [rad]');ylabel('y_w [mm]');zlabel('z_w [mm]');
      set(go,'edgecolor','none');  set(gca,'DataAspectRatio',[.1 1 1]);
      comgui('ImWrite',40,'VarProfNoCyl.png');
-     'xxx interact'
 
     elseif contains(Cam,'stick')
      %% Wheel.SurfStick number of slices hence variable
@@ -7951,54 +7945,6 @@ cntc : interface between SDT and CONTACT
       end
       fecom('shownodemark',n2)
      end
-    end
-
-    if comstr(Cam,'mcalc');[CAM,Cam]=comstr(CAM,6);
-     [~,R2]=sdtm.urnPar(CAM,'{}{M%s}');
-     % cntc.plot('WheelMCalc')
-     XYZ=zeros([size(LI.prw.xsurf),3]);
-     XYZ(:,:,1)=LI.prw.xsurf;XYZ(:,:,2)=cntc.leftCoef(LI)*LI.prw.ysurf;XYZ(:,:,3)=LI.prw.zsurf;
-     R1=struct('XYZ',XYZ,'bas','wcyl');
-     X=cntc.BasisChange('w',R1);
-     X.XYZ= permute(repmat(reshape(X.XYZ,[],3),[1,1,size(LI.Traj.X{1},1)]),[3 1 2]);
-     X=cntc.BasisChange(R2.M,X);
-     if nargout>0;out=X;end
-
-    elseif comstr(Cam,'mplot');[CAM,Cam]=comstr(CAM,6);
-     % #plot.WheelMPlot -3
-     if contains(Cam,'mws')
-      % cntc.plot('WheelMPlot{Mws}')
-      cntc.plot('WheelMCalc{Mws}')
-     elseif contains(Cam,'mw')
-      % cntc.plot('WheelMPlot{Mw}')
-      cntc.plot('WheelMCalc{Mw}')
-     elseif contains(Cam,'mtr')
-      % cntc.plot('WheelMPlot{Mtr}')
-      cntc.plot('WheelMCalc{Mtr}')
-     else; error('Transformation %s not found',Cam)
-     end
-    
-     if nargin>=carg;    j1=varargin{carg};carg=carg+1;  end
-     gf=60;figure(gf); go=plot3(X.XYZ(j1,:,1),X.XYZ(j1,:,2),X.XYZ(j1,:,3));
-     xlabel(['x' X.bas]);ylabel(['y' X.bas]);zlabel(['z' X.bas]);
-     hold on; plot3(0,0,0,'+','DisplayName','Otr');
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');
-     % color=LI.prw.zsurf-(mean(LI.prw.zsurf,1).*ones(size(LI.prw.zsurf,1),1));
-     % set(go,'CData',color);
-
-    elseif isfield(LI.prw,'ProfileY')
-     R1=struct('XYZ',[[0,1]*LI.prw.ProfileY,LI.prw.ProfileZ],'bas','w');
-     Xtr=cntc.BasisChange('w_tr',R1);
-     gf=2;figure(gf); plot3(Xtr(1,:),Xtr(2,:),Xtr(3,:),'.');
-     xlabel('xtr');ylabel('ytr');zlabel('ztr');
-     %why is it needed to reverse Y abscisse ?
-     set(gca,'DataAspectRatio',[1 1 1]);axis equal;
-
-     theta= pi/180*[0:360];
-     error('Missing coordinate labels')
-     % X=(500+LI.prw.ProfileZ).*cos(theta);
-     % Y=(500+LI.prw.ProfileZ).*sin(theta);
-     % gf=3;
     end
 
    elseif comstr(Cam,'rail');[CAM,Cam]=comstr(CAM,5);
@@ -8085,7 +8031,7 @@ cntc : interface between SDT and CONTACT
      % sel=sdtu.fe.genSel(struct('bas',bas),RB); %doesn't work
      xlabel('xtr');ylabel('ytr');zlabel('ztr');hold off;
      %why is it needed to reverse Y abscisse ?
-     set(gca,'DataAspectRatio',[1 1 1],'ZDir','reverse');axis equal;
+     set(gca,'DataAspectRatio',[1 1 1]);axis equal;
      iimouse('on')
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
 
@@ -8096,111 +8042,111 @@ cntc : interface between SDT and CONTACT
    elseif comstr(Cam,'both')||comstr(Cam,'list');;[CAM,Cam]=comstr(CAM,5);
     %% #plot.list #plot.both analyze list to generate plot -3
     %cntc.plot('both')
-     if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
-     % Rail and wheel profile research
-if isfield(RO,'list')
-LI=cntc.call;
-Slr=cntc.leftCoef(LI);
-for i1=1:length(RO.list)
-        %% for each list
-        X=RO.list{i1}; 
-  if ~ischar(X)
-  elseif strcmpi(X,'TrackPlane')
-   %% #plot.list.TrackPlane -4
-     mo1=feutil('objectquad',[0 0 0;1 0 0;0 1 0],[-10 10], ...
-         [0 Slr*(LI.Track.gaugwd/2+100)]);
-     mo1.name='TrackPlane';
-     X=struct('from','traj','XYZ',reshape(mo1.Node(:,5:7),2,2,3),'bas','tr', ...
-         'prop',{{'EdgeColor','blue','Facecolor','none','LineStyle','--', ...
-         'Linewidth',2,'DisplayName','Track plane'}},'model',mo1);
+    if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
+    % Rail and wheel profile research
+    if isfield(RO,'list')
+     LI=cntc.call;
+     Slr=cntc.leftCoef(LI);
+     for i1=1:length(RO.list)
+      %% for each list
+      X=RO.list{i1};
+      if ~ischar(X)
+      elseif strcmpi(X,'TrackPlane')
+       %% #plot.list.TrackPlane -4
+       mo1=feutil('objectquad',[0 0 0;1 0 0;0 1 0],[-10 10], ...
+        [0 Slr*(LI.Track.gaugwd/2+100)]);
+       mo1.name='TrackPlane';
+       X=struct('from','traj','XYZ',reshape(mo1.Node(:,5:7),2,2,3),'bas','tr', ...
+        'prop',{{'EdgeColor','blue','Facecolor','none','LineStyle','--', ...
+        'Linewidth',2,'DisplayName','Track plane'}},'model',mo1);
 
-  elseif strncmpi(X,'points',6)
-         %% #plot.list.Points -4
-          [~,RP]=sdtm.urnPar(X,'{}{}');
-          r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
-           'Otr',[0 0 0]
-           'Or',LI.prr.Mr_tr(1:3)
-           'Omax',squeeze(LI.prr.Omax)'+LI.prr.Mr_tr(1:3)};
-   X=struct('from','traj','XYZ',reshape(vertcat(r1{:,2}),1,[],3), ...
-       'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
-    'LineStyle','none','marker','+','Linewidth',2}});
-  elseif strncmpi(X,'prwLagSurf',10)
-    %% #plot.list.prwLagSurf -4
-    [~,RP]=sdtm.urnPar(X,'{t%g,y%g}{bas%s}');
-    X=struct('from','prw','t',RP.t,'is',sdtm.indNearest(LI.prw.ysurf(1,:),RP.y), ...
-     'bas','w','prop',{railu.prop('prwLagSurf')});
-    if isscalar(RP.y)||isscalar(RP.t)
-      X.prop=railu.prop('prwLine');
-    end
-  elseif strncmpi(X,'prrLagSurf',10)
-    %% #plot.list.prrLagSurf -4
-    [~,RP]=sdtm.urnPar(X,'{x%g,y%g}{bas%s}');
-    X=struct('from','prr','x',RP.x,'is',sdtm.indNearest(LI.prr.ProfileS,RP.y), ...
-     'bas','w','prop',{railu.prop('prrLagSurf')});
-    if isscalar(RP.y)||isscalar(RP.x)
-      X.prop=railu.prop('prrLine');
-    end
-  elseif strncmpi(X,'prrEulSurf',11)
-    %% #plot.list.prrEulSurf -4
-    dbstack; keyboard; 
-    
-  else; error('%s not implemented',X)
-  end
+      elseif strncmpi(X,'points',6)
+       %% #plot.list.Points -4
+       [~,RP]=sdtm.urnPar(X,'{}{}');
+       r1={'Og',[0 cntc.leftCoef(LI)/2*LI.Track.gaugwd LI.Track.gaught];
+        'Otr',[0 0 0]
+        'Or',LI.prr.Mr_tr(1:3)
+        'Omax',squeeze(LI.prr.Omax)'+LI.prr.Mr_tr(1:3)};
+       X=struct('from','traj','XYZ',reshape(vertcat(r1{:,2}),1,[],3), ...
+        'bas','tr','legend',{r1(:,1)'},'prop',{{'Color','red', ...
+        'LineStyle','none','marker','+','Linewidth',2}});
+      elseif strncmpi(X,'prwLagSurf',10)
+       %% #plot.list.prwLagSurf -4
+       [~,RP]=sdtm.urnPar(X,'{t%g,y%g}{bas%s}');
+       X=struct('from','prw','t',RP.t,'is',sdtm.indNearest(LI.prw.ysurf(1,:),RP.y), ...
+        'bas','w','prop',{railu.prop('prwLagSurf')});
+       if isscalar(RP.y)||isscalar(RP.t)
+        X.prop=railu.prop('prwLine');
+       end
+      elseif strncmpi(X,'prrLagSurf',10)
+       %% #plot.list.prrLagSurf -4
+       [~,RP]=sdtm.urnPar(X,'{x%g,y%g}{bas%s}');
+       X=struct('from','prr','x',RP.x,'is',sdtm.indNearest(LI.prr.ProfileS,RP.y), ...
+        'bas','w','prop',{railu.prop('prrLagSurf')});
+       if isscalar(RP.y)||isscalar(RP.x)
+        X.prop=railu.prop('prrLine');
+       end
+      elseif strncmpi(X,'prrEulSurf',11)
+       %% #plot.list.prrEulSurf -4
+       dbstack; keyboard;
 
-        X.j1=RO.j1;
-        if ~isfield(X,'from');error('Not implemented')
-         % No field
-        elseif strncmpi(X.from,'prr',3)
-         %prr
-          % X=cntc.plot('rail',struct('prr',X,'q',q)); xxxgae EB why
-          X=cntc.plot('rail',struct('prr',X));
-        elseif strncmpi(X.from,'prw',3)
-         %prw
-          X=sdth.sfield('addmissing',cntc.plot('WheelMCalc',struct('prw',X)),X);
-        elseif strcmpi(X.from,'traj')&&isfield(X,'XYZ')
-        elseif strcmpi(X.from,'traj')
-         %traj
-         if isfield(X,'curve')
-          C1=cntc.getCurve(X.curve);
-         else
-          error('Missing curve name')
-         end
-         i2=contains(C1.X{2},'Mcp_tr');
-         if any(i2)
-          X.XYZ=permute(C1.Y(1:3,i2,:),[3 2 1]);
-          X.name='Mcp_tr';X.bas='tr';
-          X=cntc.BasisChange(RO.bas,X);
-         elseif strcmpi(X.curve,'trajws')
-          X.XYZ=permute(C1.Y(1:3,:,:),[3 2 1]); X.bas='gl';
-          X=cntc.BasisChange(RO.bas,X);
-         end
-        elseif strcmpi(X.from,'bas')
-         %bas
-          RO=cntc.getBasis(RO);
-          if isfield(X,'bas')
-           ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
-          else
-           ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
-          end
-          if isfield(X,'Orig')
-           r1=zeros(size(RO.M.Y(:,ind),2)+1,size(RO.M.Y(:,ind),1));
-           r1(1,[4 8 12])=1; % add the gl or tr marker
-           r1(2:end,:)=RO.M.Y(:,ind)';
-           X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-            'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]},'from','bas');
-          else
-           r1=zeros(size(RO.M.Y(:,ind),2),size(RO.M.Y(:,ind),1));
-           r1(:,:)=RO.M.Y(:,ind)';
-           X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-            'name',{[RO.M.X{2}(ind)]},'from','bas');
-          end
-        else; error('Not implemented')
-        end
+      else; error('%s not implemented',X)
+      end
 
-        try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
+      X.j1=RO.j1;
+      if ~isfield(X,'from');error('Not implemented')
+       % No field
+      elseif strncmpi(X.from,'prr',3)
+       %prr
+       % X=cntc.plot('rail',struct('prr',X,'q',q)); xxxgae EB why
+       X=cntc.plot('rail',struct('prr',X));
+      elseif strncmpi(X.from,'prw',3)
+       %prw
+       X=sdth.sfield('addmissing',cntc.plot('Wheel',struct('prw',X)),X);
+      elseif strcmpi(X.from,'traj')&&isfield(X,'XYZ')
+      elseif strcmpi(X.from,'traj')
+       %traj
+       if isfield(X,'curve')
+        C1=cntc.getCurve(X.curve);
+       else
+        error('Missing curve name')
+       end
+       i2=contains(C1.X{2},'Mcp_tr');
+       if any(i2)
+        X.XYZ=permute(C1.Y(1:3,i2,:),[3 2 1]);
+        X.name='Mcp_tr';X.bas='tr';
+        X=cntc.BasisChange(RO.bas,X);
+       elseif strcmpi(X.curve,'trajws')
+        X.XYZ=permute(C1.Y(1:3,:,:),[3 2 1]); X.bas='gl';
+        X=cntc.BasisChange(RO.bas,X);
+       end
+      elseif strcmpi(X.from,'bas')
+       %bas
+       RO=cntc.getBasis(RO);
+       if isfield(X,'bas')
+        ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
+       else
+        ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
+       end
+       if isfield(X,'Orig')
+        r1=zeros(size(RO.M.Y(:,ind),2)+1,size(RO.M.Y(:,ind),1));
+        r1(1,[4 8 12])=1; % add the gl or tr marker
+        r1(2:end,:)=RO.M.Y(:,ind)';
+        X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
+         'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]},'from','bas');
+       else
+        r1=zeros(size(RO.M.Y(:,ind),2),size(RO.M.Y(:,ind),1));
+        r1(:,:)=RO.M.Y(:,ind)';
+        X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
+         'name',{[RO.M.X{2}(ind)]},'from','bas');
+       end
+      else; error('Not implemented')
+      end
 
-        RO.list{i1}=X;
-end % Loop on list (clean X)
+      try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
+
+      RO.list{i1}=X;
+     end % Loop on list (clean X)
 
      else; error('Obsolete'); % Initial case
      end
@@ -8450,14 +8396,6 @@ end % Loop on list (clean X)
      sdth.os(gf,'d.',{'ImGrid'},'p.',{'WrW49c','ImSw80'})
      set(gf,'tag','feplot');
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
-   elseif comstr(Cam,'color')
-     %% #plot.color cntc.plot('colorcurve') -3
-      out={'#FF6D00' '#FF9E00' '#00B4D8' '#0077B6' '#023E8A'};
-      if nargin>1&&isnumeric(varargin{2})
-         out=out{varargin{2}};
-      end
-    'xxx name'
-  
    else; error('Not implemented %s',CAM)
    end
   end
