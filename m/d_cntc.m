@@ -140,16 +140,8 @@ colM=vhandle.nmap({'Wheel','#FF6D00';'b','#FF9E00';'c','#00B4D8'; ...
     'Rail','#0077B6';'e','#023E8A'});
 nmap('Map:Color')=colM;
 
-%% #Map:OProp -2
-propM=vhandle.nmap({ ...
-    'WireICol',{'EdgeColor','Interp','FaceColor','none'};
-    'LineK2',{'color','k','linewidth',2};
-    'RailPro',{'EdgeColor','k','EdgeAlpha',0.3, ...
-          'FaceColor',colM('Rail'),'FaceAlpha',0.5}
-    'WheelPro',{'EdgeColor','k','EdgeAlpha',0.3, ...
-          'FaceColor',colM('Wheel'),'FaceAlpha',0.5}
-    });
-nmap('Map:Oprop')=propM;
+%% #Map:OProp : wrong see rail u -2
+nmap('Map:Oprop')=railu.getNmap('Map:OProp');
 
 %% #GlobalFlags -2
 %CNTC.un_cntc=1934;

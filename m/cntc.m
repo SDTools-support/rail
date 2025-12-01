@@ -8102,7 +8102,8 @@ cntc : interface between SDT and CONTACT
        X=cntc.plot('rail',struct('prr',X));
       elseif strncmpi(X.from,'prw',3)
        %prw
-       X=sdth.sfield('addmissing',cntc.plot('Wheel',struct('prw',X)),X);
+       r2=cntc.plot('Wheel',struct('prw',X));
+       X=sdth.sfield('addmissing',r2,X);
       elseif strcmpi(X.from,'traj')&&isfield(X,'XYZ')
       elseif strcmpi(X.from,'traj')
        %traj

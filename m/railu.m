@@ -416,7 +416,7 @@ if isempty(gnmap)||isequal(opt,'reset')
   propM('prrLagSurf')=struct('alias','RailGl');
   propM('prrSlice')=struct('alias','prrLine');
   propM('prwLagSurf')=struct('alias','WheelWc');
-  propM('prwEulSurf')=struct('alias','prwEulSurf');
+  %propM('prwEulSurf')=struct('alias','prwEulSurf');
   propM('prwSlice')=struct('alias','prwLine');
   
   % xxx alias
@@ -436,6 +436,9 @@ function out=prop(key)
   if nargin==0; asTab(propM)
   else
    out=useOrDefault(propM,key,'','','getValue');
+   if isfield(out,'alias');
+       out=useOrDefault(propM,out.alias,'','','getValue');
+   end
   end
 end
 
