@@ -7665,16 +7665,24 @@ cntc : interface between SDT and CONTACT
    % If t is defined do the transformation for the timestep given 
 
    LI=cntc.call;
-  
+   vmtx=[];
    % One timestep only
-   if nargin>2;
+   if isfield(des,'ibas')
+    RO=it; qbas=RO.NL.unlC.Y(:,des.ibas,RO.j1);
+    vmtx=cntc.getRot(qbas,1);
+   elseif isfield(des,'M')
+    RO=it; 
+    vmtx=cntc.getRot(RO.NL.unlC,des.M);
+
+   elseif nargin>2;
     Xin.j1=it;
     Bas=cntc.getBasis(Xin);Bas=Bas.M;
-   else 
+   else
     Bas=cntc.getBasis; Bas=Bas.M;
    end
    if isfield(Xin,'Xlab')
      %% 
+     warning('xxxgae report test case to EB')
      C1=Xin;
      for j1=1:size(C1.X{2},1)
         Xin=struct('FxyzMxyz',squeeze(C1.Y(:,j1,:))','bas',regexprep(C1.X{2}(j1),'^.*_',''),'name',regexprep(C1.X{2}(j1),'_.*',''));  %Apt apllication point
@@ -7684,6 +7692,9 @@ cntc : interface between SDT and CONTACT
      Xout=C1; 
      return
    end
+   if ~isempty(vmtx)
+   else
+   warning('xxxgae discuss test case with EB')
    % parse input marker output marker
    Xin.bas=lower(Xin.bas);des=lower(des);
    tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
@@ -7715,18 +7726,30 @@ cntc : interface between SDT and CONTACT
        error('Tranformation %s not found',tr1)
     end
    end
+   end
    if isfield(Xin,'XYZ')
-    if ~isequal(size(Xin.XYZ,1),size(Bas.X{3},1))
+    Xout=Xin;
+    if isempty(vmtx)
+    elseif size(vmtx,3)==1 % Single time step
+     Xout.XYZ=reshape(reshape(Xout.XYZ,[],3)*vmtx(:,1:3)+vmtx(:,4)',size(Xin.XYZ));
+    elseif size(vmtx,3)==size(Xin.XYZ,1) % traj line
+     if size(Xin.XYZ,2)>1;error('Need implement');end
+     for j1=1:size(Xout.XYZ,1)
+      Xout.XYZ(j1,1,:)=vmtx(:,:,j1)*[squeeze(Xin.XYZ(j1,1,:));1];
+     end
+    elseif length(RO.j1)>1; error('Not implemented')
+    elseif ~isequal(size(Xin.XYZ,1),size(Bas.X{3},1))
      % Reshape when dim 1 and 2 of Xin are profile dimension (case for rail profile)
+     error('Need update')
      Xin.dim=size(Xin.XYZ);
      Xin.XYZ=reshape(Xin.XYZ,[1 Xin.dim(1)*Xin.dim(2) Xin.dim(3)]);
-    end
-     Xout=Xin;
-    for j1=1:size(Xin.XYZ,1)
+     for j1=1:size(Xin.XYZ,1)
      Xout.XYZ(j1,:,:)=  ...
       (R_des(:,:,j1)*permute(Xin.XYZ(j1,:,:),[3 2 1])+squeeze(O_des(:,:,j1)))';
+     end
+     if isfield(Xin,'dim');  Xout.XYZ=reshape(Xout.XYZ,Xin.dim); end
     end
-    if isfield(Xin,'dim');  Xout.XYZ=reshape(Xout.XYZ,Xin.dim); end;
+
    else
     %% Transform moments (default system TM : [N Nm] , [mm,rad]
     st2=[tr1 '>' tr2];  fprintf('%s : %s\n',st2,sdtm.toString(mean(O_des,3)'))
@@ -7741,14 +7764,40 @@ cntc : interface between SDT and CONTACT
    Xout.bas=des;
   end
 
-  function R=getRot(qM)
+  function R=getRot(qM,ty)
    %% #getRot calculate 3d rotation matrix -2
    % [angle]=rad
-   cx=cos(qM(4));sx=sin(qM(4));cy=cos(qM(5));
-   sy=sin(qM(5));cz=cos(qM(6));sz=sin(qM(6));
-   R=[cz*cy            -sz      cz*sy;
-    cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
-    cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy]; % 3D_Rot_Mat
+   if nargin>1&&ischar(ty)
+    i1=strcmpi(qM.X{2},ty);
+    if ~any(i1)
+     if strcmpi(ty,'Mw-tr')
+      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
+      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
+      R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-tr'),:)),1);
+      R(4,4,:)=1;R2(4,4,:)=1;R3(4,4,:)=1;
+      for j1=1:size(R,3)
+       % inv(Mr_tr) *inv(Mr_gl) * Mw_gl
+       R(:,:,j1)=R3(:,:,j1)\R2(:,:,j1)\R(:,:,j1);
+      end
+      R(4,:,:)=[];
+     elseif ~any(i1); dbstack; keyboard;
+     end
+    else; 
+        R=cntc.getRot(squeeze(qM.Y(:,i1,:)),1); 
+    end
+    return
+   end
+   R=zeros(3,3,size(qM,2));
+   for j2=1:size(qM,2)
+    cx=cos(qM(4,j2));sx=sin(qM(4,j2));cy=cos(qM(5,j2));
+    sy=sin(qM(5,j2));cz=cos(qM(6,j2));sz=sin(qM(6,j2));
+    R(:,1:3,j2)=[cz*cy            -sz      cz*sy;
+     cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
+     cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy]; % 3D_Rot_Mat
+    if nargin>1&&ty==1
+     R(:,4,j2)=qM(1:3,j2);
+    end
+   end
   end
 
   function [ rot ] = rotx(roll_deg)
@@ -7965,7 +8014,7 @@ cntc : interface between SDT and CONTACT
      RO=struct('list',{{R1,R2}},'j1',50,'bas','tr','DefLen',40,'gf',1);
      cntc.plot('surf',RO);
     elseif contains(Cam,'gaugepoint')
-     % (CNTCRail{gaugepoint})
+     %% (CNTCRail{gaugepoint})
      LI=cntc.call;
      t_gae24('CNTCWheelFlat');
      qbas=cntc.getBasis;qbas=qbas.M;
@@ -8044,9 +8093,12 @@ cntc : interface between SDT and CONTACT
     %cntc.plot('both')
     if nargin>=carg;    RO=varargin{carg};carg=carg+1;  end
     % Rail and wheel profile research
-    if isfield(RO,'list')
+    if isfield(RO,'list')        
      LI=cntc.call;
      Slr=cntc.leftCoef(LI);
+     RO.NL=cntc.getCurve('NLobs'); % Observe trajectory once
+
+
      for i1=1:length(RO.list)
       %% for each list
       X=RO.list{i1};
@@ -8122,7 +8174,19 @@ cntc : interface between SDT and CONTACT
         X=cntc.BasisChange(RO.bas,X);
        end
       elseif strcmpi(X.from,'bas')
-       %bas
+       %% #plot.init.bas
+        X.bas=X.bas(:);ind=~strncmp(X.bas,'m',1);
+        X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
+        for j2=1:length(X.bas)
+          RB=struct('name',X.bas{j2}, ...
+              'ibas',[]);
+          RB.ibas=find(strcmpi(RB.name,RO.NL.unlC.X{2}));
+          X.bas{j2}=RB;
+        end
+
+      elseif strcmpi(X.from,'basold')
+       %% basold prepare display of marker at specific j1 time step 
+       % not relevant as basis transformation should be based on need
        RO=cntc.getBasis(RO);
        if isfield(X,'bas')
         ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
@@ -8143,14 +8207,20 @@ cntc : interface between SDT and CONTACT
        end
       else; error('Not implemented')
       end
+      if isfield(X,'bas')&&ischar(X.bas)
+       RB=struct('name',strcat('M',X.bas,'-',RO.bas));
+       RB.ibas=strcmpi(RB.name,RO.NL.unlC.X{2});
+       X.toObsM=@(X,RO)cntc.BasisChange(RB,X,RO);
+      end
 
-      try; if isfield(X,'from');X.prop=railu.prop(X.from);end;end
+     if isfield(X,'from')&&~strcmpi(X.from,'bas');X.prop=railu.prop(X.from);end
 
       RO.list{i1}=X;
      end % Loop on list (clean X)
 
      else; error('Obsolete'); % Initial case
-     end
+    end % Loop On inits
+
      if isfield(RO,'asModel');  out=RO;
      elseif isfield(RO,'gf')
       cntc.plot('surf',RO); % sdtweb cntc plot.surf
@@ -8188,12 +8258,17 @@ cntc : interface between SDT and CONTACT
     figure(RO.gf);
     if ~RO.gf==15; clf(RO.gf);end
     hold on; i1=1;
+    RO.NL=cntc.getCurve('NLobs'); % Observe trajectory once
+
     while carg<=nargin
      R1=varargin{carg};carg=carg+1;
-     R2.list{i1}=cntc.BasisChange(RO.M,R1); % Transform to desired marker
+     if strcmpi(R1.bas,RO.M);R2.list{i1}=R1;R2.list{i1}.bas=struct('M',['M' R1.bas '-' RO.M]);
+     else
+      R2.list{i1}=cntc.BasisChange(struct('M',['M' R1.bas '-' RO.M]),R1,RO); % Transform to desired marker
+     end
      if nargout==0
      plot3(R2.list{i1}.XYZ(:,:,1),R2.list{i1}.XYZ(:,:,2),R2.list{i1}.XYZ(:,:,3) ...
-      ,'DisplayName',[R1.name R1.bas '_' R2.list{i1}.bas]);
+      ,'DisplayName',R2.list{i1}.bas.M);
      end
      i1=i1+1;
     end
@@ -8296,19 +8371,22 @@ cntc : interface between SDT and CONTACT
      %iimouse('InteractUrn',gf,menu_generation('interact.feplot'))
      view(3)
    elseif comstr(Cam,'surf')
-     %% #plot.surf -3
+     %% #plot.surf actually do plotting -3
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
      propM=d_cntc('nmap.Map:OProp');
+
      for i1=1:length(RO.list)
-      %% loop on animations
+      %% loop on objects to animate 
       X=RO.list{i1};
     
       if isfield(X,'RTZ');
       %interpolation of the wheel
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=cntc.getBasis('roll');ry_wc=ry_wc.M;
+        ry_wc=squeeze(RO.NL.getRoll(RO.NL.unlC.Y));
+        %cntc.getBasis('roll');ry_wc=ry_wc.M;
+        warning('xxxgae : how defined based on real properties RO.NL.unlC.X{2} getRoll , missing reference')
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc)
         if strcmpi(X.bas,'w') % RTZ_wc
@@ -8335,7 +8413,29 @@ cntc : interface between SDT and CONTACT
       end
 
       if ~isfield(X,'XYZ')
-       if isfield(X,'bas')&&size(X.bas,2)==15;
+       if isfield(X,'bas')&&iscell(X.bas)
+         %% updated dec 25, sdtweb cntc plot.init.bas
+        RB=struct('cf',gf,'ga',ga,'text',[], ...
+         'arProp',{{'linewidth',2}},'DefLen',40);
+        if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
+        RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
+        r2=struct('name',{RB.text(:,1)}, ...
+            'bas',cntc.getRot(RO.NL.unlC.Y(:,cellfun(@(x)x.ibas,X.bas),RO.j1),1));
+        sel=sdtu.fe.genSel(r2,RB);
+        % Some design features
+        if 1==2
+          warning('xxxgae design features')
+ %        Ows=X.bas(contains(X.name,'Mws-'),4:6);
+ %        Ow=X.bas(contains(X.name,'Mw-'),4:6);
+ %        Owc=X.bas(contains(X.name,'MwL-'),4:6);
+ %        Oc=Ows+[0 1 0]*Ow(2); % center of the wheel
+ %        plot3(Oc(1),Oc(2),Oc(3),'+','DisplayName','Oc','LineWidth',2);
+ %        C1=[Ows;Oc;Oc;Ow;Oc;Owc];
+ %        plot3(C1(:,1),C1(:,2),C1(:,3),'Color','k','LineStyle','--');
+        end
+
+       elseif isfield(X,'bas')&&size(X.bas,2)==15;
+        %% display bases obsolete where base was computed before
         st=regexprep(X.name,'-.*','');
         cellfun(@(x)['v1',x],st,'uni',0)
         RB=struct('cf',gf,'ga',ga,'text',[], ...
@@ -8359,7 +8459,7 @@ cntc : interface between SDT and CONTACT
       if isfield(RO,'Marker'); error('Obsolete use RO.M/RO.Rot')
       elseif isfield(RO,'j1')
        if ~strcmpi(X.from,'traj') % no need in case traj
-        X=cntc.BasisChange(RO.bas,X,RO.j1);
+        X=X.toObsM(X,RO); % edit cntc.BasisChange
        end
       end
       if isfield(X,'gf_offset')
@@ -8368,6 +8468,7 @@ cntc : interface between SDT and CONTACT
        % Marker displacement
        for i2=1:length(RO.list)
         if ~ischar(RO.list{i2}.bas)
+            error('xxxGAE explain what this should not NOT HERE?')
          ib=contains(RO.list{i2}.name,X.name(1),'IgnoreCase',true);
          RO.list{i2}.bas(ib,6)=RO.list{i2}.bas(ib,6)+X.gf_offset;
         end 
@@ -8388,7 +8489,11 @@ cntc : interface between SDT and CONTACT
       end
       ga=go(i1).Parent;
       if i1==1
-       xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
+       if isfield(X.bas,'name')
+         xlabel(ga,[X.bas.name,':x']);ylabel(ga,[X.bas.name,':y']);zlabel(ga,[X.bas.name,':z']);
+       else
+        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
+       end
       end
      end
      set(gca,'DataAspectRatio',[1 1 1]); 
@@ -14735,7 +14840,7 @@ cntc : interface between SDT and CONTACT
       else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
       end
      end
-     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);
+     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0 
      NL.vnllab= { 
       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'       % vMw-gl
       '0';'vyrail';'vzrail'; 'vrollr';'0';'0';                % vMr-gl
@@ -14850,12 +14955,21 @@ nlAstable : generate tables for tex
      if nargout>0; out=ta;end
      return
 
-    elseif strcmp(str,'back') % get trajectories
+    elseif strncmpi(CAM,'nlobs',5)|| strcmp(str,'back') 
+     %% cntc.getCurve('NLobs'); get trajectories
      out=NL;  % NL.unl(:,:,2)=unl0
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}=NL.unl.X{1};
      out.cnl.X{2}=NL.unl.X{2};
-     out.Cunl=cntc.getCurve(NL.unllab);
+     warning('xxxGAE Missing links where this is described')
+     out.unlC=out.cnl; 
+     out.unlC.Y=reshape(reshape(out.cnl.Y,[],size(out.cnl.Y,3))+ ...
+         reshape(out.unl.Y(:,:,2),[],1),6,size(out.cnl.Y,2),size(out.cnl.Y,3));
+
+     iwsL=strcmpi(out.cnl.X{2},'MwsL-ws');iws=strcmpi(out.cnl.X{2},'Mw-ws');
+     out.getRoll=@(qbas)qbas(5,iwsL,:)+qbas(5,iws,:); % (Rolling_wheel)
+
+
      if isfield(NL,'vnllab')
       out.vnl=cntc.getCurve(NL.vnllab);
       out.vnl.X{1}={'vx';'vy';'vz';'vrx';'vry';'vrz'};
@@ -14957,7 +15071,6 @@ nlAstable : generate tables for tex
 
   function out=getBasis(it)
    %% #getBasis return qbas for all marker used -2
-   NL=cntc.getCurve('NL','back');
    if nargin==0; it=(1:size(NL.cnl.Y,3))';cntc.getBasis(it);end %case it is a timestep
    if ischar(it)&&comstr(it,'roll') % rolling calculation
     qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
@@ -14966,7 +15079,7 @@ nlAstable : generate tables for tex
     C1=roll; % rotation angles
    else 
     if isfield(it,'j1'); RO=it;it=RO.j1;  end %case it is a struct
-    qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]);
+    qbas=NL.cnl.Y(:,:,it)+repmat(NL.unl.Y(:,:,2),[1 1 length(it)]); 'xxx this should be unl.Y(:,:,1)'
     C1=struct('X',{{{'Ax';'Ay';'Az';'Ux';'Uy';'Uz';'Vx';'Vy';'Vz';'Wx';'Wy';'Wz'}, ...
      [NL.cnl.X{2};{'Mw-tr=Mw-gl/Mtr-gl';'Mws-gl=Mtr-gl*Mws-tr'}], it}}, ...
       'Xlab',{{'Comp','Marker','Timestep'}},'Y', []);
