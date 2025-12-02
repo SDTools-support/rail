@@ -12113,7 +12113,7 @@ cntc : interface between SDT and CONTACT
    
    if p.is_wheel == 0 % Rail position gauge point calculation 
     %rotate the rail of the cant
-    qbas=zeros(1,6);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);
+    qbas=zeros(6,1);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);
     if (~is_slices)
     XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
      [1 size(p.ProfileY,1) 3]);
