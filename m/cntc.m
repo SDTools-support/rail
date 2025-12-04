@@ -82,7 +82,7 @@ cntc : interface between SDT and CONTACT
      cntc.closelibrary;
     end
     clear cntc;
-    evalin('base','LI=vhandle.uo([]);');LI=vhandle.uo([]);
+    evalin('base','LI=vhandle.uo([]);');
     %LI=cntc.call;
    else
     disp('Error : LI is already empty')
@@ -518,6 +518,17 @@ cntc : interface between SDT and CONTACT
     fprintf('Reset LI in cntc.call\n')
     LI=varargin{1}; if nargout>0;out=LI;end
     return
+   elseif nargin==1&&comstr(lower(varargin{1}),'clear')
+    if isfield(LI,'libname')
+     if ~isempty(LI.libname)||libisloaded(LI.libname)
+      cntc.closelibrary;
+     end
+     clear cntc;
+     evalin('base','LI=vhandle.uo([]);');
+     %LI=cntc.call;
+    else
+     disp('Error : LI is already empty')
+    end
    end
    CAM=varargin{1};
    if strcmpi(CAM,'callLog')
@@ -8025,7 +8036,7 @@ cntc : interface between SDT and CONTACT
      des='tr';
      Xr_tr=cntc.BasisChange(des,RO);
      R=qbas.M;XYZcant=R*XYZ';
-     figure;plot(XYZ(:,2),XYZ(:,3));set(gca,'DataAspectRatio',[1 1 1],'YDir','reverse');
+     figure;plot(XYZ(:,2),XYZ(:,3));set(gca,'DataAspectRatio',[1 1 1]);
  
     elseif isfield(RO,'prr') 
      %% Interpolate rail profile
@@ -8097,8 +8108,6 @@ cntc : interface between SDT and CONTACT
      LI=cntc.call;
      Slr=cntc.leftCoef(LI);
      RO.NL=cntc.getCurve('NLobs'); % Observe trajectory once
-
-
      for i1=1:length(RO.list)
       %% for each list
       X=RO.list{i1};
@@ -8421,7 +8430,7 @@ cntc : interface between SDT and CONTACT
         RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
         r2=struct('name',{RB.text(:,1)}, ...
             'bas',cntc.getRot(RO.NL.unlC.Y(:,cellfun(@(x)x.ibas,X.bas),RO.j1),1));
-        sel=sdtu.fe.genSel(r2,RB);
+        sel=sdtu.fe.genSel(r2,RB); %xxxeb wrong basis
         % Some design features
         if 1==2
           warning('xxxgae design features')
@@ -14806,7 +14815,7 @@ cntc : interface between SDT and CONTACT
       % '0';'0';'pitch_ws','0'; %Mw_ws:xxxeb
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
-      unl0={% geometric Gauge Ow position 
+      NL.unl0={% geometric Gauge Ow position 
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
        '0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0';%Mr_gl
@@ -14820,7 +14829,7 @@ cntc : interface between SDT and CONTACT
        '0';'0';'0';'0';'0';'0'}; %Mcp_r
        
      else
-      unl0={ % geometric absolut Ow position 
+      NL.unl0={ % geometric absolut Ow position 
        '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
        '0';'0';'0';'0';'0';'0';%Mr_gl
        '0';'0';'0';'0';'0';'0';%Mtr_gl
@@ -14833,14 +14842,6 @@ cntc : interface between SDT and CONTACT
        '0';'0';'0';'0';'0';'0'};%Mcp_r
      end
 
-     LI=cntc.call;r1=zeros(42,1);
-     for j1=1:length(unl0)  % Fill unl0 from LI content
-      r2=eval(unl0{j1});
-      if isscalar(r2); r1(j1)=r2;
-      else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
-      end
-     end
-     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0 
      NL.vnllab= { 
       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'       % vMw-gl
       '0';'vyrail';'vzrail'; 'vrollr';'0';'0';                % vMr-gl
@@ -14958,6 +14959,18 @@ nlAstable : generate tables for tex
     elseif strncmpi(CAM,'nlobs',5)|| strcmp(str,'back') 
      %% cntc.getCurve('NLobs'); get trajectories
      out=NL;  % NL.unl(:,:,2)=unl0
+
+     % UNL0 parameter input
+     LI=cntc.call;r1=zeros(42,1);
+     for j1=1:length(NL.unl0)  % Fill unl0 from LI content
+      r2=eval(NL.unl0{j1});
+      if isscalar(r2); r1(j1)=r2;
+      else; fprintf('Problem: %s = %s\n',unl0{j1},sdtm.toString(r2))
+      end
+     end
+     
+     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0 
+
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}=NL.unl.X{1};
      out.cnl.X{2}=NL.unl.X{2};
@@ -15008,18 +15021,11 @@ nlAstable : generate tables for tex
 
    elseif strcmpi(CAM,'cosim')
     %% #PreCosim : get wheelE and railE marker information -3
-    chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'Mw-gl:v';'Mr-gl:v'});
-    RO.type='AtMarker';
+    chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'MwsL-ws';'Mw-gl:v';'Mr-gl:v';'MwsL-ws:v'});
+    RO.type='Field';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
     % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
-
-    elseif strcmpi(CAM,'trajws')
-    %% #TrajWS Wheelset Trajectory in gl marker -3
-    TrajWS= {'Mws_gl:x','s_ws';'Mws_gl:y','y_ws';'Mws_gl:z','z_ws';
-     'Mws_gl:rx','roll_ws';'Mws_gl:ry','pitch_ws';'Mws_gl:rz','yaw_ws'
-     };
-    chan=TrajWS;RO.type='AtMarker';
     elseif strcmpi(CAM,'cExchange')
     %% #iExchange Wheelset Trajectory in gl marker -3
     lab=str; if isfield(lab,'lab');lab=lab.lab; end
@@ -15042,8 +15048,9 @@ nlAstable : generate tables for tex
     chan(:,2)=cellfun(@(x)tlabM(x),chan(:,1),'uni',0);
 
    end
-
+   
    if ~isfield(RO,'name');RO.name='curve';end
+   if strcmpi(RO.type,'Field'); RO.field=chan;out=RO;end
    if strcmpi(RO.type,'AtMarker')
     C1=LI.Cmacro;  %% values in Cmacro
     C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ... % component
@@ -16957,7 +16964,10 @@ nlAstable : generate tables for tex
 
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage
-      if ~isfield(LI.Traj,'Y')
+      if isfield(LI.Traj,'def')
+       LI.Traj.J1=1:size(LI.Traj.def,1);
+       step=LI.Traj.J1;
+      elseif ~isfield(LI.Traj,'Y')
        step=LI.Traj.J1;
       else
        step=LI.Traj.X{1};
@@ -17007,7 +17017,7 @@ nlAstable : generate tables for tex
        cntc.set('initout{}');
       end
 
-      if icase==LI.Traj.X{1}(end)
+      if icase==3
        LI.Cmacro.X{1}=LI.Cmacro.rowM.prop.name;
       end
 
@@ -17147,7 +17157,7 @@ nlAstable : generate tables for tex
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
-      uvnl=LI.Traj.cExchange*LI.Traj.def(:,icase); % evt.j1=icase
+      uvnl=LI.Traj.cExchange*LI.Traj.def(icase,:)'; % evt.j1=icase
       % LI.Traj=C2; WRONG do not modify LI.Traj just use it
 
       % Wheelset trajectory and speed 
@@ -17158,16 +17168,16 @@ nlAstable : generate tables for tex
       % Wheel Traj and speed
       flex=uvnl(13:24);%[ st1(i1) num2cell(flex)']
       % CNTC input functions
-      cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos); % set wheel set pos
-      cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel);
-      cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex);
+      cntc.setwheelsetposition(iwhe,LI.wheelsetDim.Ewheel,pos'); % set wheel set pos
+      cntc.setwheelsetvelocity(iwhe,LI.wheelsetDim.Ewheel,vel');
+      cntc.setwheelsetflexibility(iwhe,LI.wheelsetDim.Ewheel,flex');
       if icase==1
-       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'raily0', ...
-        'railz0', 'cant', 'nomrad'}); params=struct2cell(params);
-       params=horzcat(params{:},dev);
+       params=sdth.sfield('addselected',struct,LI.Track,{'gaught', 'gaugsq', ...
+        'gaugwd', 'cant', 'nomrad'}); params=struct2cell(params);
+       params(cellfun(@isempty,params))={0}; params=horzcat(params{:},dev');
        cntc.settrackdimensions(iwhe, 3, params); % NewBoth, new track dimension and deviation
       else
-       cntc.settrackdimensions(iwhe, 2, dev); %  New Devia, deviation definition only
+       cntc.settrackdimensions(iwhe, 2, dev'); %  New Devia, deviation definition only
       end
       eval(iigui({'RT'},'SetInCaller'));
 
@@ -17214,10 +17224,10 @@ nlAstable : generate tables for tex
       if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end 
       if RT.profile;try;profile('clear');end;profile('on');end
       if isfield(LI.Traj,'Y')
-       d1=struct('def',reshape(LI.Traj.Y,size(LI.Traj.Y,1)*size(LI.Traj.Y,2), ...
-           size(LI.Traj.Y,3)),'DOF',[],'lab',{NodeDir2Lab(LI.Traj.X{2})});
+       li=cntc.getCurve('cosim');
+       d1=struct('def',LI.Traj.Y,'DOF',[],'lab',LI.Traj.X(2));
        d1.cExchange=cntc.getCurve('cExchange',d1);
-       LI.Traj=d1; 
+       LI.Traj=sdth.sfield('addmissing',LI.Traj,d1);
       end
       eval(iigui({'RT'},'SetInCaller'));
     end
@@ -17227,7 +17237,7 @@ nlAstable : generate tables for tex
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    LI=cntc.call;
-   for j1 = 1:size(RT.Traj.Y,3) % Loop on traj, In fe_time step is called j1 here icase
+   for j1 = RT.Traj.X{1}' % Loop on traj, In fe_time step is called j1 here icase
     % sdtweb cntc set.traj
     if ~isfield(RT,'cur')
      RT.cur=struct('type','Traj','j1',1,'iwhe',[]);LI.cur=RT.cur; 
