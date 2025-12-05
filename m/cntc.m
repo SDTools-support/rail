@@ -74,23 +74,6 @@ cntc : interface between SDT and CONTACT
   %------------------------------------------------------------------------------------------------------------
 
   %------------------------------------------------------------------------------------------------------------
-  function []=clearLI()
-   % #clearLI -2
-   LI=cntc.call;
-   if isfield(LI,'libname')
-    if ~isempty(LI.libname)||libisloaded(LI.libname)
-     cntc.closelibrary;
-    end
-    clear cntc;
-    evalin('base','LI=vhandle.uo([]);');
-    %LI=cntc.call;
-   else
-    disp('Error : LI is already empty')
-   end
-  end
-  %------------------------------------------------------------------------------------------------------------
-
-  %------------------------------------------------------------------------------------------------------------
   function []=setglobalflags(params, values)
    % [ ] = cntc.setglobalflags(params, values)
    %
@@ -520,12 +503,15 @@ cntc : interface between SDT and CONTACT
     return
    elseif nargin==1&&comstr(lower(varargin{1}),'clear')
     if isfield(LI,'libname')
-     if ~isempty(LI.libname)||libisloaded(LI.libname)
+     if ~isempty(LI.libname)&libisloaded(LI.libname)
       cntc.closelibrary;
+     elseif ~isempty(LI.libname)
+      LI.libname='';
      end
-     clear cntc;
-     evalin('base','LI=vhandle.uo([]);');
-     %LI=cntc.call;
+     clear cntc;clear LI;
+     evalin('base','clear LI');
+     disp('LI cleared')
+     return;
     else
      disp('Error : LI is already empty')
     end
@@ -8430,7 +8416,7 @@ cntc : interface between SDT and CONTACT
         RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
         r2=struct('name',{RB.text(:,1)}, ...
             'bas',cntc.getRot(RO.NL.unlC.Y(:,cellfun(@(x)x.ibas,X.bas),RO.j1),1));
-        sel=sdtu.fe.genSel(r2,RB); %xxxeb wrong basis
+        sel=sdtu.fe.genSel(r2,RB); 
         % Some design features
         if 1==2
           warning('xxxgae design features')
@@ -14811,8 +14797,6 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
       'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
-      % 'LI.wheelsetDim.nomrad*sin(pitch_ws)';'-LI.wheelsetDim.nomrad*(1-cos(pitch_ws))';
-      % '0';'0';'pitch_ws','0'; %Mw_ws:xxxeb
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
       NL.unl0={% geometric Gauge Ow position 
@@ -17525,7 +17509,7 @@ nlAstable : generate tables for tex
     LI=cntc.call;
     Friction=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
     %xxxeb commented because doesn't work
-    %Friction.GHandle.ToolTip=' Friction method <a href="matlab: edit(''cntc.setfrictionmethod'')">m</a>';
+    Friction.GHandle.ToolTip=' Friction method <a href="matlab: edit(''cntc.setfrictionmethod'')">m</a>';
 
     switch Friction.FrcLaw
      case 0; params={'fstat','fkin'}; % 0 Coul
@@ -17907,7 +17891,6 @@ nlAstable : generate tables for tex
     if nargin==0; CAM='';else; CAM=ire; end
     LI=cntc.call;
     LI.Bound=cingui('paramedit -doclean2',DoOpt,{struct,CAM});
-    %xxxeb same here doesn't work
     Bound=LI.Bound;%Bound.GHandle.ToolTip=' Boundary conditions <a href="matlab: edit(''cntc.setboundcond'')">m</a>';
 
     switch LI.Bound.Cond;
