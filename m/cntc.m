@@ -7660,7 +7660,7 @@ cntc : interface between SDT and CONTACT
    % Xin.XYZ stuctured as snapshots*points number*3 coords
    % it define a timestep chosen
    % If t is defined do the transformation for the timestep given 
-
+   % vmtx : viewmetrix
    LI=cntc.call;
    vmtx=[];
    % One timestep only
@@ -7767,6 +7767,7 @@ cntc : interface between SDT and CONTACT
    if nargin>1&&ischar(ty)
     i1=strcmpi(qM.X{2},ty);
     if ~any(i1)
+     warning('xxxgae link')
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
       R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
@@ -8208,7 +8209,7 @@ cntc : interface between SDT and CONTACT
        X.toObsM=@(X,RO)cntc.BasisChange(RB,X,RO);
       end
 
-     if isfield(X,'from')&&~strcmpi(X.from,'bas');X.prop=railu.prop(X.from);end
+     if isfield(X,'from')&&~strcmpi(X.from,'bas')&&~isfield(X,'prop');X.prop=railu.prop(X.from);end
 
       RO.list{i1}=X;
      end % Loop on list (clean X)
@@ -14811,7 +14812,6 @@ cntc : interface between SDT and CONTACT
        '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
        '0';'0';'0';'0';'0';'0' %Mcp_w
        '0';'0';'0';'0';'0';'0'}; %Mcp_r
-       
      else
       NL.unl0={ % geometric absolut Ow position 
        '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
@@ -14953,7 +14953,7 @@ nlAstable : generate tables for tex
       end
      end
      
-     NL.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0 
+     out.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0 
 
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}=NL.unl.X{1};
@@ -14965,7 +14965,6 @@ nlAstable : generate tables for tex
 
      iwsL=strcmpi(out.cnl.X{2},'MwsL-ws');iws=strcmpi(out.cnl.X{2},'Mw-ws');
      out.getRoll=@(qbas)qbas(5,iwsL,:)+qbas(5,iws,:); % (Rolling_wheel)
-
 
      if isfield(NL,'vnllab')
       out.vnl=cntc.getCurve(NL.vnllab);
@@ -15012,7 +15011,7 @@ nlAstable : generate tables for tex
     % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
     elseif strcmpi(CAM,'cExchange')
     %% #iExchange Wheelset Trajectory in gl marker -3
-    lab=str; if isfield(lab,'lab');lab=lab.lab; end
+    lab=str; if isfield(lab,'lab');lab=lab.lab{:}(:,1); end 
     if ~all(isKey(NL.tlabM,lab)); error('Problem');end
     st2=cellfun(@(x)NL.tlabM(x),lab,'uni',0);
     st1=d_cntc('nmap.DataExchange');
@@ -16951,8 +16950,6 @@ nlAstable : generate tables for tex
       if isfield(LI.Traj,'def')
        LI.Traj.J1=1:size(LI.Traj.def,1);
        step=LI.Traj.J1;
-      elseif ~isfield(LI.Traj,'Y')
-       step=LI.Traj.J1;
       else
        step=LI.Traj.X{1};
       end
@@ -17141,7 +17138,7 @@ nlAstable : generate tables for tex
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
-      uvnl=LI.Traj.cExchange*LI.Traj.def(icase,:)'; % evt.j1=icase
+      uvnl=LI.Traj.cExchange*LI.Traj.def(:,icase); % evt.j1=icase
       % LI.Traj=C2; WRONG do not modify LI.Traj just use it
 
       % Wheelset trajectory and speed 
@@ -17196,7 +17193,7 @@ nlAstable : generate tables for tex
        cntc.set(RT.Model);
       else
        %% Initialize model and Traj from info in caller
-       LI.ProjectWd=RT.ProjectWd; 
+       LI.ProjectWd=RT.ProjectWd;
        LI.Traj=RT.Traj; RT=rmfield(RT,'Traj');
        LI.flags=RT.flags;
        cntc.initializeflags; %initialize Global_flags
@@ -17205,14 +17202,9 @@ nlAstable : generate tables for tex
       end
       %xxxgae inside or outside of the if
       % call the profiler
-      if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end 
+      if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
       if RT.profile;try;profile('clear');end;profile('on');end
-      if isfield(LI.Traj,'Y')
-       li=cntc.getCurve('cosim');
-       d1=struct('def',LI.Traj.Y,'DOF',[],'lab',LI.Traj.X(2));
-       d1.cExchange=cntc.getCurve('cExchange',d1);
-       LI.Traj=sdth.sfield('addmissing',LI.Traj,d1);
-      end
+      LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
       eval(iigui({'RT'},'SetInCaller'));
     end
    end
@@ -17221,7 +17213,7 @@ nlAstable : generate tables for tex
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    LI=cntc.call;
-   for j1 = RT.Traj.X{1}' % Loop on traj, In fe_time step is called j1 here icase
+   for j1 = RT.Traj.data' % Loop on traj, In fe_time step is called j1 here icase
     % sdtweb cntc set.traj
     if ~isfield(RT,'cur')
      RT.cur=struct('type','Traj','j1',1,'iwhe',[]);LI.cur=RT.cur; 
