@@ -7767,7 +7767,7 @@ cntc : interface between SDT and CONTACT
    if nargin>1&&ischar(ty)
     i1=strcmpi(qM.X{2},ty);
     if ~any(i1)
-     warning('xxxgae link')
+     warning('xxxgae link, this should be written implicitly somewhere else')
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
       R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
@@ -7775,7 +7775,28 @@ cntc : interface between SDT and CONTACT
       R(4,4,:)=1;R2(4,4,:)=1;R3(4,4,:)=1;
       for j1=1:size(R,3)
        % inv(Mr_tr) *inv(Mr_gl) * Mw_gl
+       % inv(c_r_tr)*inv(c_gl_tr)*c_gl_w
        R(:,:,j1)=R3(:,:,j1)\R2(:,:,j1)\R(:,:,j1);
+      end
+      R(4,:,:)=[];
+     elseif strcmpi(ty,'Mws-gl')
+      %%
+      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
+      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-ws'),:)),1);
+      R(4,4,:)=1;R2(4,4,:)=1;
+      for j1=1:size(R,3)
+       % c_gl_ws = c_gl_w * inv(c_ws_w)
+       R(:,:,j1)=R(:,:,j1)/R2(:,:,j1);
+      end
+      R(4,:,:)=[];
+     elseif strcmpi(ty,'MwsL-gl')
+      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'MwsL-ws'),:)),1);
+      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mws-tr'),:)),1);
+      R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
+      R(4,4,:)=1;R2(4,4,:)=1;R3(4,4,:)=1;
+      for j1=1:size(R,3)
+       % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
+       R(:,:,j1)=R3(:,:,j1)*R2(:,:,j1)*R(:,:,j1);
       end
       R(4,:,:)=[];
      elseif ~any(i1); dbstack; keyboard;
@@ -8415,8 +8436,11 @@ cntc : interface between SDT and CONTACT
          'arProp',{{'linewidth',2}},'DefLen',40);
         if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
         RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
-        r2=struct('name',{RB.text(:,1)}, ...
-            'bas',cntc.getRot(RO.NL.unlC.Y(:,cellfun(@(x)x.ibas,X.bas),RO.j1),1));
+        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,1); qM.X{3}= qM.X{3}(1,:);
+        r2=struct('name',{RB.text(:,1)},'bas',[]);
+        for j2=1:length(X.bas)
+            r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2}.name);
+        end
         sel=sdtu.fe.genSel(r2,RB); 
         % Some design features
         if 1==2
