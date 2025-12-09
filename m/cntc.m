@@ -8516,8 +8516,9 @@ cntc : interface between SDT and CONTACT
         RO.nodeM('NaN')=NaN(3,1);
         if any(strcmpi(X.li,'Owl'))
          %'OwL,wheelCenter+LI.wheelsetDim.nomrad*(Ow:v3*cos(Mws-wsL:ry)+Ow:v1*sin(Mw-wsL:ry)}'       
-         RO.nodeM('OwL')=RO.nodeM('WheelCenter')-LI.wheelsetDim.nomrad *  ...
-             r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],3,strcmpi(r2.name,'OwsL'));
+         RO.nodeM('OwL')=RO.nodeM('WheelCenter')+LI.wheelsetDim.nomrad *  ...
+             r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],1,strcmpi(r2.name,'OwsL'));
+         warning('xxxGAE check rotation')
         end
         n1=[];
         for j2=1:length(X.li);
