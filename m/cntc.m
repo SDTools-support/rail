@@ -15125,8 +15125,8 @@ nlAstable : generate tables for tex
      'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[], ...
      'name',RO.name,'Ylab',1,'DimPos',[3 1 2]);
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
-    [i1,i2]=ismember(chan(:,2),C3.X{2}(:,1));
-    C2.Y(i1,:)=C3.Y(1:size(C3.X{1},1),i2(i1))';
+    [i1,i2]=ismember(chan(:,2),C3.lab{:}(:,2));
+    C2.Y(i1,:)=C3.Y(1:size(C3.data,1),i2(i1))';
 
     [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
     C2.Y(size(chan,1),size(C2.X{3},1))=0;
