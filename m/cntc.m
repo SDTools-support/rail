@@ -14826,9 +14826,9 @@ cntc : interface between SDT and CONTACT
       % offset in unl = [c]{q} + {unl0}
       NL.unl0={% geometric Gauge Ow position 
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
-       '0';'pi()';'0';'0'%Mw_gl   
-       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi()-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
-       '0';'pi()';'0';'0';'0';'0'  %Mtr_gl
+       '0';'pi';'0';'0'%Mw_gl   
+       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
