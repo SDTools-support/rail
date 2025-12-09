@@ -7799,6 +7799,8 @@ cntc : interface between SDT and CONTACT
        R(:,:,j1)=R3(:,:,j1)*R2(:,:,j1)*R(:,:,j1);
       end
       R(4,:,:)=[];
+     elseif strcmpi(ty,'Mgl-gl')
+      R=eye(3,4);
      elseif ~any(i1); dbstack; keyboard;
      end
     else; 
@@ -7924,21 +7926,25 @@ cntc : interface between SDT and CONTACT
     
     if isfield(RO,'prw')
      %% plot.wheel.prw
-     % RTZ_wc
      try; RO.prw.prop=railu.prop(RO.prw.from);end
 
-     if isfield(LI.prw,'xsurf') %variable profile
+     if strcmpi(RO.prw.from,'prwLine');
+       %% prwLine
+       t=RO.prw.tcL(:)*pi/180;
+       R1=struct('RTZ',cat(3,LI.wheelsetDim.nomrad*ones(size(t)), ...
+         t,zeros(size(t))),'bas','w','name','prwLine');
+     elseif isfield(LI.prw,'xsurf') 
+      % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#RTZ_wL') 
+      % xsurf,ysurf,zsurf contains profiles(\theta_j,s_j) 
       R1=struct('RTZ',cat(3,LI.prw.zsurf+LI.wheelsetDim.nomrad, ...
          LI.prw.xsurf,cntc.leftCoef(LI)*LI.prw.ysurf),'bas','w','name','Wheel');
-
-      [t,i1]=sort(squeeze(R1.RTZ(:,1,2))'); % sort angles
-      [z,i2]=sort(squeeze(R1.RTZ(1,:,3))); % sort y (Z of RTZ) xxx s 
+      [t,i1]=sort(squeeze(R1.RTZ(:,1,2))'); % T(all angles,s1) sort 
+      [z,i2]=sort(squeeze(R1.RTZ(1,:,3)));  % cylindrical Z(angle 1, all s) (y direction for cntc)  
       R1.tlim=t([1 end]);R1.zlim=z([1 end]);
       [t,z]=ndgrid(t,z);
-      R1.r_tz = griddedInterpolant(t,z,R1.RTZ(i1,i2,1));
-
-      [t1,z1]=ndgrid(RO.prw.t(:)*pi/180,z(1,RO.prw.is)); %prepare view grid
-      R1.tcsc={t1,z1};R1.bas=RO.prw.bas;
+      R1.r_tz = griddedInterpolant(t,z,R1.RTZ(i1,i2,1)); % interpolant on original trid 
+      [t1,z1]=ndgrid(RO.prw.tcL(:)*pi/180,RO.prw.scL); %prepare theta_i,si grid z=s in cntc 
+      R1.tcLscL={t1,z1};R1.bas=RO.prw.bas;
 
      else
       % now extrude along theta (t field)
@@ -8057,6 +8063,9 @@ cntc : interface between SDT and CONTACT
       RO.prr.x=RO.prr.x(NL.cnl.Y(strcmpi(NL.cnl.X{1},'x'),strcmpi(NL.cnl.X{2},'Mtr-gl'),RO.prr.j1));
      end
      if isfield(RO.prr,'XYZ'); R1=RO.prr;
+     elseif isfield(RO.prr,'from')&&strcmpi(RO.prr.from,'prrLine')
+      x=RO.prr.x(:);
+      R1=struct('XYZ',cat(3,x,zeros(size(x)),zeros(size(x))),'bas',RO.prr.bas,'name','prrLine');       
      elseif isfield(LI.prr,'xsurf')
          error('Need implement') 
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail 
@@ -8194,10 +8203,23 @@ cntc : interface between SDT and CONTACT
        %% #plot.init.bas
         X.bas=X.bas(:);ind=~strncmp(X.bas,'m',1);
         X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
+        % edit cntc.getRot
         for j2=1:length(X.bas)
           RB=struct('name',X.bas{j2}, ...
-              'ibas',[]);
-          RB.ibas=find(strcmpi(RB.name,RO.NL.unlC.X{2}));
+              'ibas',find(strcmpi(RB.name,RO.NL.unlC.X{2})));
+          if ~isempty(RB.ibas)
+          elseif strcmpi(RB.name,'MwsL-gl')
+           % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#MwsL-gl')
+           % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
+          RB.ibas=[find(strcmpi( RO.NL.unlC.X{2},'Mtr-gl'))
+           find(strcmpi( RO.NL.unlC.X{2},'Mws-tr'))
+           find(strcmpi( RO.NL.unlC.X{2},'MwsL-ws'))
+           ];
+          elseif strcmpi(RB.name,'Mw-gl')
+          else
+            warning('Should resolve transformation %s',RB.name)
+1;
+          end
           X.bas{j2}=RB;
         end
 
@@ -8413,6 +8435,10 @@ cntc : interface between SDT and CONTACT
          X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
           'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
         end
+       else
+         X1=struct('rtz',X.RTZ, ...
+          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
+           
        end
        if isfield(X,'prop'); ic=strcmpi(X.prop,'CData'); %add a colormap for wheel defect
         if any(ic) %xxxgae
@@ -8436,7 +8462,7 @@ cntc : interface between SDT and CONTACT
          'arProp',{{'linewidth',2}},'DefLen',40);
         if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
         RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
-        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,1); qM.X{3}= qM.X{3}(1,:);
+        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,RO.j1); qM.X{3}= qM.X{3}(RO.j1,:);
         r2=struct('name',{RB.text(:,1)},'bas',[]);
         for j2=1:length(X.bas)
             r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2}.name);
@@ -14825,9 +14851,9 @@ cntc : interface between SDT and CONTACT
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
       % offset in unl = [c]{q} + {unl0}
       NL.unl0={% geometric Gauge Ow position 
-       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
+       '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
        '0';'pi';'0';'0'%Mw_gl   
-       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+       '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
        '0';'0';'0';'pi';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
