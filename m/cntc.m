@@ -508,13 +508,13 @@ cntc : interface between SDT and CONTACT
      elseif ~isempty(LI.libname)
       LI.libname='';
      end
-     clear cntc;clear LI;
-     evalin('base','clear LI');
-     disp('LI cleared')
-     return;
     else
-     disp('Error : LI is already empty')
+     disp('Library already closed');
     end
+    clear cntc;clear LI;
+    evalin('base','clear LI');
+    disp('LI cleared')
+    return;
    end
    CAM=varargin{1};
    if strcmpi(CAM,'callLog')
@@ -539,7 +539,7 @@ cntc : interface between SDT and CONTACT
    end
 
    CAM=strrep(CAM,'cntc.','cntc_');
-   if isempty(LI.libname);
+   if isfield(LI,'libname')&&isempty(LI.libname);
     if strcmpi(CAM,'cntc_finalizelast');return
     else
      sdtw('_nb','Library not initialized');return
@@ -14826,16 +14826,29 @@ cntc : interface between SDT and CONTACT
       % offset in unl = [c]{q} + {unl0}
       NL.unl0={% geometric Gauge Ow position 
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
-       '0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
-       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0';%Mr_gl
-       '0';'0';'0';'0';'0';'0'  %Mtr_gl
+       '0';'pi()';'0';'0'%Mw_gl   
+       '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi()-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+       '0';'pi()';'0';'0';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
        '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
        '0';'0';'0';'0';'0';'0' %Mcp_w
-       '0';'0';'0';'0';'0';'0'}; %Mcp_r
+       '0';'0';'0';'0';'0';'0'}; %Mcp_r       
+      
+      % NL.unl0={% geometric Gauge Ow position
+      % '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
+      %  '0';'pi()';'0';'0'%Mw_gl   
+      %  '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi()-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+      %  '0';'pi()';'0';'0';'0';'0'  %Mtr_gl
+      %  '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
+      %  '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
+      %  '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+      %  'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
+      %  '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
+      %  '0';'0';'0';'0';'0';'0' %Mcp_w
+      %  '0';'0';'0';'0';'0';'0'}; %Mcp_r
      else
       NL.unl0={ % geometric absolut Ow position 
        '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
@@ -18647,7 +18660,7 @@ nlAstable : generate tables for tex
 
    if nargin==0||ischar(ire)
     % settrackdimensions package SDT options 
-    DoOpt=['Design(0#vd{0,Maintain,1,NewDim,2,NewDevia,3,NewBoth}#"Track dimension and deviation options")' ...
+    DoOpt=['Design(NewBoth#vd{0,Maintain,1,NewDim,2,NewDevia,3,NewBoth}#"Track dimension and deviation options")' ...
      'gaught(#%g#"Height below the track plane at which the gauge width is measured.{ ,G_{ht},param,LI.Track}")' ...
      'gaugwd(#%g#"Distance between the inner faces of the two rails.{ ,G_{wd},param,LI.Track}")' ...
      'gaugsq(#%g#"Reserved for selecting second or further gauge faces instead of the leftmost one{ , ,param,LI.Track}")' ...
@@ -18679,7 +18692,7 @@ nlAstable : generate tables for tex
       % 1 NewDim
       gaught=sdth.sfield('addselected',struct,Track,{'gaught'});
       gaught=struct2cell(gaught); gaught=gaught{:};
-      if gaught>0
+      if gaught>0||isempty(gaught) 
        params=sdth.sfield('addselected',struct,Track,{'gaught','gaugsq', 'gaugwd','cant', 'nomrad'});   % values
       else
        params=sdth.sfield('addselected',struct,Track,{'gaught', 'raily0', 'railz0', 'cant', 'nomrad'});   % values
@@ -18691,7 +18704,7 @@ nlAstable : generate tables for tex
       % 3 NewBoth
       gaught=sdth.sfield('addselected',struct,Track,{'gaught'});
       gaught=struct2cell(gaught); gaught=gaught{:};
-      if gaught>0
+      if isempty(gaught)||gaught>0
        params=sdth.sfield('addselected',struct,Track,{'gaught','gaugsq', ...
         'gaugwd','cant', 'nomrad','dyrail', 'dzrail', 'drollr', 'vyrail', 'vzrail', 'vrollr'});   % values
       else
@@ -18702,6 +18715,7 @@ nlAstable : generate tables for tex
       error('Wrong parameter selected')
     end
     if Track.Design~=0;LI.Track=Track;end
+    if isempty(CAM);return;end
     Global=LI.flags; if iscell(Global);Global=sdtm.toStruct(Global(:,1:2));end
     if ~isempty(params);params=struct2cell(params);params=horzcat(params{:});end
     if ~isempty(CAM)
