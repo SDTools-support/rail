@@ -7950,7 +7950,7 @@ cntc : interface between SDT and CONTACT
       % now extrude along theta (t field)
       [x,y]=ndgrid(RO.prw.t(:),LI.prw.ProfileZ(RO.prw.is)+LI.wheelsetDim.nomrad);
       R1=struct('XYZ',cat(3,y,x, ...
-       reshape(repmat(LI.prw.ProfileY(RO.prr.is)',length(RO.prr.t),1),size(x,1),size(x,2))),'bas','r','name','Rail');
+       reshape(repmat(LI.prw.ProfileY(RO.prr.scL)',length(RO.prr.t),1),size(x,1),size(x,2))),'bas','r','name','Rail');
       warning('verify Gaetan')
      end
      if isfield(RO,'prr')
@@ -8069,16 +8069,16 @@ cntc : interface between SDT and CONTACT
      elseif isfield(LI.prr,'xsurf')
          error('Need implement') 
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail 
-        [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.is));
+        [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.scL));
       if ~isfield(RO.prr,'bas');error('Missing .bas');end
       R1=struct('XYZ',cat(3,x,y, ...
-       reshape(repmat(LI.prr.ProfileZ(RO.prr.is)',length(RO.prr.x),1),size(x,1),size(x,2))),'bas',RO.prr.bas,'name','Rail');
+       reshape(repmat(LI.prr.ProfileZ(RO.prr.scL)',length(RO.prr.x),1),size(x,1),size(x,2))),'bas',RO.prr.bas,'name','Rail');
      else % Eulerian view of the rail 
       % now extrude along x, and do the profile symmetry if left wheel
-      [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.is));
+      [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.scL));
       if ~isfield(RO.prr,'bas');error('Missing .bas');end
       R1=struct('XYZ',cat(3,x,y, ...
-       reshape(repmat(LI.prr.ProfileZ(RO.prr.is)',length(RO.prr.x),1),size(x,1),size(x,2))),'bas',RO.prr.bas,'name','Rail');
+       reshape(repmat(LI.prr.ProfileZ(RO.prr.scL)',length(RO.prr.x),1),size(x,1),size(x,2))),'bas',RO.prr.bas,'name','Rail');
      end
      R1=sdth.sfield('addmissing',R1,RO.prr);
      if nargout==0
@@ -8364,10 +8364,10 @@ cntc : interface between SDT and CONTACT
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
         if strcmpi(X.bas,'w')
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}+ry_wc,X.tcsc{2}),X.tcsc{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}+ry_wc,X.tcLscL{2}),X.tcLscL{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1},X.tcLscL{2}),X.tcLscL{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
         end
        end
@@ -8435,10 +8435,10 @@ cntc : interface between SDT and CONTACT
         % ry_wc is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc)
         if strcmpi(X.bas,'w') % RTZ_wc
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1}-ry_wc(RO.j1),X.tcsc{2}),X.tcsc{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}-ry_wc(RO.j1),X.tcLscL{2}),X.tcLscL{:}), ...
           'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
-         X1=struct('rtz',cat(3,X.r_tz(X.tcsc{1},X.tcsc{2}),X.tcsc{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1},X.tcLscL{2}),X.tcLscL{:}), ...
           'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas',X.bas);
         end
        else
@@ -8449,7 +8449,7 @@ cntc : interface between SDT and CONTACT
        if isfield(X,'prop'); ic=strcmpi(X.prop,'CData'); %add a colormap for wheel defect
         if any(ic) %xxxgae
          rd=X1.rtz;   % damaged radius
-         ru=X.r_tz(X.tcsc{1}(1,:),X.tcsc{2}(1,:)); %undamaged radius r(t=0)
+         ru=X.r_tz(X.tcLscL{1}(1,:),X.tcLscL{2}(1,:)); %undamaged radius r(t=0)
          cm= sqrt(abs(rd(:,:,1).^2-repmat(ru,[size(rd,1) 1]).^2)); % (CMWheelflat)
          X.prop{find(ic)+1}=cm;
         end
@@ -14861,7 +14861,7 @@ cntc : interface between SDT and CONTACT
    if isempty(NL)||nargin==1
      NL=struct;
      NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-     NL.unl.X{2}={'Mw-gl';'Mr-gl';'Mtr-gl';'Mr-tr';'Mws-tr';'Mw-ws';'MwsL-ws';'Mcp-w';'Mcp-r'};
+     NL.unl.X{2}={'Mw-gl';'Mr-gl';'MwsL-ws';'Mtr-gl';'Mr-tr';'Mws-tr';'Mw-ws';'Mcp-w';'Mcp-r'};
      NL.unllab=append(append(NL.unl.X{2},':'),NL.unl.X{1}')';% label of cq+unl0
      NL.unl.X{3}={'unl';'unl0';'unlj1-1'}; 
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
@@ -14869,11 +14869,12 @@ cntc : interface between SDT and CONTACT
      NL.cnllab= {% label of cq 
       's_ws';'dywhl';'dzwhl';   'drollw';'0';'dyaww'           %Mw-gl
       's_ws';'dyrail';'dzrail'; 'drollr';'0';'0'               %Mr-gl
+      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
+
       's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
       '0';    'dyrail';'dzrail'; 'drollr';  '0';'0'            %Mr_tr
       '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws'      %Mws-tr
       'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
-      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
       'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
       'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
      if isfield(LI,'Track')&&isempty(LI.Track.raily0)
@@ -14881,38 +14882,27 @@ cntc : interface between SDT and CONTACT
       NL.unl0={% geometric Gauge Ow position 
        '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
        '0';'pi';'0';'0'%Mw_gl   
+       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
+
        '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
        '0';'0';'0';'pi';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
        '0';'0';'0';'0';'0';'0' %Mcp_w
        '0';'0';'0';'0';'0';'0'}; %Mcp_r       
-      
-      % NL.unl0={% geometric Gauge Ow position
-      % '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
-      %  '0';'pi()';'0';'0'%Mw_gl   
-      %  '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi()-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
-      %  '0';'pi()';'0';'0';'0';'0'  %Mtr_gl
-      %  '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
-      %  '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
-      %  '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      %  'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-      %  '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
-      %  '0';'0';'0';'0';'0';'0' %Mcp_w
-      %  '0';'0';'0';'0';'0';'0'}; %Mcp_r
      else
       NL.unl0={ % geometric absolut Ow position 
        '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
        '0';'0';'0';'0';'0';'0';%Mr_gl
+       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
+
        '0';'0';'0';'0';'0';'0';%Mtr_gl
        '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
        '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
        'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
        '0';'0';'0';'0';'0';'0'%Mcp_w
        '0';'0';'0';'0';'0';'0'};%Mcp_r
      end
@@ -14920,22 +14910,24 @@ cntc : interface between SDT and CONTACT
      NL.vnllab= { 
       'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'       % vMw-gl
       '0';'vyrail';'vzrail'; 'vrollr';'0';'0';                % vMr-gl
+     '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwsL-ws
+
            'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
      '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
      '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMw-ws
-     '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwsL-ws
      '0';'0';'0';'0';'0';'0'                                  % vMcp_w
      '0';'0';'0';'0';'0';'0' };                                 % vMcp_r
 
      NL.snllab= {%snl 
       '0';'0';'0';'0';'0';'0'                                  % Mw_gl
       '0';'0';'0';'0';'0';'0';                                 % Mr_gl
+      '0';'0';'0';   '0'; '0';  '0'                            % MwsL-ws
+
       '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
       'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
       '0';'0';'0';'0';'0';'0'                                  % Mws_tr
       'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mw_ws
-      '0';'0';'0';   '0'; '0';  '0'                            % MwsL-ws
       'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
       'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'};             % Mcp_r
 
