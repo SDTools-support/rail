@@ -8125,6 +8125,8 @@ cntc : interface between SDT and CONTACT
      LI=cntc.call;
      Slr=cntc.leftCoef(LI);
      RO.NL=cntc.getCurve('NLobs'); % Observe trajectory once
+     RO.nodeM=vhandle.nmap({'Ow',RO.NL.unlC.Y(1:3,1)});
+
      for i1=1:length(RO.list)
       %% for each list
       X=RO.list{i1};
@@ -8244,7 +8246,8 @@ cntc : interface between SDT and CONTACT
         X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
          'name',{[RO.M.X{2}(ind)]},'from','bas');
        end
-      else; error('Not implemented')
+      elseif strcmpi(X.from,'line')
+      else; error('%s Not implemented',X.from)
       end
       if isfield(X,'bas')&&ischar(X.bas)
        RB=struct('name',strcat('M',X.bas,'-',RO.bas));
@@ -8411,6 +8414,9 @@ cntc : interface between SDT and CONTACT
      view(3)
    elseif comstr(Cam,'surf')
      %% #plot.surf actually do plotting -3
+
+
+
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8466,6 +8472,8 @@ cntc : interface between SDT and CONTACT
         r2=struct('name',{RB.text(:,1)},'bas',[]);
         for j2=1:length(X.bas)
             r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2}.name);
+            % regexprep('Mws-gl','M([^-]*)-.*','O$1')
+            RO.nodeM(regexprep(X.bas{j2}.name,'M([^-]*)-.*','O$1'))=r2.bas(:,4,j2);
         end
         sel=sdtu.fe.genSel(r2,RB); 
         % Some design features
@@ -8499,6 +8507,25 @@ cntc : interface between SDT and CONTACT
          C1=[Ows;Oc;Oc;Ow;Oc;Owc];
          plot3(C1(:,1),C1(:,2),C1(:,3),'Color','k','LineStyle','--');
         end
+       elseif strcmpi(X.from,'line')
+        if any(strcmpi(X.li,'WheelCenter'))||any(strcmpi(X.li,'Owl'))
+         %'node{wheelCenter,Ow - LI.wheelsetDim.nomrad * Ow:v3,' ...
+         LI=cntc.call;
+         RO.nodeM('WheelCenter')=RO.nodeM('Ow')-LI.wheelsetDim.nomrad * r2.bas(:,3,strcmpi(r2.name,'Ow')); 
+        end
+        RO.nodeM('NaN')=NaN(3,1);
+        if any(strcmpi(X.li,'Owl'))
+         %'OwL,wheelCenter+LI.wheelsetDim.nomrad*(Ow:v3*cos(Mws-wsL:ry)+Ow:v1*sin(Mw-wsL:ry)}'       
+         RO.nodeM('OwL')=RO.nodeM('WheelCenter')-LI.wheelsetDim.nomrad *  ...
+             r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],3,strcmpi(r2.name,'OwsL'));
+        end
+        n1=[];
+        for j2=1:length(X.li);
+           n1=[n1 RO.nodeM(X.li{j2})];
+        end
+        line(n1(1,:),n1(2,:),n1(3,:),X.prop{:})
+       else
+        error('xxx %s',sdtm.toString(X))
        end
         continue;
       end

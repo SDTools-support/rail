@@ -412,6 +412,7 @@ if isempty(gnmap)||isequal(opt,'reset')
       'value','view(0,0);iimouse(''views+180'')')
        })
 
+  propM('line')=struct('ToolTip','dashed line','value',{{'Color','k','linestyle','--'}});
   propM('prrEulSurf')=struct('alias','RailTR');
   propM('prrLagSurf')=struct('alias','RailGl');
   propM('prrSlice')=struct('alias','prrLine');
