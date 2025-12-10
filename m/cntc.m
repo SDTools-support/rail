@@ -15083,21 +15083,33 @@ nlAstable : generate tables for tex
     chan=PreLCp;RO.type='AtMarker';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
-   elseif strcmpi(CAM,'cosim')
-    %% #PreCosim : get wheelE and railE marker information -3
-    chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'MwsL-ws';'Mw-gl:v';'Mr-gl:v';'MwsL-ws:v'});
-    RO.type='Field';
-    if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
-
-    % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
-    elseif strcmpi(CAM,'cExchange')
+   elseif any(strcmpi(CAM,{'cosim','cExchange','trajdef'}))
     %% #iExchange Wheelset Trajectory in gl marker -3
-    lab=str; if isfield(lab,'lab');lab=lab.lab{:}(:,1); end 
-    if ~all(isKey(NL.tlabM,lab)); error('Problem');end
-    st2=cellfun(@(x)NL.tlabM(x),lab,'uni',0);
+    % cntc.getCurve('cExchange',LI.Traj);
+    chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'MwsL-ws';'Mw-gl:v';'Mr-gl:v';'MwsL-ws:v'});
+    % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
+    if ~all(isKey(NL.tlabM,chan)); error('Problem');end
+    st2=cellfun(@(x)NL.tlabM(x),chan,'uni',0);
+    i3=ones(size(st2));i4=strncmpi(st2,'-',1);i3(i4)=-1;
+    st2(i4)=cellfun(@(x)x(2:end),st2(i4),'uni',0);
     st1=d_cntc('nmap.DataExchange');
     [i1,i2]=ismember(st1,st2);
-    out=sparse(find(i1),i2(i1),1,length(st1),length(st2));return;
+    out=sparse(find(i1),i2(i1),i3(i1),length(st1),length(st2));
+
+    if strcmpi(CAM,'cosim')
+     RO.type='Field';
+     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
+     clear out;
+    elseif strcmpi(CAM,'trajdef')
+      %% PreTraj to trajdef
+      C1=str;
+      [i1,i2]=ismember(C1.X{2}(:,1),st2);
+      out=struct('def',zeros(length(chan),size(C1.Y,1)), ...
+          'DOF',[],'Xlab',{{'Dof','Time'}},'data',C1.X{1});
+      out.def(i2,:)=i3(i2).*C1.Y'; 
+    end
+
+    return;
 
    elseif iscell(CAM);chan=CAM(:,[1 1]);RO.type='AtMarker';
    else;
@@ -17301,6 +17313,8 @@ nlAstable : generate tables for tex
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    LI=cntc.call;
+   if isfield(RT,'profile')&&RT.profile;profile('on');end
+   
    for j1 = RT.TrajDef.data' % Loop on traj, In fe_time step is called j1 here icase
     % sdtweb cntc set.traj
     if ~isfield(RT,'cur')
@@ -17311,7 +17325,7 @@ nlAstable : generate tables for tex
     li=RT.LoopParam;
     cntc.set(li,RT); % Do steps typically Traj/calculate/getout/getsol
    end % icase j1
-   if isfield(RT,'profile');profile('viewer');end
+   if isfield(RT,'profile')&&RT.profile;profile('viewer');end
    eval(iigui({'RT'},'SetInBaseC'));
 
   end
