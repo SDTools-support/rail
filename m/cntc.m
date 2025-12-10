@@ -7943,7 +7943,7 @@ cntc : interface between SDT and CONTACT
       R1.tlim=t([1 end]);R1.zlim=z([1 end]);
       [t,z]=ndgrid(t,z);
       R1.r_tz = griddedInterpolant(t,z,R1.RTZ(i1,i2,1)); % interpolant on original trid 
-      [t1,z1]=ndgrid(RO.prw.tcL(:)*pi/180,RO.prw.scL); %prepare theta_i,si grid z=s in cntc 
+      [t1,z1]=ndgrid(RO.prw.tcL(:)*pi/180,z(RO.prw.scL,:)); %prepare theta_i,si grid z=s in cntc 
       R1.tcLscL={t1,z1};R1.bas=RO.prw.bas;
 
      else
@@ -8359,12 +8359,12 @@ cntc : interface between SDT and CONTACT
       X=RO.list{j1};
       if isfield(X,'RTZ'); % RTZ_wc
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
+        ry_ws=RO.Rot.Y(2,strcmpi(RO.M.X{2},'Mws-tr')')+ ...
               RO.Rot.Y(2,strcmpi(RO.M.X{2},'MwsL-ws')');
-        % ry_wc is the angle that allows the wheel to rotate in the grid
+        % ry_ws is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc) 
         if strcmpi(X.bas,'w')
-         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}+ry_wc,X.tcLscL{2}),X.tcLscL{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}+ry_ws,X.tcLscL{2}),X.tcLscL{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
          X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1},X.tcLscL{2}),X.tcLscL{:}), ...
@@ -8415,8 +8415,6 @@ cntc : interface between SDT and CONTACT
    elseif comstr(Cam,'surf')
      %% #plot.surf actually do plotting -3
 
-
-
      RO=varargin{carg};carg=carg+1; 
      if ~isfield(RO,'gf');RO.gf=1;end
      gf=RO.gf; figure(RO.gf); clf; hold on;
@@ -8429,13 +8427,13 @@ cntc : interface between SDT and CONTACT
       if isfield(X,'RTZ');
       %interpolation of the wheel
        if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-        ry_wc=squeeze(RO.NL.getRoll(RO.NL.unlC.Y));
-        %cntc.getBasis('roll');ry_wc=ry_wc.M;
+        ry_ws=squeeze(RO.NL.getRoll(RO.NL.unlC.Y));  %
+        %cntc.getBasis('roll');ry_ws=ry_ws.M; 
         warning('xxxgae : how defined based on real properties RO.NL.unlC.X{2} getRoll , missing reference')
-        % ry_wc is the angle that allows the wheel to rotate in the grid
+        % ry_ws is the angle that allows the wheel to rotate in the grid
         % (thus x1 is in w frame and not wc)
         if strcmpi(X.bas,'w') % RTZ_wc
-         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}-ry_wc(RO.j1),X.tcLscL{2}),X.tcLscL{:}), ...
+         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}-ry_ws(RO.j1),X.tcLscL{2}),X.tcLscL{:}), ...
           'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
         else
          X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1},X.tcLscL{2}),X.tcLscL{:}), ...
@@ -8517,7 +8515,7 @@ cntc : interface between SDT and CONTACT
         if any(strcmpi(X.li,'Owl'))
          %'OwL,wheelCenter+LI.wheelsetDim.nomrad*(Ow:v3*cos(Mws-wsL:ry)+Ow:v1*sin(Mw-wsL:ry)}'       
          RO.nodeM('OwL')=RO.nodeM('WheelCenter')+LI.wheelsetDim.nomrad *  ...
-             r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],1,strcmpi(r2.name,'OwsL'));
+             -r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],1,strcmpi(r2.name,'OwsL'));
          warning('xxxGAE check rotation')
         end
         n1=[];
@@ -14867,8 +14865,8 @@ cntc : interface between SDT and CONTACT
      NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
      NL.unl.Xlab={'Comp';'Bas';'u'};
      NL.cnllab= {% label of cq 
-      's_ws';'dywhl';'dzwhl';   'drollw';'0';'dyaww'           %Mw-gl
-      's_ws';'dyrail';'dzrail'; 'drollr';'0';'0'               %Mr-gl
+      's_ws';'-dywhl';'-dzwhl';   'drollw';'0';'dyaww'           %Mw-gl
+      's_ws';'-dyrail';'-dzrail'; 'drollr';'0';'0'               %Mr-gl
       '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
 
       's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
@@ -14881,10 +14879,10 @@ cntc : interface between SDT and CONTACT
       % offset in unl = [c]{q} + {unl0}
       NL.unl0={% geometric Gauge Ow position 
        '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
-       '0';'pi';'0';'0'%Mw_gl   
+       '0';'pi';'0';'0'%Mw_gl 
+       '0';'-LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi+cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
        '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
-       '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
        '0';'0';'0';'pi';'0';'0'  %Mtr_gl
        '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
        '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
@@ -15121,23 +15119,24 @@ nlAstable : generate tables for tex
     C1=LI.Cmacro;  %% values in Cmacro
     C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ... % component
         regexprep(chan(1:6:end,1),{':[FM]*x',':vx'},{'',':v'}), ...% marker
-        C1.X{3}}}, ...
+        C1.X{3}'}}, ...
      'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[], ...
      'name',RO.name,'Ylab',1,'DimPos',[3 1 2]);
+    C2.Y=zeros(size(C2.X{1},1)*size(C2.X{2},1),size(C2.X{3},1));
+    % Fill with LI.Traj
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
     if isfield(C3,'lab')
      [i1,i2]=ismember(chan(:,2),C3.lab{:}(:,2));
-     warning('xxxGAE this does not look like the right form')
-     C2.Y(i1,:)=C3.Y(1:size(C3.data,1),i2(i1))';
+     C2.Y(i1,:)=C3.def(i2(i1),1:size(C3.data,1));
     else
       [i1,i2]=ismember(chan(:,2),C3.X{2}(:,1));
      warning('xxxGAE this does not look like the right form')
      C2.Y(i1,:)=C3.Y(:,i2(i1))';
     end
-
+    % fill with Cmacro
     [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
     C2.Y(size(chan,1),size(C2.X{3},1))=0;
-    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},1));
+    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},2));
     C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
     %% attempt at putting clean labels
     i1=sdtm.regContains(C2.X{1},'F[xyz]$');
@@ -17038,10 +17037,9 @@ nlAstable : generate tables for tex
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage
       if isfield(LI.Traj,'def')
-       LI.Traj.J1=1:size(LI.Traj.def,1);
-       step=LI.Traj.J1;
-      else
-       step=LI.Traj.X{1};
+       step=LI.Traj.data';
+      else 
+       error('No traj defined')
       end
 
        Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1],step}},'Y',[], ...
@@ -17284,7 +17282,7 @@ nlAstable : generate tables for tex
       else
        %% Initialize model and Traj from info in caller
        LI.ProjectWd=RT.ProjectWd;
-       LI.Traj=RT.Traj; RT=rmfield(RT,'Traj');
+       LI.Traj=RT.TrajDef; % RT=rmfield(RT,'Traj'); xxxeb why 
        LI.flags=RT.flags;
        cntc.initializeflags; %initialize Global_flags
        cntc.setflags;
@@ -17303,7 +17301,7 @@ nlAstable : generate tables for tex
   function []= TimeLoop(RT)
    %% #TimeLoop -2
    LI=cntc.call;
-   for j1 = RT.Traj.data' % Loop on traj, In fe_time step is called j1 here icase
+   for j1 = RT.TrajDef.data' % Loop on traj, In fe_time step is called j1 here icase
     % sdtweb cntc set.traj
     if ~isfield(RT,'cur')
      RT.cur=struct('type','Traj','j1',1,'iwhe',[]);LI.cur=RT.cur; 
@@ -17315,44 +17313,6 @@ nlAstable : generate tables for tex
    end % icase j1
    if isfield(RT,'profile');profile('viewer');end
    eval(iigui({'RT'},'SetInBaseC'));
-
-  end
-
-  function [out]= SDTLoop(RT)
-   %% #SDTLoop -2
-   % CNTC script, wheel/rail position ->
-   % initialize
-     
-   %Y=[1 0 0.6 0 0 0; 1 0 0 0 0 0];
-   j1=1;
-
-   l1={'s_ws';'y_ws';'z_ws';'roll_ws';'yaw_ws';'pitch_ws';%Mws
-       'vs';'vy';'vz';'vroll';'vyaw';'vpitch';             %vMws
-       'dxwhl';'dywhl';'dzwhl';'drollw';'dyaww';'dpitchw'; %Mw
-       'vxwhl';'vywhl';'vzwhl';'vrollw';'vyaww';'vpitchw'; %vMw
-       '0';'dyrail';'dzrail';'drollr';'0';'0' % Mr
-       '0';'vyrail';'vzrail';'vrollr';'0';'0'};% vMr
-   % Trajectory definition
-   l1={'s_ws';'pitch_ws';%Mws
-    'dywhl';'dzwhl';'drollw';'dyaww'; % Mw
-    'dyrail';'dzrail';'drollr'};% Mr
-   C1=struct('X',{{j1,l1}}, 'Xlab',{{'step','Comp'}},'Y',[]);
-   C1.zeros()
-   C1.Y=[1;0;
-          0;0.6;0;0;
-          0;0;0]';
-   RT.Traj=C1;
-
-   RT.LoopParam= {'traj{cosim}';'calculate{}';'getout{}'};
-   cntc.TimeLoop(RT) % Temporal Loop
-   eval(iigui({'RT'},'SetInBaseC'));
-   LI=cntc.call;
-   Fr=cntc.getMacro({'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'},1);
-   Fw=cntc.getMacro({'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w'},1);
-   LI.Fmacro.Pos_w=zeros(6,1);
-   LI.Fmacro.Pos_w(1:4)=cntc.getMacro({'xcp_r','ycp_r','zcp_r','deltcp_r'},RC.j1);
-   LI.Fmacro.Pos_r=zeros(6,1);
-   LI.Fmacro.Pos_r(1:4)=cntc.getMacro({'xcp_w','ycp_w','zcp_w','deltcp_w'},RC.j1);
 
   end
 
