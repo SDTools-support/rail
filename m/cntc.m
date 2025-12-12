@@ -7770,13 +7770,16 @@ cntc : interface between SDT and CONTACT
      warning('xxxgae link, this should be written implicitly somewhere else')
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
-      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
-      R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-tr'),:)),1);
-      R(4,4,:)=1;R2(4,4,:)=1;R3(4,4,:)=1;
+      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
+
+      % R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
+      % R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-tr'),:)),1);
+      R(4,4,:)=1;R2(4,4,:)=1;%R3(4,4,:)=1;
       for j1=1:size(R,3)
+       % inv(Mtr_gl)*Mw_gl
        % inv(Mr_tr) *inv(Mr_gl) * Mw_gl
        % inv(c_r_tr)*inv(c_gl_tr)*c_gl_w
-       R(:,:,j1)=R3(:,:,j1)\R2(:,:,j1)\R(:,:,j1);
+       R(:,:,j1)=R2(:,:,j1)\R(:,:,j1);
       end
       R(4,:,:)=[];
      elseif strcmpi(ty,'Mws-gl')
@@ -14937,7 +14940,7 @@ cntc : interface between SDT and CONTACT
      NL.unl0={% geometric Gauge Ow position
       '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
       '0';'pi';'0';'0'%Mw_gl
-      '0';'-LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'pi+cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+      '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi+cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
@@ -15162,7 +15165,7 @@ nlAstable : generate tables for tex
      C1=str;
      [i1,i2]=ismember(C1.X{2}(:,1),st2);
      out=struct('def',zeros(length(chan),size(C1.Y,1)), ...
-      'DOF',[],'Xlab',{{'Dof','Time'}},'data',C1.X{1});
+      'DOF',[],'Xlab',{{'Dof','Time'}},'data',C1.X{1},'lab',{st2},'DofLab',{chan});
      out.def(i2,:)=i3(i2).*C1.Y';
     end
 
@@ -15195,7 +15198,7 @@ nlAstable : generate tables for tex
     % Fill with LI.Traj
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
     if isfield(C3,'lab')
-     [i1,i2]=ismember(chan(:,2),C3.lab{:}(:,2));
+     [i1,i2]=ismember(chan(:,2),C3.lab);
      C2.Y(i1,:)=C3.def(i2(i1),1:size(C3.data,1));
     else
      [i1,i2]=ismember(regexprep(chan(:,2),'^-',''),C3.X{2}(:,1));  
@@ -15204,7 +15207,7 @@ nlAstable : generate tables for tex
     % fill with Cmacro
     [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
     C2.Y(size(chan,1),size(C2.X{3},1))=0;
-    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},2),:);
+    C2.Y(i1,:)=C1.Y(i2(i1),:,:);
     C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
     %% attempt at putting clean labels
     i1=sdtm.regContains(C2.X{1},'F[xyz]$');
@@ -17104,13 +17107,7 @@ nlAstable : generate tables for tex
 
       l1={'eldiv';'h';'mu';'pn';'px';'py';'un';'ux';'uy';'sx';'sy'};
       % Fields SDT Storage
-      if isfield(LI.Traj,'def')
-       step=LI.Traj.data';
-      else
-       error('No traj defined')
-      end
-
-      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1],step}},'Y',[], ...
+      Cfield=struct('X',{{[],[],l1,[1,1,1;2,2,1],LI.Traj.data}},'Y',[], ...
        'Xlab',{{'Ngx','Ngy','Comp',{'ire';'iwhe';'icp'},'iTime'}},'DimPos',[3 1 2]);
       Cfield.Y(1,1,1,1,size(Cfield.X{5},1))=0;
       LI.Cfield=Cfield;
@@ -17119,7 +17116,7 @@ nlAstable : generate tables for tex
       % contact between the wheel and the rail
       LI.Cmacro.rowM=sdtu.ivec('ColList', {'lab'}); %dDQ
       LI.Cmacro.Xlab={'comp',{'ire';'iwhe';'icp'},'iTime'};
-      LI.Cmacro.X={{},[],step};
+      LI.Cmacro.X={{},[],LI.Traj.data};
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
       setCMacro;
      case 'getloads'
@@ -17282,13 +17279,14 @@ nlAstable : generate tables for tex
       %[NL.unllab NL.vnllab NL.snllab]
       % Be careful CNTC convention {x y z rx rz ry}
 
-      if LI.cur.j1==1 % Full traj init
+      %% #InitCalc
+      if LI.cur.j1==1 
        cntc.set('initcalc{}',RT)
       elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
        cntc.set('initcalc{maintain}',RT)
       end
 
-      %% DataExch CNTC/FEM data input
+      %% #DataExch CNTC/FEM data input
       % warning CNTC convention {x,y,z,roll,yaw,pitch}
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
