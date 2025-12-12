@@ -8268,7 +8268,7 @@ cntc : interface between SDT and CONTACT
         X=cntc.BasisChange(RO.bas,X);
        end
       elseif strcmpi(X.from,'bas')
-       %% #plot.init.bas
+       %% #plot.init.bas -4
        X.bas=X.bas(:);ind=~strncmp(X.bas,'m',1);
        X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
        % edit cntc.getRot
@@ -8527,30 +8527,20 @@ cntc : interface between SDT and CONTACT
 
      if ~isfield(X,'XYZ')
       if isfield(X,'bas')&&iscell(X.bas)
-       %% updated dec 25, sdtweb cntc plot.init.bas
+       %% #plot.surf.bas updated dec 25, sdtweb cntc plot.init.bas -4 
        RB=struct('cf',gf,'ga',ga,'text',[], ...
         'arProp',{{'linewidth',2}},'DefLen',40);
        if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
        RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,RO.j1); qM.X{3}= qM.X{3}(RO.j1,:);
-       r2=struct('name',{RB.text(:,1)},'bas',[]);
+       r2=struct('name',{RB.text(:,1)},'bas',[]);bname={};
        for j2=1:length(X.bas)
         r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2}.name);
+        bname{j2}=X.bas{j2}.name;
         % regexprep('Mws-gl','M([^-]*)-.*','O$1')
         RO.nodeM(regexprep(X.bas{j2}.name,'M([^-]*)-.*','O$1'))=r2.bas(:,4,j2);
        end
        sel=sdtu.fe.genSel(r2,RB);
-       % Some design features
-       if 1==2
-        warning('xxxgae design features')
-        %        Ows=X.bas(contains(X.name,'Mws-'),4:6);
-        %        Ow=X.bas(contains(X.name,'Mw-'),4:6);
-        %        Owc=X.bas(contains(X.name,'MwL-'),4:6);
-        %        Oc=Ows+[0 1 0]*Ow(2); % center of the wheel
-        %        plot3(Oc(1),Oc(2),Oc(3),'+','DisplayName','Oc','LineWidth',2);
-        %        C1=[Ows;Oc;Oc;Ow;Oc;Owc];
-        %        plot3(C1(:,1),C1(:,2),C1(:,3),'Color','k','LineStyle','--');
-       end
 
       elseif isfield(X,'bas')&&size(X.bas,2)==15;
        %% display bases obsolete where base was computed before
@@ -8580,9 +8570,8 @@ cntc : interface between SDT and CONTACT
        RO.nodeM('NaN')=NaN(3,1);
        if any(strcmpi(X.li,'Owl'))
         %'OwL,wheelCenter+LI.wheelsetDim.nomrad*(Ow:v3*cos(Mws-wsL:ry)+Ow:v1*sin(Mw-wsL:ry)}'
-        RO.nodeM('OwL')=RO.nodeM('WheelCenter')+LI.wheelsetDim.nomrad *  ...
-         -r2.bas(:,[1 3],strcmpi(r2.name,'Ow'))*r2.bas([1 3],1,strcmpi(r2.name,'OwsL'));
-        warning('xxxGAE check rotation')
+        r3=LI.wheelsetDim.nomrad*r2.bas(:,1,strcmpi(r2.name,'OwsL'));
+        RO.nodeM('OwL')=RO.nodeM('WheelCenter')+r3;
        end
        n1=[];
        for j2=1:length(X.li);
@@ -8612,7 +8601,8 @@ cntc : interface between SDT and CONTACT
        end
       end
      end
-     if size(X.XYZ,2)==1||size(X.XYZ,1)==1 %draw profile
+     if size(X.XYZ,2)==1||size(X.XYZ,1)==1 
+      %% #cntc.plot.surf.profile draw profile
       if ~isfield(X,'prop');X.prop={};end
       if ischar(X.prop);X.prop=propM(X.prop);end
       go(i1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
@@ -15198,7 +15188,7 @@ nlAstable : generate tables for tex
     C1=LI.Cmacro;  %% values in Cmacro
     C2=struct('X',{{regexprep(chan(1:6,1),'.*:',''), ... % component
      regexprep(chan(1:6:end,1),{':[FM]*x',':vx'},{'',':v'}), ...% marker
-     C1.X{3}'}}, ...
+     C1.X{3}}}, ...
      'Xlab',{{'Comp','Bas','iTime'}}, 'Y',[], ...
      'name',RO.name,'Ylab',1,'DimPos',[3 1 2]);
     C2.Y=zeros(size(C2.X{1},1)*size(C2.X{2},1),size(C2.X{3},1));
@@ -15208,14 +15198,13 @@ nlAstable : generate tables for tex
      [i1,i2]=ismember(chan(:,2),C3.lab{:}(:,2));
      C2.Y(i1,:)=C3.def(i2(i1),1:size(C3.data,1));
     else
-     [i1,i2]=ismember(chan(:,2),C3.X{2}(:,1));
-     warning('xxxGAE this does not look like the right form')
-     C2.Y(i1,:)=C3.Y(:,i2(i1))';
+     [i1,i2]=ismember(regexprep(chan(:,2),'^-',''),C3.X{2}(:,1));  
+     C2.Y(i1,1:size(C3.Y,1))=C3.Y(:,i2(i1))';
     end
     % fill with Cmacro
     [i1,i2]=ismember(chan(:,2),C1.X{1}(:,1));
     C2.Y(size(chan,1),size(C2.X{3},1))=0;
-    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},2));
+    C2.Y(i1,:)=C1.Y(i2(i1),1:size(C1.X{3},2),:);
     C2.Y=reshape(C2.Y,cellfun(@(x)size(x,1),C2.X));
     %% attempt at putting clean labels
     i1=sdtm.regContains(C2.X{1},'F[xyz]$');
