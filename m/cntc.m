@@ -7767,7 +7767,15 @@ cntc : interface between SDT and CONTACT
    if nargin>1&&ischar(ty)
     i1=strcmpi(qM.X{2},ty);
     if ~any(i1)
-     warning('xxxgae link, this should be written implicitly somewhere else')
+     sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
+     % warning('xxxgae link, this should be written implicitly somewhere else')
+     %    c_gl_ws=cgl_w*inv(cws_w)
+     %    c_gl_ws=cgl_w*inv(cws_w)*cws_wsL
+     %    ctr_w=inv(cgl-tr)*cgl_w
+     %    ctr_w=inv(cgl-tr)*cgl_r
+     %    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
+     %    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
       R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
@@ -14919,7 +14927,7 @@ cntc : interface between SDT and CONTACT
    if isempty(NL)||nargin==1
     NL=struct;
     NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-    NL.unl.X{2}={'Mw-gl';'Mr-gl';'MwsL-ws';'Mtr-gl';'Mr-tr';'Mws-tr';'Mw-ws';'Mcp-w';'Mcp-r'};
+    NL.unl.X{2}={'Mw-gl';'Mr-gl';'MwsL-ws';'Mtr-gl';'Mw-ws';'Mcp-w';'Mcp-r'};
     NL.unllab=append(append(NL.unl.X{2},':'),NL.unl.X{1}')';% label of cq+unl0
     NL.unl.X{3}={'unl';'unl0';'unlj1-1'};
     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
@@ -14930,8 +14938,6 @@ cntc : interface between SDT and CONTACT
      '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
 
      's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
-     '0';    'dyrail';'dzrail'; 'drollr';  '0';'0'            %Mr_tr
-     '0' ;   'y_ws' ;'z_ws' ;   'roll_ws'; '0'; 'yaw_ws'      %Mws-tr
      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
@@ -14944,8 +14950,6 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
-      '0';'LI.prr.Mr_tr(2)';'LI.prr.Mr_tr(3)';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
-      '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
       '0';'0';'0';'0';'0';'0' %Mcp_w
@@ -14957,8 +14961,6 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
       '0';'0';'0';'0';'0';'0';%Mtr_gl
-      '0';'LI.Track.raily0';'LI.Track.railz0';'LI.Track.cant*-cntc.leftCoef(LI)';'0';'0'   %Mr-tr
-      '0';'0';'-LI.wheelsetDim.nomrad';'0';'0';'0'  % Mws_tr
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
       '0';'0';'0';'0';'0';'0'%Mcp_w
@@ -14971,8 +14973,6 @@ cntc : interface between SDT and CONTACT
      '0';'0';'0';   '0'; 'vpitch';  '0'                       % vMwsL-ws
 
      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
-     '0';'vyrail';'vzrail';'vrollr';'0';'0'                   % vMr-tr
-     '0' ;'vy' ;'vz' ;'vroll'  ;'0';'vyaw'        % vMws-tr
      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMw-ws
      '0';'0';'0';'0';'0';'0'                                  % vMcp_w
      '0';'0';'0';'0';'0';'0' };                                 % vMcp_r
@@ -14983,7 +14983,8 @@ cntc : interface between SDT and CONTACT
      '0';'0';'0';   '0'; '0';  '0'                            % MwsL-ws
 
      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
-     'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
+     % 'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
+     % xxxgae snl marker 
      '0';'0';'0';'0';'0';'0'                                  % Mws_tr
      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mw_ws
      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
