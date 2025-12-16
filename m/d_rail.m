@@ -946,7 +946,7 @@ elseif comstr(Cam,'xuzu')
 end
 out=model;
 
-elseif isempty(Cam)&&isfield(varargin{2},'rail')
+elseif isempty(Cam)&&(nargin>1||isfield(varargin{2},'rail'))
 %% #MeshList : generic meshing strategy
  li=varargin{carg};carg=carg+1;
  if isfield(li,'rail');RO=li;li=li.Track;else; RO=struct;end

@@ -5644,12 +5644,12 @@ cntc : interface between SDT and CONTACT
     %% commands  cntc.asFeplot('viewdef',cg)
     %set(findobj(cf.opt(1),'tag','iivn2'),'callback',';iimouse view3;');
     if strncmpi(RO,'viewdef',7)
-     if mean(cf.mdl.Node(:,6))<0 % left
+     if 1==2&&mean(cf.mdl.Node(:,6))<0 % left (railway view with z downward)
       set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 -7400 -500   0 0 -500  0 0 -1 NaN]'});
       set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[-7400 0 -500   0 0 -500  0 0 -1 NaN]'});
       set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[-9400 -9400 -3500   0 0 -500  0 0 -1 NaN]'});
       set(findobj(cf.opt(1),'tag','iivn4'),'callback',{@iimouse,'view[-00 -00 9500   0 0 -500  1 0 0 NaN]'});
-     else % Right wheel default views
+     elseif 1==2 % Right wheel default views railway view with z downward)
       set(findobj(cf.opt(1),'tag','iivn1'),'callback',{@iimouse,'view[0 7400 -500   0 0 -500  0 0 -1 NaN]'});
       set(findobj(cf.opt(1),'tag','iivn2'),'callback',{@iimouse,'view[7400 0 -500   0 0 -500  0 0 -1 NaN]'});
       set(findobj(cf.opt(1),'tag','iivn3'),'callback',{@iimouse,'view[9400 9400 -3500   0 0 -500  0 0 -1 NaN]'});
