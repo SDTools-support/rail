@@ -14985,7 +14985,6 @@ cntc : interface between SDT and CONTACT
      '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
      % 'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
      % xxxgae snl marker 
-     '0';'0';'0';'0';'0';'0'                                  % Mws_tr
      'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mw_ws
      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'};             % Mcp_r
@@ -15087,7 +15086,7 @@ nlAstable : generate tables for tex
      out=NL;  % NL.unl(:,:,2)=unl0
 
      % UNL0 parameter input
-     LI=cntc.call;r1=zeros(42,1);
+     LI=cntc.call;r1=zeros(size(NL.unl0,1),1);
      for j1=1:length(NL.unl0)  % Fill unl0 from LI content
       r2=eval(NL.unl0{j1});
       if isscalar(r2); r1(j1)=r2;
@@ -15095,8 +15094,10 @@ nlAstable : generate tables for tex
       end
      end
 
-     out.unl.Y(1:6,1:9,2)=reshape(r1,[6 9]);% store unl0
-
+     out.unl.Y(1:size(out.unl.X{1},1),1:size(out.unl.X{2},1),2)= ... 
+     reshape(r1,[size(out.unl.X{1},1) size(out.unl.X{2},1)]);% store unl0
+     
+     
      out.cnl=cntc.getCurve(NL.cnllab);
      out.cnl.X{1}=NL.unl.X{1};
      out.cnl.X{2}=NL.unl.X{2};
