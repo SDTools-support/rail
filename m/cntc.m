@@ -7767,14 +7767,7 @@ cntc : interface between SDT and CONTACT
    if nargin>1&&ischar(ty)
     i1=strcmpi(qM.X{2},ty);
     if ~any(i1)
-     sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
-     % warning('xxxgae link, this should be written implicitly somewhere else')
-     %    c_gl_ws=cgl_w*inv(cws_w)
-     %    c_gl_ws=cgl_w*inv(cws_w)*cws_wsL
-     %    ctr_w=inv(cgl-tr)*cgl_w
-     %    ctr_w=inv(cgl-tr)*cgl_r
-     %    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
-     %    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+     % sdtweb sdtweb cntc iExChange
 
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
@@ -8280,27 +8273,9 @@ cntc : interface between SDT and CONTACT
        end
       elseif strcmpi(X.from,'bas')
        %% #plot.init.bas -4
-       X.bas=X.bas(:);ind=~strncmp(X.bas,'m',1);
+       X.bas=X.bas(:);%ind=~strncmp(X.bas,'m',1);
        X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
-       % edit cntc.getRot
-       for j2=1:length(X.bas)
-        RB=struct('name',X.bas{j2}, ...
-         'ibas',find(strcmpi(RB.name,RO.NL.unlC.X{2})));
-        if ~isempty(RB.ibas)
-        elseif strcmpi(RB.name,'MwsL-gl')
-         % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#MwsL-gl')
-         % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
-         RB.ibas=[find(strcmpi( RO.NL.unlC.X{2},'Mtr-gl'))
-          find(strcmpi( RO.NL.unlC.X{2},'Mws-tr'))
-          find(strcmpi( RO.NL.unlC.X{2},'MwsL-ws'))
-          ];
-        elseif strcmpi(RB.name,'Mw-gl')
-        else
-         warning('Should resolve transformation %s',RB.name)
-         1;
-        end
-        X.bas{j2}=RB;
-       end
+       X=cntc.getCurve('iExchangeRot',X);
 
       elseif strcmpi(X.from,'basold')
        %% basold prepare display of marker at specific j1 time step
@@ -8542,14 +8517,15 @@ cntc : interface between SDT and CONTACT
        RB=struct('cf',gf,'ga',ga,'text',[], ...
         'arProp',{{'linewidth',2}},'DefLen',40);
        if isfield(RO,'DefLen');RB.DefLen=RO.DefLen;end
-       RB.text= cellfun(@(x)['O',x.name(2:find(x.name=='-',1)-1)],X.bas,'uni',0);RB.text{1,4}='';
+       RB.text= cellfun(@(x)['O',x(2:find(x=='-',1)-1)],X.bas,'uni',0);
+       RB.text{1,4}='';
        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,RO.j1); qM.X{3}= qM.X{3}(RO.j1,:);
        r2=struct('name',{RB.text(:,1)},'bas',[]);bname={};
        for j2=1:length(X.bas)
-        r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2}.name);
-        bname{j2}=X.bas{j2}.name;
+        r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2});
+        bname{j2}=X.bas{j2};
         % regexprep('Mws-gl','M([^-]*)-.*','O$1')
-        RO.nodeM(regexprep(X.bas{j2}.name,'M([^-]*)-.*','O$1'))=r2.bas(:,4,j2);
+        RO.nodeM(regexprep(X.bas{j2},'M([^-]*)-.*','O$1'))=r2.bas(:,4,j2);
        end
        sel=sdtu.fe.genSel(r2,RB);
 
@@ -15145,8 +15121,9 @@ nlAstable : generate tables for tex
     chan=PreLCp;RO.type='AtMarker';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
-   elseif ischar(CAM)&&any(strcmpi(CAM,{'cosim','cExchange','trajdef'}))
+   elseif ischar(CAM)&&any(strcmpi(CAM,{'cosim','cExchange','trajdef','iExchangeRot'}))
     %% #iExchange Wheelset Trajectory in gl marker -3
+
     % cntc.getCurve('cExchange',LI.Traj);
     chan=NodeDir2Lab({'Mw-gl';'Mr-gl';'MwsL-ws';'Mw-gl:v';'Mr-gl:v';'MwsL-ws:v'});
     % Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
@@ -15169,7 +15146,44 @@ nlAstable : generate tables for tex
      out=struct('def',zeros(length(chan),size(C1.Y,1)), ...
       'DOF',[],'Xlab',{{'Dof','Time'}},'data',C1.X{1},'lab',{st2},'DofLab',{chan});
      out.def(i2,:)=i3(i2).*C1.Y';
+    elseif strcmpi(CAM,'iExchangeRot')
+     %% iExchangeRot
+     NL.unl.X{2}
+     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
+     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
+     i1={'Mws-gl',[];   %    c_gl_ws=cgl_w*inv(cws_w)
+         'Mws-gl',[]%    c_gl_ws=cgl_w*inv(cws_w)*cws_wsL
+     %    ctr_w=inv(cgl-tr)*cgl_w
+     %    ctr_w=inv(cgl-tr)*cgl_r
+     %    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
+     }%    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+     warning('xxxgae inconsistent definition of what is used')
+     out=str;
+       %     X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
+       % % sdtweb cntc iExChange  %  edit cntc.getRot
+       % for j2=1:length(X.bas)
+       %  RB=struct('name',X.bas{j2}, ...
+       %   'ibas',find(strcmpi(RB.name,RO.NL.unlC.X{2})));
+       %  if ~isempty(RB.ibas)
+       %  elseif strcmpi(RB.name,'MwsL-gl')
+       %      error('sdtweb cntc iExChange')
+       %   % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#MwsL-gl')
+       %   % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
+       %   RB.ibas=[find(strcmpi( RO.NL.unlC.X{2},'Mtr-gl'))
+       %    find(strcmpi( RO.NL.unlC.X{2},'Mws-tr'))
+       %    find(strcmpi( RO.NL.unlC.X{2},'MwsL-ws'))
+       %    ];
+       %  elseif strcmpi(RB.name,'Mw-gl')
+       %  else
+       %   warning('Should resolve transformation %s',RB.name)
+       %   1;
+       %  end
+       %  X.bas{j2}=RB;
+       % end
+
     end
+
+
 
     return;
 
