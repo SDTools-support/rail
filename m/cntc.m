@@ -15148,15 +15148,16 @@ nlAstable : generate tables for tex
      out.def(i2,:)=i3(i2).*C1.Y';
     elseif strcmpi(CAM,'iExchangeRot')
      %% iExchangeRot
-     NL.unl.X{2}
+     % NL.unl.X{2}
      % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
-     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
-     i1={'Mws-gl',[];   %    c_gl_ws=cgl_w*inv(cws_w)
-         'Mws-gl',[]%    c_gl_ws=cgl_w*inv(cws_w)*cws_wsL
-     %    ctr_w=inv(cgl-tr)*cgl_w
-     %    ctr_w=inv(cgl-tr)*cgl_r
-     %    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
-     }%    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:CNTC_DOFs')
+     i1={'Mws-gl',[1 -5];   %    c_gl_ws=cgl_w*inv(cws_w)
+         'MwsL-gl',[1 -5 3]%    c_gl_wsL=cgl_w*inv(cws_w)*cws_wsL
+         'Mw-tr',  [-4 1]%    ctr_w=inv(cgl-tr)*cgl_w
+         'Mr-tr',  [-4 2]%    ctr_r=inv(cgl-tr)*cgl_r
+         'Mws-tr', [-4 1 -5]%    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
+         'MwsL-tr',[-4 1 -5 3]%    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+      };
      warning('xxxgae inconsistent definition of what is used')
      out=str;
        %     X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
