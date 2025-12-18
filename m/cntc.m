@@ -7651,7 +7651,7 @@ cntc : interface between SDT and CONTACT
    end
   end
 
-  function [Xout]=BasisChange(des,Xin,it)
+  function [Xout]=BasisChange(des,Xin,RO)
    %% #BasisChange do the basis transformation -2
    %  <a href="matlab: cntc.help('section.4.5')">section.4.5</a> xxxEB link
    %  to word not pdf
@@ -7660,23 +7660,23 @@ cntc : interface between SDT and CONTACT
    % Xin.XYZ stuctured as snapshots*points number*3 coords
    % it define a timestep chosen
    % If t is defined do the transformation for the timestep given
-   % vmtx : viewmetrix
+   % vmtx : viewmatrix
    LI=cntc.call;
    vmtx=[];
    % One timestep only
-   if isfield(des,'ibas')
-    RO=it; qbas=RO.NL.unlC.Y(:,des.ibas,RO.j1);
-    vmtx=cntc.getRot(qbas,1);
-   elseif isfield(des,'M')
-    RO=it;
-    vmtx=cntc.getRot(RO.NL.unlC,des.M);
-
-   elseif nargin>2;
-    Xin.j1=it;
-    Bas=cntc.getBasis(Xin);Bas=Bas.M;
-   else
-    Bas=cntc.getBasis; Bas=Bas.M;
-   end
+   if ~isfield(des,'ibas');des.ibas=RO.NL.unl.rot(des.M);end
+   % if isfield(des,'ibas')
+   %  RO=it; des.j1=RO.j1;  vmtx=cntc.getRot(RO.NL.unlC,des);
+   % elseif isfield(des,'M')
+   %  RO=it;
+   %  vmtx=cntc.getRot(RO.NL.unlC,des.M);
+   % 
+   % elseif nargin>2; error('Obsolete ?')
+   %  Xin.j1=it;
+   %  Bas=cntc.getBasis(Xin);Bas=Bas.M;error('Obsolete ?')
+   % else
+   %  Bas=cntc.getBasis; Bas=Bas.M;
+   % end
    if isfield(Xin,'Xlab')
     %%
     warning('xxxgae report test case to EB')
@@ -7689,51 +7689,24 @@ cntc : interface between SDT and CONTACT
     Xout=C1;
     return
    end
-   if ~isempty(vmtx)
-   else
-    warning('xxxgae discuss test case with EB')
-    % parse input marker output marker
-    Xin.bas=lower(Xin.bas);des=lower(des);
-    tr1=['M',Xin.bas,'-',des];tr2=['M',des,'-',Xin.bas];
-    i1=strcmpi(Bas.X{2}(:,1),tr1);
-    i2=strcmpi(Bas.X{2}(:,1),tr2);
-    if strcmpi(Xin.bas,des);Xout=Xin; return;end
-    % qbas extraction for all timestep
-    if any(i1)    % Direct transformation
-     O_des=Bas.Y(1:3,i1,:);
-     R_des=reshape(Bas.Y(4:12,i1,:),[3 3 size(Bas.X{3},1)]);
-    elseif any(i2)    % inversed Direct transformation
-     O_des=-Bas.Y(1:3,i2,:);
-     R_des=permute(reshape(Bas.Y(4:12,i2,:),[3 3 size(Bas.X{3},1)]),[2 1 3]);
-    else;
-     try
-      st1=['M' Xin.bas,'-'];i1=find(strncmpi(Bas.X{2},st1,length(st1)));
-      st2=['M' des '-' Bas.X{2}{i1(1)}(length(st1)+1:end) ];
-      i2=find(strncmpi(Bas.X{2},st2,length(st2)));
-      i1=i1(1); st1=Bas.X{2}{i1};
-      O_des=Bas.Y(1:3,i1,:);
-      R_des=reshape(Bas.Y(4:12,i1,:),[3 3 size(Bas.X{3},1)]);
-      for j1=1:size(Bas.Y,3) % Composition with inverse
-       R12=R_des(:,:,j1);
-       R23=reshape(Bas.Y(4:12,i2,j1),3,3)';O23=-R23*Bas.Y(1:3,i2,j1);
-       O_des(:,:,j1)=O23+R23*O_des(:,:,j1);
-       R_des(:,:,j1)=R23*R12;
-      end
-     catch
-      error('Tranformation %s not found',tr1)
-     end
-    end
-   end
    if isfield(Xin,'XYZ')
     Xout=Xin;
-    if isempty(vmtx)
-    elseif size(vmtx,3)==1 % Single time step
-     Xout.XYZ=reshape(reshape(Xout.XYZ,[],3)*vmtx(:,1:3)+vmtx(:,4)',size(Xin.XYZ));
-    elseif size(vmtx,3)==size(Xin.XYZ,1) % traj line
+    if isempty(des.ibas)
+    %elseif size(vmtx,3)==1 % Single time step
+    % Xout.XYZ=reshape(reshape(Xout.XYZ,[],3)*vmtx(:,1:3)+vmtx(:,4)',size(Xin.XYZ));
+    elseif isfield(Xout,'j1') % single time step
+     % Reshape when dim 1 and 2 of Xin are profile dimension (case for rail profile)
+     des.j1=Xout.j1; vmtx=cntc.getRot(RO.NL.unlC,des);
+     Xin.dim=size(Xin.XYZ);
+     Xin.XYZ=reshape(Xin.XYZ,[Xin.dim(1)*Xin.dim(2) Xin.dim(3)]);
+     Xout.XYZ=reshape(Xin.XYZ*vmtx(1:3,1:3)'+vmtx(1:3,4)',Xin.dim);
+    elseif 1==1 % traj line
      if size(Xin.XYZ,2)>1;error('Need implement');end
      for j1=1:size(Xout.XYZ,1)
-      Xout.XYZ(j1,1,:)=vmtx(:,:,j1)*[squeeze(Xin.XYZ(j1,1,:));1];
+      des.j1=j1; vmtx=cntc.getRot(RO.NL.unlC,des);
+      Xout.XYZ(j1,1,:)=vmtx(1:3,:)*[squeeze(Xin.XYZ(j1,1,:));1];
      end
+     1;
     elseif length(RO.j1)>1; error('Not implemented')
     elseif ~isequal(size(Xin.XYZ,1),size(Bas.X{3},1))
      % Reshape when dim 1 and 2 of Xin are profile dimension (case for rail profile)
@@ -7768,7 +7741,7 @@ cntc : interface between SDT and CONTACT
     i1=strcmpi(qM.X{2},ty);
     if ~any(i1)
      % sdtweb sdtweb cntc iExChange
-
+error('Obsolete')
      if strcmpi(ty,'Mw-tr')
       R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
       R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
@@ -7812,16 +7785,22 @@ cntc : interface between SDT and CONTACT
     end
     return
    end
-   R=zeros(3,3,size(qM,2));
-   for j2=1:size(qM,2)
+   des=ty;
+   if isstruct(qM);
+    z=qM.Y(:,:,ty.j1);
+    qM=z;ty=1;
+   end
+   R=eye(4);
+   for j1=1:length(des.ibas);
+    j2=abs(des.ibas(j1)); 
+    R1=eye(4);
     cx=cos(qM(4,j2));sx=sin(qM(4,j2));cy=cos(qM(5,j2));
     sy=sin(qM(5,j2));cz=cos(qM(6,j2));sz=sin(qM(6,j2));
-    R(:,1:3,j2)=[cz*cy            -sz      cz*sy;
-     cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy;
-     cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy]; % 3D_Rot_Mat
-    if nargin>1&&ty==1
-     R(:,4,j2)=qM(1:3,j2);
-    end
+    R1(1:3,:)=[cz*cy            -sz      cz*sy  qM(1,j2);
+     cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy   qM(2,j2);
+     cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy   qM(3,j2)]; % 3D_Rot_Mat
+    if des.ibas(j1)<0;R1=inv(R1);end
+    if j1==1;R=R1;else; R=R*R1;end
    end
   end
 
@@ -8275,7 +8254,6 @@ cntc : interface between SDT and CONTACT
        %% #plot.init.bas -4
        X.bas=X.bas(:);%ind=~strncmp(X.bas,'m',1);
        X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
-       X=cntc.getCurve('iExchangeRot',X);
 
       elseif strcmpi(X.from,'basold')
        %% basold prepare display of marker at specific j1 time step
@@ -8303,7 +8281,7 @@ cntc : interface between SDT and CONTACT
       end
       if isfield(X,'bas')&&ischar(X.bas)
        RB=struct('name',strcat('M',X.bas,'-',RO.bas));
-       RB.ibas=strcmpi(RB.name,RO.NL.unlC.X{2});
+       RB.ibas=RO.NL.unl.rot(RB.name);
        X.toObsM=@(X,RO)cntc.BasisChange(RB,X,RO);
       end
 
@@ -8522,7 +8500,12 @@ cntc : interface between SDT and CONTACT
        qM=RO.NL.unlC; qM.Y=qM.Y(:,:,RO.j1); qM.X{3}= qM.X{3}(RO.j1,:);
        r2=struct('name',{RB.text(:,1)},'bas',[]);bname={};
        for j2=1:length(X.bas)
-        r2.bas(1:3,1:4,j2)=cntc.getRot(qM,X.bas{j2});
+        R=eye(3,4); 
+        if isKey(RO.NL.unl.rot,X.bas{j2})
+          des=struct('j1',1,'ibas',RO.NL.unl.rot(X.bas{j2}));
+          R=eye(3,4)*cntc.getRot(qM,des);
+        end
+        r2.bas(1:3,1:4,j2)=R;
         bname{j2}=X.bas{j2};
         % regexprep('Mws-gl','M([^-]*)-.*','O$1')
         RO.nodeM(regexprep(X.bas{j2},'M([^-]*)-.*','O$1'))=r2.bas(:,4,j2);
@@ -8592,6 +8575,9 @@ cntc : interface between SDT and CONTACT
       %% #cntc.plot.surf.profile draw profile
       if ~isfield(X,'prop');X.prop={};end
       if ischar(X.prop);X.prop=propM(X.prop);end
+      i1=find(ismember(lower(X.prop(1:2:end)),{'edgealpha','facealpha','edgecolor'}))*2;
+      X.prop([i1;i1-1])=[];
+      if strcmpi(X.prop{1},'FaceColor');X.prop{1}='color';end
       go(i1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
       if isfield(X,'legend') %draw points with legends
        X1=squeeze(X.XYZ);
@@ -14917,6 +14903,21 @@ cntc : interface between SDT and CONTACT
      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
      'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
+
+         %% iExchangeRot
+     % NL.unl.X{2}
+     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
+     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:CNTC_DOFs')
+     i1={'Mws-gl',[1 -5];   %    c_gl_ws=cgl_w*inv(cws_w)
+         'MwsL-gl',[1 -5 3]%    c_gl_wsL=cgl_w*inv(cws_w)*cws_wsL
+         'Mw-tr',  [-4 1]%    ctr_w=inv(cgl-tr)*cgl_w
+         'Mr-tr',  [-4 2]%    ctr_r=inv(cgl-tr)*cgl_r
+         'Mws-tr', [-4 1 -5]%    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
+         'MwsL-tr',[-4 1 -5 3]%    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
+      };
+     NL.unl.rot=vhandle.nmap([NL.unl.X{2}(:,1), num2cell(1:size(NL.unl.X{2},1))'; ...
+         i1]);
+
     if isfield(LI,'Track')&&isempty(LI.Track.raily0)
      % offset in unl = [c]{q} + {unl0}
      NL.unl0={% geometric Gauge Ow position
@@ -15147,18 +15148,7 @@ nlAstable : generate tables for tex
       'DOF',[],'Xlab',{{'Dof','Time'}},'data',C1.X{1},'lab',{st2},'DofLab',{chan});
      out.def(i2,:)=i3(i2).*C1.Y';
     elseif strcmpi(CAM,'iExchangeRot')
-     %% iExchangeRot
-     % NL.unl.X{2}
-     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:Comp_transformation')
-     % sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#s:CNTC_DOFs')
-     i1={'Mws-gl',[1 -5];   %    c_gl_ws=cgl_w*inv(cws_w)
-         'MwsL-gl',[1 -5 3]%    c_gl_wsL=cgl_w*inv(cws_w)*cws_wsL
-         'Mw-tr',  [-4 1]%    ctr_w=inv(cgl-tr)*cgl_w
-         'Mr-tr',  [-4 2]%    ctr_r=inv(cgl-tr)*cgl_r
-         'Mws-tr', [-4 1 -5]%    ctr_ws=inv(cgl_tr)*cgl_w*inv(cws_w)
-         'MwsL-tr',[-4 1 -5 3]%    ctr_wsL=inv(cgl_tr)*cgl_w*inv(cws_w)*cws_wsL
-      };
-     warning('xxxgae inconsistent definition of what is used')
+        error('wrong')
      out=str;
        %     X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
        % % sdtweb cntc iExChange  %  edit cntc.getRot
