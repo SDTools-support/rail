@@ -7705,6 +7705,11 @@ cntc : interface between SDT and CONTACT
      for j1=1:size(Xout.XYZ,1)
       des.j1=j1; vmtx=cntc.getRot(RO.NL.unlC,des);
       Xout.XYZ(j1,1,:)=vmtx(1:3,:)*[squeeze(Xin.XYZ(j1,1,:));1];
+      if 1==2
+        [vmtx(1:3,:)*[squeeze(Xin.XYZ(j1,1,:));1] squeeze(Xin.XYZ(j1,1,:)) squeeze(evalin('base','R3.XYZ(1,:,:)'))];[ans ans(:,1)-ans(:,3)]
+        [RO.NL.unlC.X{2}(:,1)';num2cell(squeeze(RO.NL.unlC.Y(:,:,j1)))]
+        des.ibas
+      end
      end
      1;
     elseif length(RO.j1)>1; error('Not implemented')
