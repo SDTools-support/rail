@@ -8545,7 +8545,7 @@ error('Obsolete')
        RO.nodeM('NaN')=NaN(3,1);
        if any(strcmpi(X.li,'Owl'))
         %'OwL,wheelCenter+LI.wheelsetDim.nomrad*(Ow:v3*cos(Mws-wsL:ry)+Ow:v1*sin(Mw-wsL:ry)}'
-        r3=LI.wheelsetDim.nomrad*r2.bas(:,1,strcmpi(r2.name,'OwsL'));
+        r3=LI.wheelsetDim.nomrad*r2.bas(:,3,strcmpi(r2.name,'OwsL'));
         RO.nodeM('OwL')=RO.nodeM('WheelCenter')+r3;
        end
        n1=[];
