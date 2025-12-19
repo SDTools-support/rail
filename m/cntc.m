@@ -7707,8 +7707,8 @@ cntc : interface between SDT and CONTACT
       Xout.XYZ(j1,1,:)=vmtx(1:3,:)*[squeeze(Xin.XYZ(j1,1,:));1];
       if 1==2
         [vmtx(1:3,:)*[squeeze(Xin.XYZ(j1,1,:));1] squeeze(Xin.XYZ(j1,1,:)) squeeze(evalin('base','R3.XYZ(1,:,:)'))];[ans ans(:,1)-ans(:,3)]
-        [RO.NL.unlC.X{2}(:,1)';num2cell(squeeze(RO.NL.unlC.Y(:,:,j1)))]
-        des.ibas
+        C1=RO.NL.unlC;[C1.X{2}(:,1)';num2cell(squeeze(C1.Y(:,:,j1)))]
+        C1.X{2}(abs(des.ibas),1)
       end
      end
      1;
@@ -14928,7 +14928,7 @@ error('Obsolete')
      NL.unl0={% geometric Gauge Ow position
       '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
       '0';'pi';'0';'0'%Mw_gl
-      '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi+cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
+      '0';'-LI.prr.Mr_tr(2)';'-LI.prr.Mr_tr(3)';'pi-cntc.leftCoef(LI)*LI.Track.cant';'0';'0';%Mr_gl
       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
@@ -15210,8 +15210,10 @@ nlAstable : generate tables for tex
     % Fill with LI.Traj
     C3=LI.Traj;  % Some values may be incorrect (different in CMacro)
     if isfield(C3,'lab')
+     r1=strncmp(chan(:,1),'-',1);chan(r1,2)=cellfun(@(x)x(2:end),chan(r1,2),'uni',0);
+     r1=1-double(r1)*2;
      [i1,i2]=ismember(chan(:,2),C3.lab);
-     C2.Y(i1,:)=C3.def(i2(i1),1:size(C3.data,1));
+     C2.Y(i1,:)=r1(i1).*C3.def(i2(i1),1:size(C3.data,1));
     else
      [i1,i2]=ismember(regexprep(chan(:,2),'^-',''),C3.X{2}(:,1));  
      C2.Y(i1,1:size(C3.Y,1))=C3.Y(:,i2(i1))';
