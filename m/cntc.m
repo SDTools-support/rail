@@ -14957,17 +14957,11 @@ error('Obsolete')
      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMw-ws
      '0';'0';'0';'0';'0';'0'                                  % vMcp_w
-     '0';'0';'0';'0';'0';'0' };                                 % vMcp_r
+     '0';'0';'0';'0';'0';'0' };                               % vMcp_r
 
-    NL.snllab= {%snl
-     '0';'0';'0';'0';'0';'0'                                  % Mw_gl
-     '0';'0';'0';'0';'0';'0';                                 % Mr_gl
-     '0';'0';'0';   '0'; '0';  '0'                            % MwsL-ws
-
-     '0';'0';'0';'0';'0';'0'                                  % Mtr_gl
-     % 'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r'          % Mr_tr
-     % xxxgae snl marker 
-     'fx_w';'fy_w';'fz_w';'mx_w_ws';'my_w_ws';'mz_w_ws'       % Mw_ws
+    NL.snllab= {%snl sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#GetLoads')
+     'fx_w';'fy_w';'fz_w';'mx_w_w';'my_w_w';'mz_w_w';         % Tw_w
+     'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r';         % Tr_r
      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'};             % Mcp_r
 
@@ -15127,7 +15121,7 @@ nlAstable : generate tables for tex
     chan=PreLCp;RO.type='AtMarker';
     if ~isfield(RO,'name')||~ischar(RO);RO.name=CAM;end
 
-   elseif ischar(CAM)&&any(strcmpi(CAM,{'cosim','cExchange','trajdef','iExchangeRot'}))
+   elseif ischar(CAM)&&any(strcmpi(CAM,{'cosim','cExchange','trajdef','trajcurve','iExchangeRot'}))
     %% #iExchange Wheelset Trajectory in gl marker -3
 
     % cntc.getCurve('cExchange',LI.Traj);
@@ -15176,6 +15170,13 @@ nlAstable : generate tables for tex
        %  end
        %  X.bas{j2}=RB;
        % end
+
+    elseif strcmpi(CAM,'trajcurve')
+          C1=str;
+     [i1,i2]=ismember(C1.X{2}(:,1),st2);
+     out=struct('X',{{C1.X{1} [chan st2]}},'Xlab',{{'Dof','Time'}}, ...
+      'Y',zeros(length(chan),size(C1.Y,1)));
+     out.Y(i2,:)=i3(i2).*C1.Y';
 
     end
 
