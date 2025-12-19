@@ -8580,8 +8580,8 @@ error('Obsolete')
       %% #cntc.plot.surf.profile draw profile
       if ~isfield(X,'prop');X.prop={};end
       if ischar(X.prop);X.prop=propM(X.prop);end
-      i1=find(ismember(lower(X.prop(1:2:end)),{'edgealpha','facealpha','edgecolor'}))*2;
-      X.prop([i1;i1-1])=[];
+      i2=find(ismember(lower(X.prop(1:2:end)),{'edgealpha','facealpha','edgecolor'}))*2;
+      X.prop([i2;i2-1])=[];
       if strcmpi(X.prop{1},'FaceColor');X.prop{1}='color';end
       go(i1)=line(X.XYZ(:,:,1),X.XYZ(:,:,2),X.XYZ(:,:,3),X.prop{:});
       if isfield(X,'legend') %draw points with legends
@@ -14964,7 +14964,7 @@ error('Obsolete')
      'fx_r';'fy_r';'fz_r';'mx_r_r';'my_r_r';'mz_r_r';         % Tr_r
      'xcp_w';'ycp_w';'zcp_w';'deltcp_w';'0';'0'               % Mcp_w
      'xcp_r';'ycp_r';'zcp_r';'deltcp_r';'0';'0'};             % Mcp_r
-
+    NL.snlM={'Tw_w';'Tr_r';'Mcp_w';'Mcp_r'};
     st1={'Track','Friction'};
     cntc.settrackdimensions('');% Track
     cntc.setwheelsetposition(''); % wheelsetPos
@@ -15035,12 +15035,12 @@ nlAstable : generate tables for tex
      taPre=struct('ColumnName',{[{'M/DOF'},NL.unl.X{1}(:,1)']}, ...
       'table','');
      taPre.table=[NL.unl.X{2};cellfun(@(x)['v' x],NL.unl.X{2}(:,1),'uni',0)
-      cellfun(@(x)['s' x],NL.unl.X{2}(:,1),'uni',0)];
+      NL.snlM];
      taPre.table(:,2:7)=[reshape(NL.cnllab,6,[])';reshape(NL.vnllab,6,[])'
       reshape(NL.snllab,6,[])'];
      taPre.name='nl'; ta=vhandle.tab(taPre);
 
-     setdiff(NL.cnllab,fieldnames(r2))
+     setdiff(regexprep(NL.cnllab,'^-',''),fieldnames(r2))
 
      asTab(ta)
      st=strrep(asTex(ta),'_','\_');disp(st)
