@@ -273,8 +273,6 @@ C1.X{1}=(1:size(C1.Y,1))';
 nmap('Traj_TestPen')=C1;
 
 %  #Traj_WheelflatW pen defined on the wheel -2
-% C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...
-%  [-pi/180*[25 : 1 : 50]']); % rotation angle [rad] (pdf page 36)
 C1=struct('X',{{[],{'s_ws','mm';'pitch_ws','rad';'vs','mm/s';'vpitch','rad/s';'dzwhl','[mm]'}}}, ...
  'Xlab',{{'Step','Comp'}},'Y',[]);
  C1.Y(:,2)=-pi/180*linspace(0,50,100)'; % rotation angle [rad] (pdf page 36)
@@ -285,9 +283,6 @@ end
 C1.X{1}=(1:size(C1.Y,1))';
 C1.Y(:,3)=2000; % set vs [mm/s]
 C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
-% C1.Y(:,5)=0*ones(size(C1.Y,1),1);
-% C1.Y(:,5)=linspace(0.1,1,10);
-% C1.Y(:,5)= 0.5*ones(size(C1.Y,1),1);
 % z_ws curve found with load boundary conditions fz=125000 N
 C1.Y(:,5)=-[0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
  0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
@@ -303,38 +298,24 @@ C1.Y(:,5)=-[0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
  0.4433,0.4434];
 nmap('Traj_WheelFlatW')=C1;
 
-%% #Traj_WheelflatCosim pen defined on the wheel -2
-
-% cntc.getCurve('nlastable')
-% Mw_gl:{x,y,z,rx,ry,rz} vMw_gl:{x,y,z,rx,ry,rz} Mr_gl:{x,y,z,rx,ry,rz} vMr_gl:{x,y,z,rx,ry,rz} xxxeb
-% a=d_cntc('nmap.DataExchange')
-% Let {qOw}={xw,yw,zw,rxw,ryw,rzw} and {vOw}={vxw,vyw,vzw,vrxw,vryw,vrzw}
-% {qOr}={xr,yr,zr,rxr,ryr,rzr} and {vOr}={vxr,vyr,vzr,vrxr,vryr,vrzr} be the FEM output
-qOw=zeros(6,100);qOr=zeros(6,100);
-vOw=zeros(6,100);vOr=zeros(6,100);
-qOw(3,:)=[0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,0.4436,...
- 0.4436,0.4426,0.4432,0.4460,0.4518,0.4617,0.4726,0.4853,0.4979,...
- 0.5151,0.5394,0.5705,0.6089,0.6533,0.7009,0.7485,0.7924,0.8305,...
- 0.8593,0.8805,0.8938,0.9005,0.9002,0.8905,0.8743,0.8466,0.8018,...
- 0.7528,0.7042,0.6598,0.6215,0.5882,0.5599,0.5353,0.5156,0.4993,...
- 0.4845,0.4702,0.4590,0.4515,0.4461,0.4445,0.4436,0.4432,0.4432,...
- 0.4433,0.4434];
-qOw(5,:)=-pi/180*linspace(0,50,100)';
-
+%  #Traj_Amplified
+C1=struct('X',{{[],{'s_ws','mm';'pitch_ws','rad';'vs','mm/s';'vpitch','rad/s';'dzwhl','[mm]';'dywhl','[mm]'}}}, ...
+ 'Xlab',{{'Step','Comp'}},'Y',[]);
+ C1.Y(:,2)=-pi/180*linspace(0,50,3)'; % rotation angle [rad] (pdf page 36)
+ % C1.Y(:,2)=-pi/180*linspace(0,20,10)'; % rotation angle [rad] (pdf page 36)
 if isfield(LI,'wheelsetDim')
- qOw(1,:)=-qOw(5,:)*LI.wheelsetDim.nomrad; 'xxxgae missing comment' %sdt
+ C1.Y(:,1)=-C1.Y(:,2)*LI.wheelsetDim.nomrad;
 end
-vOw(1,:)=2000; % set vs [mm/s]
-vOw(5,:)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
-C1=struct('X',{{{'x','y','z','rx','ry','rz'}',{'Mw-gl','Mr-gl','Mw-gl:v','Mr-gl:v'}'}}, ...
-     'Xlab',{{'Comp','Bas','iTime'}}, ...
-     'Y',reshape([qOw;qOr;vOw;vOr],6,4,[]));
-nmap('Traj_WheelFlatCosim')=C1;
+C1.X{1}=(1:size(C1.Y,1))';
+C1.Y(:,3)=2000; % set vs [mm/s]
+C1.Y(:,4)=-4.08190679; % set vpitch wheel rotation speed [rad/s]
+% C1.Y(:,5)=0*ones(size(C1.Y,1),1);
+% C1.Y(:,5)=linspace(0.1,1,10);
+% C1.Y(:,5)= 0.5*ones(size(C1.Y,1),1);
+% z_ws curve found with load boundary conditions fz=125000 N
+C1.Y(:,5)=-[1 2 4];
+C1.Y(:,6)=-[1 2 4];
+nmap('Traj_Amplified')=C1;
 
 %  #Traj_WheelflatR pen defined on the rail -2
 % C1=struct('X',{{[],{'pitch_ws';'vs';'vpitch'}}},'Xlab',{{'Step','Comp'}},'Y', ...

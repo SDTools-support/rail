@@ -7742,69 +7742,28 @@ cntc : interface between SDT and CONTACT
   function R=getRot(qM,ty)
    %% #getRot calculate 3d rotation matrix -2
    % [angle]=rad
-   if nargin>1&&ischar(ty)
-    i1=strcmpi(qM.X{2},ty);
-    if ~any(i1)
-     % sdtweb sdtweb cntc iExChange
-error('Obsolete')
-     if strcmpi(ty,'Mw-tr')
-      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
-      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
-
-      % R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-gl'),:)),1);
-      % R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mr-tr'),:)),1);
-      R(4,4,:)=1;R2(4,4,:)=1;%R3(4,4,:)=1;
-      for j1=1:size(R,3)
-       % inv(Mtr_gl)*Mw_gl
-       % inv(Mr_tr) *inv(Mr_gl) * Mw_gl
-       % inv(c_r_tr)*inv(c_gl_tr)*c_gl_w
-       R(:,:,j1)=R2(:,:,j1)\R(:,:,j1);
-      end
-      R(4,:,:)=[];
-     elseif strcmpi(ty,'Mws-gl')
-      %%
-      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-gl'),:)),1);
-      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mw-ws'),:)),1);
-      R(4,4,:)=1;R2(4,4,:)=1;
-      for j1=1:size(R,3)
-       % c_gl_ws = c_gl_w * inv(c_ws_w)
-       R(:,:,j1)=R(:,:,j1)/R2(:,:,j1);
-      end
-      R(4,:,:)=[];
-     elseif strcmpi(ty,'MwsL-gl')
-      R=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'MwsL-ws'),:)),1);
-      R2=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mws-tr'),:)),1);
-      R3=cntc.getRot(squeeze(qM.Y(:,strcmpi(qM.X{2},'Mtr-gl'),:)),1);
-      R(4,4,:)=1;R2(4,4,:)=1;R3(4,4,:)=1;
-      for j1=1:size(R,3)
-       % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
-       R(:,:,j1)=R3(:,:,j1)*R2(:,:,j1)*R(:,:,j1);
-      end
-      R(4,:,:)=[];
-     elseif strcmpi(ty,'Mgl-gl')
-      R=eye(3,4);
-     elseif ~any(i1); dbstack; keyboard;
-     end
-    else;
-     R=cntc.getRot(squeeze(qM.Y(:,i1,:)),1);
+   if nargin==1 % Use an angle to give the rotation matrix
+    n=1;j2=1;
+   else
+    des=ty;
+    n=length(des.ibas);
+    if isstruct(qM);
+     z=qM.Y(:,:,ty.j1);
+     qM=z;ty=1;
     end
-    return
-   end
-   des=ty;
-   if isstruct(qM);
-    z=qM.Y(:,:,ty.j1);
-    qM=z;ty=1;
    end
    R=eye(4);
-   for j1=1:length(des.ibas);
-    j2=abs(des.ibas(j1)); 
+   for j1=1:n
+    if ~exist('j2','var')
+     j2=abs(des.ibas(j1));
+    end
     R1=eye(4);
     cx=cos(qM(4,j2));sx=sin(qM(4,j2));cy=cos(qM(5,j2));
     sy=sin(qM(5,j2));cz=cos(qM(6,j2));sz=sin(qM(6,j2));
     R1(1:3,:)=[cz*cy            -sz      cz*sy  qM(1,j2);
      cx*sz*cy+sx*sy   cx*cz    cx*sz*sy-sx*cy   qM(2,j2);
      cy*sx*sz-cx*sy   sx*cz    sx*sz*sy+cx*cy   qM(3,j2)]; % 3D_Rot_Mat
-    if des.ibas(j1)<0;R1=inv(R1);end
+    if exist('des','var')&&des.ibas(j1)<0;R1=inv(R1);end
     if j1==1;R=R1;else; R=R*R1;end
    end
   end
@@ -8596,7 +8555,9 @@ error('Obsolete')
      ga=go(i1).Parent;
      if i1==1
       if isfield(X.bas,'name')
-       xlabel(ga,[X.bas.name,':x']);ylabel(ga,[X.bas.name,':y']);zlabel(ga,[X.bas.name,':z']);
+       bas = regexp(X.bas.name, '-([A-Za-z]{1,2})$', 'tokens');
+       xlabel(ga,append('x',bas{1}));ylabel(ga,append('y',bas{1}));
+       zlabel(ga,append('z',bas{1}));
       else
        xlabel(ga,['x' X.bas]);ylabel(ga,['y' X.bas]);zlabel(ga,['z' X.bas]);
       end
