@@ -8421,12 +8421,11 @@ cntc : interface between SDT and CONTACT
      if isfield(X,'RTZ');
       %interpolation of the wheel
       if isfield(X,'r_tz') % Interpolate r at current time on tcsc grid
-       ry_ws=squeeze(RO.NL.getRoll(RO.NL.unlC.Y));  %
-       %cntc.getBasis('roll');ry_ws=ry_ws.M;
-       warning('xxxgae : how defined based on real properties RO.NL.unlC.X{2} getRoll , missing reference')
        % ry_ws is the angle that allows the wheel to rotate in the grid
+       ry_ws=squeeze(RO.NL.getRoll(RO.NL.unlC.Y));  %
+       warning('xxxgae : how defined based on real properties RO.NL.unlC.X{2} getRoll , missing reference')
        % (thus x1 is in w frame and not wc)
-       if strcmpi(X.bas,'w') % RTZ_wc
+       if strcmpi(X.bas,'w') % RTZ_w
         X1=struct('rtz',cat(3,X.r_tz(X.tcLscL{1}-ry_ws(RO.j1),X.tcLscL{2}),X.tcLscL{:}), ...
          'orig',X.orig,'c_rect_cyl',X.c_rect_cyl,'bas','w');
        else
@@ -8523,18 +8522,7 @@ cntc : interface between SDT and CONTACT
        X=X.toObsM(X,RO); % edit cntc.BasisChange
       end
      end
-     if isfield(X,'gf_offset')
-      % Offset to amplify interpenetration
-      X.XYZ(:,:,3)=X.XYZ(:,:,3)+X.gf_offset;
-      % Marker displacement
-      for i2=1:length(RO.list)
-       if ~ischar(RO.list{i2}.bas)
-        error('xxxGAE explain what this should not NOT HERE?')
-        ib=contains(RO.list{i2}.name,X.name(1),'IgnoreCase',true);
-        RO.list{i2}.bas(ib,6)=RO.list{i2}.bas(ib,6)+X.gf_offset;
-       end
-      end
-     end
+
      if size(X.XYZ,2)==1||size(X.XYZ,1)==1 
       %% #cntc.plot.surf.profile draw profile
       if ~isfield(X,'prop');X.prop={};end
@@ -12180,7 +12168,7 @@ cntc : interface between SDT and CONTACT
 
    if p.is_wheel == 0 % Rail position gauge point calculation
     %rotate the rail of the cant
-    qbas=zeros(6,1);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);
+    qbas=zeros(6,1);qbas(4)=LI.Track.cant; R=cntc.getRot(qbas);R=R(1:3,1:3); % remove the translation part 
     if (~is_slices)
      XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
       [1 size(p.ProfileY,1) 3]);
@@ -17275,7 +17263,7 @@ nlAstable : generate tables for tex
       pos=uvnl(1:6);
       vel=uvnl(7:12);
       % Rail Traj and speed
-      dev=uvnl(25:30);
+      dev=uvnl(25:30); %xxxgae error dev 
       % Wheel Traj and speed
       flex=uvnl(13:24);%[ st1(i1) num2cell(flex)']
       % CNTC input functions
