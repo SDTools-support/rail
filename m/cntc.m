@@ -7754,6 +7754,7 @@ cntc : interface between SDT and CONTACT
    end
    R=eye(4);
    for j1=1:n
+    % #Marker composition
     if ~exist('j2','var')
      j2=abs(des.ibas(j1));
     end
