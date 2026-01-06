@@ -7873,7 +7873,7 @@ cntc : interface between SDT and CONTACT
      R1=struct('RTZ',cat(3,LI.wheelsetDim.nomrad*ones(size(t)), ...
       t,zeros(size(t))),'bas','w','name','prwLine');
     elseif isfield(LI.prw,'xsurf')
-     % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#RTZ_wL')
+     % sdtu.f.open('@sncf_ir/tex/gaetan/R25_CNTC.tex#RTZ_w')
      % xsurf,ysurf,zsurf contains profiles(\theta_j,s_j)
      R1=struct('RTZ',cat(3,LI.prw.zsurf+LI.wheelsetDim.nomrad, ...
       LI.prw.xsurf,cntc.leftCoef(LI)*LI.prw.ysurf),'bas','w','name','Wheel');
@@ -7948,7 +7948,7 @@ cntc : interface between SDT and CONTACT
       R1=struct('RTZ',cat(3,LI.wheelsetDim.nomrad*ones(size(t)), ...
        t,zeros(size(t))),'bas','w','name','prwLine');
      elseif isfield(LI.prw,'xsurf')
-      % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#RTZ_wL')
+      % sdtu.f.open('@sncf_ir/tex/gaetan/R25_CNTC.tex#RTZ_wL')
       % xsurf,ysurf,zsurf contains profiles(\theta_j,s_j)
       R1=struct('RTZ',cat(3,LI.prw.zsurf+LI.wheelsetDim.nomrad, ...
        LI.prw.xsurf,cntc.leftCoef(LI)*LI.prw.ysurf),'bas','w','name','Wheel');
@@ -14976,7 +14976,7 @@ cntc : interface between SDT and CONTACT
      out=NL;return
     elseif strcmpi(CAM,'nlastable')
      %{
-```DocString  {module=rail,src=@sncf_ir/tex/gaetan/gae_cntc.tex#nlastable} -3
+```DocString  {module=rail,src=@sncf_ir/tex/gaetan/R25_CNTC.tex#nlastable} -3
 nlAstable : generate tables for tex
      %}
 
@@ -15107,7 +15107,7 @@ nlAstable : generate tables for tex
        %  if ~isempty(RB.ibas)
        %  elseif strcmpi(RB.name,'MwsL-gl')
        %      error('sdtweb cntc iExChange')
-       %   % sdtu.f.open('@sncf_ir/tex/gaetan/gae_cntc.tex#MwsL-gl')
+       %   % sdtu.f.open('@sncf_ir/tex/gaetan/R25_CNTC.tex#MwsL-gl')
        %   % c_gl_wsL = c_gl_tr * c_tr_ws * c_ws_wsL
        %   RB.ibas=[find(strcmpi( RO.NL.unlC.X{2},'Mtr-gl'))
        %    find(strcmpi( RO.NL.unlC.X{2},'Mws-tr'))
