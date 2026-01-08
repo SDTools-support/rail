@@ -17051,6 +17051,9 @@ nlAstable : generate tables for tex
   %------------------------------------------------------------------------------------------------------------
   function []=set(list,RT)
    %% #SetSDT : SDT distribution to CNTC set commands -1
+   if isstruct(list)&&isfield(list,'LoopParam')&&nargin==1
+    RT=list; list=RT.LoopParam;
+   end
    if ~iscell(list);list={list};end
    LI=cntc.call;
    for j1=1:size(list,1)
@@ -17250,7 +17253,7 @@ nlAstable : generate tables for tex
       % Be careful CNTC convention {x y z rx rz ry}
 
       %% #InitCalc
-      if LI.cur.j1==1 
+      if RT.cur.j1==1 
        cntc.set('initcalc{}',RT)
       elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
        cntc.set('initcalc{maintain}',RT)
@@ -17346,8 +17349,7 @@ nlAstable : generate tables for tex
     else
      RT.cur.j1=j1;LI.cur=RT.cur;
     end
-    li=RT.LoopParam;
-    cntc.set(li,RT); % Do steps typically Traj/calculate/getout/getsol
+    cntc.set(RT); % Do steps typically Traj/calculate/getout/getsol
    end % icase j1
    if isfield(RT,'profile')&&RT.profile;profile('viewer');end
    eval(iigui({'RT'},'SetInBaseC'));
