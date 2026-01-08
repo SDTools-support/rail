@@ -14844,7 +14844,7 @@ cntc : interface between SDT and CONTACT
    if isempty(NL)||nargin==1
     NL=struct;
     NL.unl.X{1}={'x';'y';'z';'rx';'ry';'rz'};
-    NL.unl.X{2}={'Mw-gl';'Mr-gl';'MwsL-ws';'Mtr-gl';'Mw-ws';'Mcp-w';'Mcp-r'};
+    NL.unl.X{2}={'Mw-gl';'Mr-gl';'MwsL-ws';'Mtr-gl';'Mw-ws';'Mcp-r'};
     NL.unllab=append(append(NL.unl.X{2},':'),NL.unl.X{1}')';% label of cq+unl0
     NL.unl.X{3}={'unl';'unl0';'unlj1-1'};
     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
@@ -14856,7 +14856,6 @@ cntc : interface between SDT and CONTACT
 
      's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
      'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
-     'xcp_w';'ycp_w';'zcp_w';   'deltcp_w';'0';'0'            %Mcp_w
      'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
 
          %% iExchangeRot
@@ -14884,7 +14883,6 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-      '0';'0';'0';'0';'0';'0' %Mcp_w
       '0';'0';'0';'0';'0';'0'}; %Mcp_r
     else
      NL.unl0={ % geometric absolut Ow position
@@ -14895,7 +14893,6 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';'0';'0';'0';%Mtr_gl
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-      '0';'0';'0';'0';'0';'0'%Mcp_w
       '0';'0';'0';'0';'0';'0'};%Mcp_r
     end
 
@@ -14906,7 +14903,6 @@ cntc : interface between SDT and CONTACT
 
      'vs';'0';'0';'0';'0';'0'                                 % vMtr_gl
      'vxwhl';'vywhl';'vzwhl';'vrollw';'vpitchw';'vyaww'       % vMw-ws
-     '0';'0';'0';'0';'0';'0'                                  % vMcp_w
      '0';'0';'0';'0';'0';'0' };                               % vMcp_r
 
     NL.snllab= {%snl sdtu.f.open('@sncf_ir\tex\gaetan\R25_CNTC.tex#GetLoads')
@@ -14981,7 +14977,7 @@ nlAstable : generate tables for tex
      %}
 
      %r2=sdtm.toStruct(Track.GHandle);r2.vrollr
-
+     %% cnl tab
      taPre=struct('ColumnName',{[{'M/DOF'},NL.unl.X{1}(:,1)']}, ...
       'table','');
      taPre.table=[NL.unl.X{2};cellfun(@(x)['v' x],NL.unl.X{2}(:,1),'uni',0)
@@ -14994,8 +14990,17 @@ nlAstable : generate tables for tex
 
      asTab(ta)
      st=strrep(asTex(ta),'_','\_');disp(st)
+     
+     %% unl0 tab
+     taPre=struct('ColumnName',{[{'M/DOF'},NL.unl.X{1}(:,1)']}, ...
+      'table','');
+     taPre.table=[NL.unl.X{2} reshape(NL.unl0,6,[])'];
+     taPre.name='nl'; ta=vhandle.tab(taPre);
+     setdiff(regexprep(NL.cnllab,'^-',''),fieldnames(r2));
+     asTab(ta)
+     st=strrep(asTex(ta),'_','\_');disp(st)
 
-     % now tex table
+     %% now tex table
      i2=containers.Map(colM.prop.name,colM.prop.Tex);
      for j1=1:numel(ta.table)
       if isKey(i2,ta.table{j1});
