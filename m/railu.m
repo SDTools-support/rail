@@ -394,31 +394,31 @@ if isempty(gnmap)||isequal(opt,'reset')
       });
   propM=vhandle.nmap;
   gnmap('Map:OProp')=propM;
-  propM.append({'RailGl', struct('ToolTip','Rail surface in Larangian/global/iSys frame', ...
-       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('gl'),'FaceAlpha',0.3}});
-   'RailTR',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
-       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('r'),'FaceAlpha',0.5}});
+  propM.append({'prrLagSurf', struct('ToolTip','Rail surface in Larangian/global/iSys frame', ...
+       'value',{{'EdgeColor',railu.color('EdgeGrey'),'EdgeAlpha',0.3,'FaceColor',railu.color('RailL'),'FaceAlpha',0.3}});
+   'prrEulSurf',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
+       'value',{{'EdgeColor',railu.color('EdgeGrey'),'EdgeAlpha',0.3,'FaceColor',railu.color('RailE'),'FaceAlpha',0.7}});
    'prwEulSurf',struct('ToolTip','Wheel surface in Eulerian/w frame WheelW', ...
-       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('w'),'FaceAlpha',0.5}});
+       'value',{{'EdgeColor','k','EdgeAlpha',0.5,'FaceColor',railu.color('WheelE'),'FaceAlpha',0.7}});
    'prwLine',struct('ToolTip','Ow(theta) line', ...
-       'value',{{'Color',railu.color('w'),'LineWidth',2}});
+       'value',{{'Color',railu.color('WheelE'),'LineWidth',2}});
    'prrLine',struct('ToolTip','Or(x) line', ...
-       'value',{{'Color',railu.color('r'),'LineWidth',2}});
-   'WheelWc',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
-       'value',{{'EdgeColor','k','EdgeAlpha',0.3,'FaceColor',railu.color('wc'),'FaceAlpha',0.5}});
+       'value',{{'Color',railu.color('RailE'),'LineWidth',2}});
+   'prwLagSurf',struct('ToolTip','Wheel surface in Lagrangian/Wc frame', ...
+       'value',{{'EdgeColor',railu.color('EdgeGrey'),'EdgeAlpha',0.3,'FaceColor',railu.color('WheelL'),'FaceAlpha',0.3}});
    'ViewYZ',struct('ToolTip','xxx -z vertical, y xxx', ...
       'value','view(90,0);iimouse(''viewh+180'')')
    'ViewXZ',struct('ToolTip','xxx -z vertical, y xxx', ...
       'value','view(0,0);iimouse(''views+180'')')
        })
 
-  propM('line')=struct('ToolTip','dashed line','value',{{'Color','k','linestyle','--'}});
-  propM('prrEulSurf')=struct('alias','RailTR');
-  propM('prrLagSurf')=struct('alias','RailGl');
-  propM('prrSlice')=struct('alias','prrLine');
-  propM('prwLagSurf')=struct('alias','WheelWc');
-  %propM('prwEulSurf')=struct('alias','prwEulSurf');
-  propM('prwSlice')=struct('alias','prwLine');
+  propM('line')=struct('ToolTip','dashed line','value',{{'Color',railu.color('EdgeGrey'),'linestyle','--'}});
+  % propM('prrEulSurf')=struct('alias','prrEulSurf');
+  % propM('prrLagSurf')=struct('alias','prrLagSurf');
+  % propM('prrSlice')=struct('alias','prrLine');
+  % propM('prwLagSurf')=struct('alias','WheelWc');
+  % propM('prwEulSurf')=struct('alias','prwEulSurf');
+  % propM('prwSlice')=struct('alias','prwLine');
   
   % xxx alias
   %railu.prop({'WheelW',''prwEulSurf'')
@@ -445,12 +445,8 @@ end
 
 function col=color(tag)
   %% #color tag based properties
-  col={'WheelE','#FF6D00';'w','#FF6D00';
-       'wc','#FF9E00';'wc','#FF9E00';
-       'isys','#00B4D8';'gl','#00B4D8';
-       'tr','#0077B6';'r','#0077B6';
-       'a','#023E8A'
-       };
+  col={'WheelE','#C75204';'WheelL','#FF9E00';'RailE','#0077B6';'RailL','#00B4D8'
+   'EdgeGrey','#808080'};
   if nargin==1;
       i1=find(strncmpi(col,tag,length(tag)),1,'first');
       if isempty(i1);i1=size(col,1);end
