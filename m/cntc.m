@@ -17093,6 +17093,7 @@ nlAstable : generate tables for tex
       LI.Cmacro.DimPos=[3 1 2];LI.Cmacro.name='cmacro';
       setCMacro;
      case 'getloads'
+      %% #getLoads
       if isempty(evt);
        j1=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
@@ -17254,17 +17255,28 @@ nlAstable : generate tables for tex
 
       %% #InitCalc
       if RT.cur.j1==1 
-       cntc.set('initcalc{}',RT)
+       cntc.set('initcalc',RT)
       elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
-       cntc.set('initcalc{maintain}',RT)
+       cntc.set('initcalc{maintain}')
       end
 
-      %% #DataExch CNTC/FEM data input
       % warning CNTC convention {x,y,z,roll,yaw,pitch}
       if isempty(evt);
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
+      
+      %% #FEM Traj call : input u v a 
+      % eval(iigui({'u','v','a'},'GetInCaller'));
+      
+      eval(iigui({'opt'},'GetInCaller'));
+      % xxxgae waiting curve
+      PreTraj=opt.projM('CurDoLi').RangeEvt.DownForward;
+      RT.TrajDef=cntc.getCurve('trajdef',PreTraj); LI.Traj=RT.TrajDef;
+
+      %% #DataExch CNTC/FEM data input
+      LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
+
       uvnl=LI.Traj.cExchange*LI.Traj.def(:,icase); % evt.j1=icase
       % LI.Traj=C2; WRONG do not modify LI.Traj just use it
 
@@ -17291,13 +17303,13 @@ nlAstable : generate tables for tex
 
      case 'initcalc'
       %% #set.InitCalc initialize CNTC Calculation -2
-      LI=cntc.call;cntc.init;  %eval(iigui({'RT'},'GetInCaller')); %xxgae
+      LI=cntc.call;cntc.init;      
       RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
       RT.flags=d_cntc('nmap.Global_flags');
       if isfield(RT,'cur')
        RT.cur.iwhe=RT.flags.iwhe; LI.cur=RT.cur;
       end
-      if ~isfield(LI.cur,'state')
+      if ~isfield(RT.cur,'state')
        st=d_cntc('nmap.DataExchange');
       end
       if contains(list{j1},'maintain')
@@ -17321,7 +17333,6 @@ nlAstable : generate tables for tex
       else
        %% Initialize model and Traj from info in caller
        LI.ProjectWd=RT.ProjectWd;
-       LI.Traj=RT.TrajDef; % RT=rmfield(RT,'Traj'); xxxeb why
        LI.flags=RT.flags;
        cntc.initializeflags; %initialize Global_flags
        cntc.setflags;
@@ -17331,7 +17342,6 @@ nlAstable : generate tables for tex
       % call the profiler
       if ~isfield(RT,'profile')||~sdtdef('isinteractive');RT.profile=0;end
       if RT.profile;try;profile('clear');end;profile('on');end
-      LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
       eval(iigui({'RT'},'SetInCaller'));
     end
    end
