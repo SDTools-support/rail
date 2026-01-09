@@ -2085,6 +2085,9 @@ elseif comstr(Cam,'wd')
  wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections'};
  if nargin==2&&ischar(varargin{2})
      out=sdtu.f.find(wd,varargin{2});
+     if isempty(out);
+         warning('did not find %s in %s',varargin{2},sdtm.toString(wd));
+     end
      if iscell(out)&&isscalar(out);out=out{1};end
  else
   base_wd=sdtu.f.firstdir(wd);
