@@ -17098,8 +17098,7 @@ nlAstable : generate tables for tex
        j1=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
-      if LI.cur.j1==1;   cntc.set('initout{}');  end
-
+      if LI.cur.j1==1;   cntc.set('initout{}');end   
       % Definition of LI.Cmacro.X{2} then called ind
       if ~isempty(LI.Cmacro.X{2})&&any(LI.Cmacro.X{2}(:,2)==iwhe)
       else      % Need to extend contact dimension
@@ -17113,6 +17112,9 @@ nlAstable : generate tables for tex
        cntc.getglobalforces(ire,icp,LI);
        cntc.getcontactlocation(ire,icp,LI);
       end
+      % xxxgae time incrementation
+      LI.cur.j1=LI.cur.j1+1;
+      % Fill LI.Cmacro
 
      case 'getout'
       %% #set.GetOut Get results -2
@@ -17252,9 +17254,11 @@ nlAstable : generate tables for tex
       %NL=cntc.SDTLoop;
       %[NL.unllab NL.vnllab NL.snllab]
       % Be careful CNTC convention {x y z rx rz ry}
-
       %% #InitCalc
-      if RT.cur.j1==1 
+      if ~isfield(LI,'cur')||LI.cur.j1==1
+       %% #FEM Traj call
+       if ~isfield(LI,'cur');end
+       eval(iigui({'opt'},'GetInCaller')); RT.projM=opt.projM;
        cntc.set('initcalc',RT)
       elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
        cntc.set('initcalc{maintain}')
@@ -17265,18 +17269,9 @@ nlAstable : generate tables for tex
        icase=LI.cur.j1;iwhe=LI.cur.iwhe;
       else;iwhe=evt.iwhe;icase=evt.j1;
       end
-      
-      %% #FEM Traj call : input u v a 
-      % eval(iigui({'u','v','a'},'GetInCaller'));
-      
-      eval(iigui({'opt'},'GetInCaller'));
-      % xxxgae waiting curve
-      PreTraj=opt.projM('CurDoLi').RangeEvt.DownForward;
-      RT.TrajDef=cntc.getCurve('trajdef',PreTraj); LI.Traj=RT.TrajDef;
-
+     
       %% #DataExch CNTC/FEM data input
-      LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
-
+      % xxx line to be removed once NL.unl NL.vnl defined 
       uvnl=LI.Traj.cExchange*LI.Traj.def(:,icase); % evt.j1=icase
       % LI.Traj=C2; WRONG do not modify LI.Traj just use it
 
@@ -17303,13 +17298,18 @@ nlAstable : generate tables for tex
 
      case 'initcalc'
       %% #set.InitCalc initialize CNTC Calculation -2
-      LI=cntc.call;cntc.init;      
+      cntc.init;      
       RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
       RT.flags=d_cntc('nmap.Global_flags');
-      if isfield(RT,'cur')
-       RT.cur.iwhe=RT.flags.iwhe; LI.cur=RT.cur;
+
+       % xxxgae waiting curve inside initcalc
+       PreTraj=RT.projM('CurDoLi').RangeEvt.DownForward;
+       RT.TrajDef=cntc.getCurve('trajdef',PreTraj); LI.Traj=RT.TrajDef;
+       LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
+      if ~isfield(LI,'cur')
+       LI.cur=struct('type','Traj','j1',1,'iwhe',RT.flags.iwhe);
       end
-      if ~isfield(RT.cur,'state')
+      if ~isfield(LI.cur,'state')
        st=d_cntc('nmap.DataExchange');
       end
       if contains(list{j1},'maintain')
