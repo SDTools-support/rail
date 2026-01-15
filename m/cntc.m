@@ -12183,7 +12183,7 @@ cntc : interface between SDT and CONTACT
      yr_g=XYZ(:,ind,2);
      Mr_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax LI.Track.cant 0 0]; %(GaugeCalc)
      p.Mr_tr=Mr_tr;p.Omax=Omax;
-    else; error('Not implemented')
+    % else; error('Not implemented')
     end
    end
    p.Fname = fname;
@@ -17257,8 +17257,9 @@ nlAstable : generate tables for tex
       %% #InitCalc
       if ~isfield(LI,'cur')||LI.cur.j1==1
        %% #FEM Traj call
-       if ~isfield(LI,'cur');end
+       if ~isfield(LI,'cur');
        eval(iigui({'opt'},'GetInCaller')); RT.projM=opt.projM;
+       end
        cntc.set('initcalc',RT)
       elseif contains(list{j1},'maintain')&LI.cur.j1==2 % Modification init
        cntc.set('initcalc{maintain}')
@@ -17299,14 +17300,16 @@ nlAstable : generate tables for tex
      case 'initcalc'
       %% #set.InitCalc initialize CNTC Calculation -2
       cntc.init;      
-      RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
+      %RT.ProjectWd=sdtu.f.firstdir(cntc.help('@examples'));
       RT.flags=d_cntc('nmap.Global_flags');
 
-       % xxxgae waiting curve inside initcalc
-       PreTraj=RT.projM('CurDoLi').RangeEvt.DownForward;
-       RT.TrajDef=cntc.getCurve('trajdef',PreTraj); LI.Traj=RT.TrajDef;
-       LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
-      if ~isfield(LI,'cur')
+      % xxxgae waiting curve inside initcalc
+      if ~isfield(RT,'PreTraj')
+       RT.PreTraj=RT.projM('CurDoLi').RangeEvt.DownForward;
+      end
+      RT.TrajDef=cntc.getCurve('trajdef',RT.PreTraj); LI.Traj=RT.TrajDef;
+      LI.Traj.cExchange=cntc.getCurve('cExchange',LI.Traj);
+      if ~isfield(LI,'cur')||isempty(LI.cur.iwhe)
        LI.cur=struct('type','Traj','j1',1,'iwhe',RT.flags.iwhe);
       end
       if ~isfield(LI.cur,'state')
@@ -17357,7 +17360,7 @@ nlAstable : generate tables for tex
     if ~isfield(RT,'cur')
      RT.cur=struct('type','Traj','j1',1,'iwhe',[]);LI.cur=RT.cur;
     else
-     RT.cur.j1=j1;LI.cur=RT.cur;
+     RT.cur=LI.cur;RT.cur.j1=j1;LI.cur=RT.cur;
     end
     cntc.set(RT); % Do steps typically Traj/calculate/getout/getsol
    end % icase j1
