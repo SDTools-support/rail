@@ -58,8 +58,7 @@ dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplo
 %% Step TrackWheel : model with track and wheel
 l1={'Vehicle',struct('VehType','UIC60_Sections.mat#Wheel','v0',80, ...
     'x0','$x_start-2','xf','$x_start-1')}; 
-Range=struct('SimuCfg',{{'S1',l1}});
-dyn_solve('RangeLoop',Range);
+dyn_solve('RangeLoop',struct('SimuCfg',{{'S1',l1}}));
 PA=dyn_ui('paramvh');
 
 mo1=PA.mt;mo1=fesuper('fsemodel-join2',mo1);feplot(mo1);fecom('showfipro')
@@ -677,7 +676,7 @@ out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
 
 
 elseif comstr(Cam,'railfromcontour')
- %% #d_rail('MeshRailFromContour');
+ %% #d_rail('MeshRailFromContour'); -2
  %% ToDo25  sdtweb d_visco 'nl_mesh contour'
  if carg>nargin;f1='@d_rail.m/Rail_UIC60.stp';
  else; f1=varargin{carg};carg=carg+1;
@@ -751,7 +750,7 @@ end
 
 
 elseif comstr(Cam,'railtop')
-%% #MeshRailTop_For_Contact
+%% #MeshRailTop_For_Contact -2
 model=varargin{carg};carg=carg+1;
 RO=varargin{carg};carg=carg+1;
 
@@ -832,7 +831,7 @@ if nargout==0;
 end
 
 elseif comstr(Cam,'gap');[CAM,Cam]=comstr(CAM,4);
-%% #MeshGap
+%% #MeshGap -2
 
 li={ ...
 'CER',struct('h',5,'E',310e9,'nu',.25,'rho',3000,'Elim',9e12),'Alumine C799'

@@ -146,7 +146,7 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
  
   % material and element properties : .il, .pl
   if ~isfield(mt,'il'); mt.il=[]; end;
-  if ~isfield(mt,'pl'); mt.pl=[]; end;
+  if ~isfield(mt,'pl')||isempty(mt.pl); mt.pl=zeros(1,5); end;
   if isfield(mv,'pl')
     if min(mv.pl(:,1))<401 || max(mv.pl(:,1))>500
       sdtw('_nb','vehicle matid should be in the 401-500 range'); end
@@ -190,11 +190,22 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   [Case,vDOF]=fe_mknl('init',mo1); i1=fe_c(vDOF,.01*[1 2 4 6]','dof');
   mt = fe_case(mt,'FixDof','2D',i1);
   mo1=fe_case(mo1,'FixDof','2D',i1);
-  mt=stack_set(mt,'info','mv',mo1); % vehicles
-  
-  % stack the contact dofs trajectory
-  mt=dyn_solve('cdoftrajectory',mv,mt,trajectory);
-  
+
+   r1=stack_get(mt,'SE','#s\d');
+   if ~isfield(r1{1,3},'K') 
+    %% for just mesh display full model (typically rail)
+    mt=stack_set(mt,'SE','mv',mv);
+    mo1=fesuper('seadd-unique -name"mv" -owrite',mt,mv);
+    sdtm.store('base{mo1>mo1}')
+    dbstack;
+    feplot(mo1)
+    mo2=fesuper('fsemodel-join2',mo1);
+    feplot(mo2);fecom('showfipro')
+   else
+    mt=stack_set(mt,'info','mv',mo1); % vehicles
+    % stack the contact dofs trajectory
+    mt=dyn_solve('cdoftrajectory',mv,mt,trajectory);
+   end
   out=mt; if nargout==0; feplot(out);fecom('colordatamat -alpha.3');end
 
 end
