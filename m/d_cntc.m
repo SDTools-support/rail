@@ -219,7 +219,8 @@ nmap('Mod_VarProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxou
     ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
    ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
    'setProfile{fname "var_rail.slcs",iswheel 0,mirrory 0, sclfac 1, smooth 0}'
-   'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
+   'setProfile{fname "var_wheel.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
+   % 'setProfile{fname "S1002_flat.slcw",iswheel 1,mirrory 0, sclfac 1, smooth 0}'
    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'};
 
 %% #Trajectory -2

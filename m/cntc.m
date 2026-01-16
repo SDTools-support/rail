@@ -8081,7 +8081,7 @@ cntc : interface between SDT and CONTACT
       x=RO.prr.x(:);
       R1=struct('XYZ',cat(3,x,zeros(size(x)),zeros(size(x))),'bas',RO.prr.bas,'name','prrLine');
      elseif isfield(LI.prr,'xsurf')
-      error('Need implement')
+      error('Need implement');
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail
       [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.scL));
       if ~isfield(RO.prr,'bas');error('Missing .bas');end
@@ -12173,7 +12173,11 @@ cntc : interface between SDT and CONTACT
     if (~is_slices)
      XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
       [1 size(p.ProfileY,1) 3]);
-     %XYZ(:,:,3)=-XYZ(:,:,3)
+    else
+     XYZ=reshape(R*[([0 1]'*p.ysurf(1,:)) ; p.zsurf(1,:)], ...
+      [1 size(p.ysurf(:,:),2) 3]);
+    end
+      %XYZ(:,:,3)=-XYZ(:,:,3)
      % track plan position, here min because the rail is upside down
      [zmax,imax]=min(XYZ(:,:,3)); Omax=XYZ(:,imax,:);
      %Gauge point search
@@ -12183,8 +12187,6 @@ cntc : interface between SDT and CONTACT
      yr_g=XYZ(:,ind,2);
      Mr_tr=[0 cntc.leftCoef(LI)*LI.Track.gaugwd/2-yr_g -zmax LI.Track.cant 0 0]; %(GaugeCalc)
      p.Mr_tr=Mr_tr;p.Omax=Omax;
-    % else; error('Not implemented')
-    end
    end
    p.Fname = fname;
 
@@ -15186,7 +15188,6 @@ nlAstable : generate tables for tex
     C2.X{1}(i1,3)={struct('DispUnit','kN.mm','coef',1e-3)};
     out=C2;
    end
-
   end
 
   function out=getBasis(it)
