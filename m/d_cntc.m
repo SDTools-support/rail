@@ -178,9 +178,9 @@ nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
     'Rolling{StepSize WRCn, dqrel 1}'
     ['Track{Design NewBoth, gaught 14, gaugsq 0, gaugwd 1435, cant 0.05' ...
    ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
-    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
     'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1., smooth 0.}'
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1., smooth 0.}'
+    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
     };
 
 % #Mod_WheelflatPBound penetration boundary condition -2
