@@ -2081,7 +2081,7 @@ nmap('ProDb')=r2;
 %% #end
 elseif comstr(Cam,'wd')
  %% #wd : Resolve fullfile from ProjectWd ----------------------------2
- wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections'};
+ wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections','@tempdir/rail19/mat/21_sections'};
  if nargin==2&&ischar(varargin{2})
      out=sdtu.f.find(wd,varargin{2});
      if isempty(out);

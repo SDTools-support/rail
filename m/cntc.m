@@ -7665,18 +7665,7 @@ cntc : interface between SDT and CONTACT
    vmtx=[];
    % One timestep only
    if ~isfield(des,'ibas');des.ibas=RO.NL.unl.rot(des.M);end
-   % if isfield(des,'ibas')
-   %  RO=it; des.j1=RO.j1;  vmtx=cntc.getRot(RO.NL.unlC,des);
-   % elseif isfield(des,'M')
-   %  RO=it;
-   %  vmtx=cntc.getRot(RO.NL.unlC,des.M);
-   % 
-   % elseif nargin>2; error('Obsolete ?')
-   %  Xin.j1=it;
-   %  Bas=cntc.getBasis(Xin);Bas=Bas.M;error('Obsolete ?')
-   % else
-   %  Bas=cntc.getBasis; Bas=Bas.M;
-   % end
+
    if isfield(Xin,'Xlab')
     %%
     warning('xxxgae report test case to EB')
@@ -7755,9 +7744,10 @@ cntc : interface between SDT and CONTACT
    R=eye(4);
    for j1=1:n
     % #Marker composition
-    if ~exist('j2','var')
-     j2=abs(des.ibas(j1));
-    end
+    % xxxgae bug care t_gae24('tutoCNTCTraj -s{init,SimpleView} -reset')
+    %if ~exist('j2','var')
+    j2=abs(des.ibas(j1));
+    %end
     R1=eye(4);
     cx=cos(qM(4,j2));sx=sin(qM(4,j2));cy=cos(qM(5,j2));
     sy=sin(qM(5,j2));cz=cos(qM(6,j2));sz=sin(qM(6,j2));
@@ -7895,8 +7885,6 @@ cntc : interface between SDT and CONTACT
 
    else; error('wrong interpolation parameter %s',Cam);
    end
-
-
 
   end
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8081,6 +8069,8 @@ cntc : interface between SDT and CONTACT
       x=RO.prr.x(:);
       R1=struct('XYZ',cat(3,x,zeros(size(x)),zeros(size(x))),'bas',RO.prr.bas,'name','prrLine');
      elseif isfield(LI.prr,'xsurf')
+       x=LI.prr;
+      R1=struct('XYZ',cat(3,x,zeros(size(x)),zeros(size(x))),'bas',RO.prr.bas,'name','prrLine');
       error('Need implement');
      elseif comstr(RO.prr.bas,'gl') % lagrangian view of the rail
       [x,y]=ndgrid(RO.prr.x(:),cntc.leftCoef(LI)*LI.prr.ProfileY(RO.prr.scL));
@@ -8220,27 +8210,6 @@ cntc : interface between SDT and CONTACT
        X.bas=X.bas(:);%ind=~strncmp(X.bas,'m',1);
        X.bas=strcat('M',X.bas(:), ['-' RO.bas]);
 
-      elseif strcmpi(X.from,'basold')
-       %% basold prepare display of marker at specific j1 time step
-       % not relevant as basis transformation should be based on need
-       RO=cntc.getBasis(RO);
-       if isfield(X,'bas')
-        ind=contains(RO.M.X{2},strcat('M',X.bas', ['-' RO.bas]));
-       else
-        ind=sdtm.regContains(RO.M.X{2},[RO.bas '$']);
-       end
-       if isfield(X,'Orig')
-        r1=zeros(size(RO.M.Y(:,ind),2)+1,size(RO.M.Y(:,ind),1));
-        r1(1,[4 8 12])=1; % add the gl or tr marker
-        r1(2:end,:)=RO.M.Y(:,ind)';
-        X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-         'name',{[['M' RO.bas] ; RO.M.X{2}(ind)]},'from','bas');
-       else
-        r1=zeros(size(RO.M.Y(:,ind),2),size(RO.M.Y(:,ind),1));
-        r1(:,:)=RO.M.Y(:,ind)';
-        X=struct('bas',[(1:(size(r1,1)))' ones(size(r1,1),1)*[1 0] r1], ...
-         'name',{[RO.M.X{2}(ind)]},'from','bas');
-       end
       elseif strcmpi(X.from,'line')
       else; error('%s Not implemented',X.from)
       end
@@ -14852,13 +14821,12 @@ cntc : interface between SDT and CONTACT
     NL.unl.Y=zeros(size(NL.unl.X{1},1),size(NL.unl.X{2},1),3); % xxxgae unl timestep ?
     NL.unl.Xlab={'Comp';'Bas';'u'};
     NL.cnllab= {% label of cq
-     's_ws';'-dywhl';'-dzwhl';   'drollw';'0';'dyaww'           %Mw-gl
-     's_ws';'-dyrail';'-dzrail'; 'drollr';'0';'0'               %Mr-gl
-     '0';'0';'0';   '0';                   'pitch_ws';  '0'   % MwsL-ws
-
-     's_ws'; '0';'0';           '0';       '0';'0'            %Mtr_gl
-     'dxwhl';'dywhl';'dzwhl';   'drollw';  'dpitchw';  'dyaww'% Mw-ws
-     'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };         %Mcp_r
+     's_ws';'-dywhl';'-dzwhl';   'drollw';'0';'dyaww'          %Mw-gl
+     's_ws';'-dyrail';'-dzrail'; 'drollr';'0';'0'              %Mr-gl
+     '0';'0';'0';   '0';                   'pitch_ws';  '0'    %MwsL-ws
+     's_ws'; '0';'0';           '0';       '0';'0'             %Mtr_gl
+     '0';'dywhl';'dzwhl';   'drollw';  '0';  'dyaww'           %Mw-ws
+     'xcp_r';'ycp_r';'zcp_r';   'deltcp_r';'0';'0' };          %Mcp_r
 
          %% iExchangeRot
      % NL.unl.X{2}
@@ -14883,10 +14851,11 @@ cntc : interface between SDT and CONTACT
       '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
 
       '0';'0';'0';'pi';'0';'0'  %Mtr_gl
-      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
+      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
       '0';'0';'0';'0';'0';'0'}; %Mcp_r
     else
+     'old gauge point'
      NL.unl0={ % geometric absolut Ow position
       '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
       '0';'0';'0';'0';'0';'0';%Mr_gl
@@ -15192,6 +15161,7 @@ nlAstable : generate tables for tex
 
   function out=getBasis(it)
    %% #getBasis return qbas for all marker used -2
+   error('too old');
    if nargin==0; it=(1:size(NL.cnl.Y,3))';cntc.getBasis(it);end %case it is a timestep
    if ischar(it)&&comstr(it,'roll') % rolling calculation
     qbas=NL.cnl.Y(:,:,:)+repmat(NL.unl.Y(:,:,2),[1 1 length(NL.cnl.X{3})]);
