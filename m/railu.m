@@ -403,8 +403,9 @@ if isempty(gnmap)||isequal(opt,'reset')
       'SlabTrack',struct('RailName','60-E1','SleeperName','None') 
       'None',struct
       });
-  propM=vhandle.nmap;
-  gnmap('Map:OProp')=propM;
+  % r1=d_cntc('nmap.Map:Oprop.prrEulSurf')
+
+  propM=vhandle.nmap;gnmap('Map:OProp')=propM;
   propM.append({'prrLagSurf', struct('ToolTip','Rail surface in Larangian/global/iSys frame', ...
        'value',{{'EdgeColor',railu.color('EdgeGrey'),'EdgeAlpha',0.3,'FaceColor',railu.color('RailL'),'FaceAlpha',0.3}});
    'prrEulSurf',struct('ToolTip','Rail surface in Eulerian/tr frame', ...
@@ -422,7 +423,6 @@ if isempty(gnmap)||isequal(opt,'reset')
    'ViewXZ',struct('ToolTip','xxx -z vertical, y xxx', ...
       'value','view(0,0);iimouse(''views+180'')')
        })
-
   propM('line')=struct('ToolTip','dashed line','value',{{'Color',railu.color('EdgeGrey'),'linestyle','--'}});
   % propM('prrEulSurf')=struct('alias','prrEulSurf');
   % propM('prrLagSurf')=struct('alias','prrLagSurf');
@@ -430,11 +430,18 @@ if isempty(gnmap)||isequal(opt,'reset')
   % propM('prwLagSurf')=struct('alias','WheelWc');
   % propM('prwEulSurf')=struct('alias','prwEulSurf');
   % propM('prwSlice')=struct('alias','prwLine');
+  annotM=vhandle.nmap;gnmap('Map:Annot')=annotM;
+  annotM.append({'prwCut',struct('ToolTip','Eulerian wheel profile slice', ...
+      'from','prwEulSurf','tcL',1,'scL',1:10:300,'bas','w') 
+    'prwLineFull',struct('ToolTip','Eulerian trajectory of OwL', 'from','prwLine','tcL',-180:2:180,'bas','w')
+     });
   
   % xxx alias
   %railu.prop({'WheelW',''prwEulSurf'')
-  propM.append(d_cntc('nmap.Map:OProp'))
+  %propM.append(d_cntc('nmap.Map:OProp'))
   if isequal(opt,'reset');opt=[];end
+
+
 end
 if ~isempty(opt); 
     out=gnmap(opt);

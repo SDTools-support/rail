@@ -142,6 +142,7 @@ nmap('Map:Color')=colM;
 
 %% #Map:OProp : wrong see rail u -2
 nmap('Map:Oprop')=railu.getNmap('Map:OProp');
+nmap('Map:Annot')=railu.getNmap('Map:Annot');
 
 %% #GlobalFlags -2
 %CNTC.un_cntc=1934;
