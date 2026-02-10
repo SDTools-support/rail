@@ -181,7 +181,7 @@ nmap('Mod_CsteProf')={'Solver{GauSei default,maxgs 999,maxin 100, maxnr 30, maxo
    ', nomrad 0, dyrail 0, dzrail 0, drollr 0, vyrail 0, vzrail 0, vrollr 0']
     'setProfile{fname "MBench_UIC60_v3.prr",iswheel 0,mirrory 0, sclfac 1., smooth 0.}'
     'setProfile{fname "MBench_S1002_v3.prw",iswheel 1,mirrory 0, sclfac 1., smooth 0.}'
-    'wheelsetDim{Ewheel NewDimProfPosVel, fbdist 1360, fbpos -70, nomrad 460}'
+    'wheelsetDim{Ewheel NewAll, fbdist 1360, fbpos -70, nomrad 460}'
     };
 
 % #Mod_WheelflatPBound penetration boundary condition -2
@@ -236,10 +236,8 @@ C1.X{1}=(1:size(C1.Y,1))';
 nmap('Traj_Sin')=C1;
 
 % #Traj_Classic -2
-C1=struct('X',{{[],{'dywhl';'dyaww';'drollw';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [ ...
-   [ 0 ]; [ 0 ]; [  0.00000000]; [ -4.34811810]]');
+C1=struct('X',{{[],{'dzwhl';'vpitch';'vs'}}},'Xlab',{{'Step','Comp'}},'Y', [-0.5 -4.34811810 2000]);
 C1.X{1}=(1:size(C1.Y,1))';
-C1.Y(:,5)=2000; % set vs
 nmap('Traj_Classic')=C1;
 % #Traj_ODG -2
 % Vs=89000mm/s ; Vpitch = 

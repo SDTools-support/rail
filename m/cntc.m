@@ -7732,7 +7732,7 @@ cntc : interface between SDT and CONTACT
    %% #getRot calculate 3d rotation matrix -2
    % [angle]=rad
    if nargin==1 % Use an angle to give the rotation matrix
-    n=1;j2=1;
+    n=1;
    else
     des=ty;
     n=length(des.ibas);
@@ -7746,8 +7746,7 @@ cntc : interface between SDT and CONTACT
     % #Marker composition
     % xxxgae bug care t_gae24('tutoCNTCTraj -s{init,SimpleView} -reset')
     %if ~exist('j2','var')
-    j2=abs(des.ibas(j1));
-    %end
+    if nargin==1; j2=1; else; j2=abs(des.ibas(j1)); end
     R1=eye(4);
     cx=cos(qM(4,j2));sx=sin(qM(4,j2));cy=cos(qM(5,j2));
     sy=sin(qM(5,j2));cz=cos(qM(6,j2));sz=sin(qM(6,j2));
@@ -12143,7 +12142,7 @@ cntc : interface between SDT and CONTACT
      XYZ=reshape((R*[([0 1]'*p.ProfileY')' p.ProfileZ]')', ...
       [1 size(p.ProfileY,1) 3]);
     else
-     XYZ=reshape(R*[([0 1]'*p.ysurf(1,:)) ; p.zsurf(1,:)], ...
+     XYZ=reshape(R*[([0 1]'*p.ysurf(1,:)); p.zsurf(1,:)], ...
       [1 size(p.ysurf(:,:),2) 3]);
     end
       %XYZ(:,:,3)=-XYZ(:,:,3)

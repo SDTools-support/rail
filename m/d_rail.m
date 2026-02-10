@@ -51,7 +51,7 @@ dyn_solve('RangeLoop -reset',Range); % build the model and store in the interfac
 
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 
-dyn_solve('eig 5 50 0')
+dyn_solve('eig 5 150 0')
 dyn_post('PostRailDef')
 dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplot(c3)
 
