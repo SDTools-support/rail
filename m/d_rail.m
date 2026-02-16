@@ -23,12 +23,14 @@ if comstr(Cam,'dv1')
 %% Step init : initialize interface
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
+PA=dyn_ui('paramvh');
+PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 RA=struct('ArmType','MainMono'); % standard monoblock parameters
 RS=struct('SubType','Ballast'); % just ballast
-RR=struct('RedType','Modal{fmax3000}'); % default reduction parameters
+RR=struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6]); % default reduction parameters
 SliceCfg={'Slice',struct('Arm',RA,'Sub',RS,'half',1);
           'Reduce',RR}; % format the SliceCfg for a half track
 
@@ -36,24 +38,39 @@ RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper');
 RA.value(end+1,1:2)={'Reduce',RR};SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
       
 % define track parameters and place sensors
-Sens={'s1(10:11):Bal:Sleeper:z'}; % define sensors
-TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{Sens{:}}});
-
-% Define the simulation to be done on the track model
-SimuCfg={'Impact',struct('xload',7.2,'weight',10e-3);... % 10 kg at x=7.2m
-         'Time',struct('tf',.8)}; % impact simulation
+TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}});
+TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
+               'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
 Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
 
 dyn_solve('RangeLoop -reset',Range); % build the model and store in the interface
-%dyn_post('PostRecept'); % calculate transfer at sensors and plot
 
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
+% dyn_post('PostRecept'); % calculate transfer at sensors and plot
+% sdtweb _bp fe_coor lrik
+% iicom ch[23 69]
 
-dyn_solve('eig 5 150 0')
+%% Step Impact : Transient impact
+% d_rail('tutoDvBeam -s{init,mesh} -reset')
+% Define the simulation to be done on the track model
+if 1==2
+
+T30=TrackCfg;T30.nb_slices=30;
+dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
+dyn_solve('eig')
+
+SimuCfg={'Impact',struct('xload',4,'weight',10e-3);... % 10 kg at x=7.2m
+         'Time',struct('tf',.2,'dt',1e-4)}; % impact simulation
+R2=struct('SimuCfg',{{'S1',SimuCfg}}); % format the range
+sdtweb _bp fe_time iternewton
+clear SkipMkl%SkipMkl=1;
+dyn_solve('RangeLoop -reset',R2); % build the model and store in the interface
+
 dyn_post('PostRailDef')
-dyn_post('PostSpaceTime');c3=iiplot(3,';');c3.ua.YFcn='r3=log10(abs(r3));';iiplot(c3)
+c3=iiplot(3,';');dyn_post('PostSpaceTime');c3.ua.YFcn='r3=(abs(r3));';iicom ylin
+end
 
 %% Step TrackWheel : model with track and wheel
 l1={'Vehicle',struct('VehType','UIC60_Sections.mat#Wheel','v0',80, ...
@@ -2042,15 +2059,15 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
-    'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-9];
-    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-9];
+    'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
+    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
     };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 
-li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-12 1e-12 1e-6];% small place holder beam
+li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
-    'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-12 1e-12 1e-6];% small place holder beam
+    'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
         };
 r2=vhandle.nmap(li,'Map:MatDb');
