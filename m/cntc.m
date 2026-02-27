@@ -8493,7 +8493,7 @@ cntc : interface between SDT and CONTACT
      end
 
      if size(X.XYZ,2)==1||size(X.XYZ,1)==1 
-      %% #cntc.plot.surf.profile draw profile
+      %% #cntc.plot.surf.profile draw profile -3
       if ~isfield(X,'prop');X.prop={};end
       if ischar(X.prop);X.prop=propM(X.prop);end
       i2=find(ismember(lower(X.prop(1:2:end)),{'edgealpha','facealpha','edgecolor'}))*2;

@@ -387,6 +387,10 @@ if isempty(gnmap)||isequal(opt,'reset')
       })
 
   %RO=struct;disp(comstr(RO,-30,struct('NoClip',2)))
+  % Ward : @sdtdata/bug/ward/B70_RP_UIC60E1_mesh.bdf
+  % M41_RP_UIC60E1_mesh.bdf
+  % OEBB_RP_UIC60E1_mesh.bdf 
+  % OEBB_RP_UIC60E1_mesh_fine.bdf
   gnmap.append({ ...
   'M450',struct('SleeperType','Monoblock','hb',230,'hsb',115,'Ltr',2411,'lab',290,'lsem',220); 
   'B450',struct('SleeperType','Biblock','hb',240,'hsb',120,'Ltr',2411,'lab',290,'lsem',220,'lob',840,'nent',3);
