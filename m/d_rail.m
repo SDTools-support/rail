@@ -1482,10 +1482,10 @@ if isfield(RO,'Other')&&any(strcmpi(RO.Other,'cyc'))
 end
 
 
-% Now repeat
-if nargout>1
+if ~RO.cyc&&RO.ncell(1)>0
+ %% Build track model in mt
  mo1=model; mt=model;
- for j1=1:RO.ncell;
+ for j1=1:RO.ncell(1);
   mo1.Node(:,5)=mo1.Node(:,5)+.6;
   mt=feutil('addtest-merge-noori;',mo1,mt);
  end
@@ -1564,8 +1564,7 @@ if nargout>1
   %mt.Elt(feutil('findelteltname celas',mt),9)=0;% No damping
   %mt.Node(:,5)=mt.Node(:,5)-1;
  end
-  out1=mt; % mt
-
+  model=mt; % mt
 end
 model.unit='SI';
 if RO.cyc
