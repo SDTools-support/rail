@@ -31,7 +31,6 @@ methods (Static)
 function   out=asUo(r1);
 %% #asUo : convert Dynavoie and rail inputs to UO format -3
 
-
  if isfield(r1,'ToolTip')&&isfield(r1,'data')
   r2=r1.data;
   DefBut=feval(dyn_ui('@genDefBut'));
@@ -51,6 +50,36 @@ function   out=asUo(r1);
   end
  end
  if nargout==0;sdtm.toString(out);clear out;end
+end
+function cinM=pcin(varargin)
+ %% #pcin 
+ r1=sdtu.f.ppath;carg=1;
+ if ~isKey(r1,'railu.pcin')||isequal(varargin,{'reset'})
+  cinM=vhandle.nmap({},[],'Cin');
+
+  DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab');
+  sdtm.pcin(cinM,'append',DefBut);
+  r1('railu.pcin')=cinM;
+ elseif nargin>0&&isa(varargin{1},'vhandle.nmap');cinM=varargin{1};carg=2;
+ else; cinM=r1('railu.pcin');
+ end
+ if nargin>0;
+   if ischar(varargin{carg})&&strcmpi(varargin{carg},'init')
+    DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab');
+    sdtm.pcin(cinM,'append',DefBut);
+    cinM('prero.dyn_mesh.arm')=struct('ToolTip','spleeper/rail/pad', ...
+        'value',{{'key';'Slice.ArmP.ArmType';'Slice.ArmP.RailType'
+         'Slice.ArmP.PadType';'Slice.ArmP.SleeperType'
+         }});
+    % sdtm.DocStringGraph2HTML(struct('root','dyn_mesh'));
+    % sdtweb sdtm.
+   else
+     sdtm.pcin(cinM,varargin{:});
+   end
+ end
+ if nargout==0
+  asTab(cinM,struct('For','uo','setSort',2,'gf','SDT Root','name','Dv'))
+ end
 end
 
 function mt=addVehicle(mt,mv,RO,RunOpt)
@@ -364,6 +393,7 @@ function   ms=MeshSlice(RO);
    PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
   end
  else % rail mesh 
+  [~,R1]=sdtm.urnPar(RO,'{}{Sleeper%s,Rail%s,Pad%s,Sub%s}');
      error('Not implemented')
  end
 

@@ -95,16 +95,63 @@ dyn_post('ViewRestAll -light'); % display deformation animation
 elseif comstr(Cam,'dv2')
 %% #TutoDvSpringMass: d_rail('ScriptDv2'); 
 
-mo1=d_mesh('beamtrack{ncell 1,lc .05,cyc}');
-mo1=d_rail('meshbeamMass{halftrack0,cyc,lc.1}');
+%mo1=d_mesh('beamtrack{ncell 1,lc .05,cyc}');
+%mo1=d_rail('meshbeamMass{half0,cyc,lc.1}');
+PA=dyn_ui('paramvh');projM=PA.nmap;
 
-SE=stack_set(mo1,'info','EigOpt',[2 20]);
-Range=struct('ncx',sdtm.urnValUG('@ll(2.01,30,40)'));
+Range=struct('ncx',sdtm.urnValUG('@ll(2.01,20,40)'));
+RO=struct('Range',Range,'fmax',3e3,'ModalFilter',20, ...
+    'EigOpt',[2 40 -1e5],'projM',projM,'UseLong',1);
+projM('fe_homo.dftDisp')=RO;
+RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit',SE.unit, ...
+    'cios',{{'@line',{'marker','.','linestyle','none'}}},...
+    'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3);
+projM('fe_homo.dftInitSelDef')=RD;
 
-[def,hist]=fe_homo('dftDisp -UseLong',SE,struct('Range',Range,'fmax',3e3,'ModalFilter',30));
-RD=struct('mno',(0:10)','cf',102,'ci',112,'ViewHist',hist,'ktype','kc','unit',SE.unit);
-fe_homo('dfpInitSelDef',SE,def,RD);fecom('ShowFiCEvalz')
+mo1=d_rail('meshbeamMass{half0,cyc,lc.1}');
+fe_homo('dftDisp',mo1,RO);
+fe_homo('dfpInitSelDef',struct('projM',projM))
 
+
+railu.MeshSlice('{SleeperM450beam,railUIC60beam,padSpring,SubSpring}')
+
+RA=struct('SubType','Spring');
+RB=struct('SleeperType','Monoblock','RailType','beam','RailName','UIC60');
+list={'Slice',struct('Sub',RA,'Arm',RB)};
+r1=struct('ToolTip','Ballast only track without symmetry and custom rails', ...
+    'value',{list});
+r2('RailBeam')=r1;
+
+
+%% step forced response
+mo1=stack_set(mo1,'info','Freq',sdtm.urnValUG('@ll{1,3k,500}')');
+mo1=fe_case(mo1,'DofLoad','In',struct('def',eye(2),'DOF',[1.03;1.02]));
+mo1=fe_case(mo1,'SensDof','Out',[1.03;5.03;4.03]);
+mo1=stack_set(mo1,'info','EigOpt',[2 30]);
+
+RD=struct('Range',Range,'fmax',3e3,'ModalFilter',30);
+[d2,h2,perResp]=fe_homo('dftDisp-frf',mo1,RD);
+RD=struct('mno',(0:10)','cf',102,'ci',112,'ViewHist',h2,'ktype','kc','unit',SE.unit,'fmax',3e3);
+fe_homo('dfpInitSelDef',mo1,d2,RD);fecom('ShowFiCEvalz')
+
+
+% xxx finalize 
+RV=struct('hist',h2,'ktype','kc','doGetData',1);
+RV.sens=fe_case(mo1,'sens');
+C2=fe_homo('DfpViewCurve',perResp,RV); % Build curve model for q(omega,k)
+C2.PlotInfo=ii_plp('plotinfo2D-type"mesh"',C2);
+C2.X{1}(501:end,:)=[];C2.Y(501:end,:)=[];C2.Y=C2.Y.*(2i*pi*C2.X{1});
+C2.Y=reshape(C2.Y,[],size(C2.X{2},1),size(C2.X{3},1));
+
+C2=sdsetprop(C2,'PlotInfo','ua.axProp',{'@surface',{'FaceColor','interp','EdgeColor','none'}});
+ci=iiplot; iicom('curveinit','Check',C2)
+ii_plp('colormapband',parula(5))
+
+%[C2.ID{1}.po.X{1},h2.X{1},2*pi./C2.X{2}/.1]
+
+
+
+%% EndTuto
 
 else;
         sdtweb('_link','sdtweb(''t_exp19'',''ref'')');
@@ -1225,11 +1272,11 @@ elseif nargin==3&&isfield(varargin{3},'nmap')
  %   end
  % end
 elseif comstr(Cam,'beammass') 
- %% #BeamMass (was Pinault) -3
+ %% #BeamMass (was Pinault) -2
  % initial revision was PJE/dynavoie/dv16.m
 DefString=[ ...
    'ncell(4#%g#"number of cells") '...
-   'halftrack(#31#"Use two rails") '... %xxx_HP check
+   'half(#31#"1 one rail, 0 symmetric") '... %xxx_HP check
    'gaug(1.575#%g#"gaug") '...
    'Ltr(2.32#%g#"width") '...
    'kp(300e6#%g#"pad stiffness") '...
@@ -1249,6 +1296,10 @@ DefString=[ ...
    'lc(.15#%g#"refine length")' ...
    'pk(75e3#%g#"pad stiffness")'   ]; 
 
+ %  railu.pcin('prero',{'d_rail.meshBeamMass',DefString});
+
+
+
 if ~isempty(strfind(Cam,'getedit'));out=DefString; return;end 
 if carg<=nargin; RO=varargin{carg};carg=carg+1;else; RO=struct;end
 [RO,st,CAM]=cingui('paramedit -DoClean',DefString,{RO,CAM});Cam=lower(CAM);
@@ -1259,22 +1310,23 @@ RO.isFullModel=1;
  if ~isfield(RO,'xsens'); RO.xsens=[];end
 
 
+%      ms=feutil('setmat',ms,'dyn_mesh(matdb{399,prrLine})');
+% feutil('setpro',ms,'d_rail(nmap.ProDb.prrLine)');
+if ~isfield(RO,'projM');RO.projM=d_rail('nmap');end
 
-if RO.halftrack==0
- %% #Two_rails -4
+if RO.half==0
+ %% #Two_rails -3
  n1=[1 0 0 0  0 0 0;2 0 0 0 -.3 0 0;3 0 0 0 .3 0 0;
     4 0 0 0  0 0 -.1]; n1(:,6)=RO.gaug/2;
  model=struct('Node',n1);
  n1(:,6)=-RO.gaug/2; n1(:,1)=(5:8)';model.Node=[model.Node;n1;
-     9 0 0 0  0 -RO.Ltr/2 n1(end);10 0 0 0  0 RO.Ltr/2 n1(end)];
+     9 0 0 0  0 -RO.Ltr/2 n1(end);10 0 0 0  0 RO.Ltr/2 n1(end)
+     11 0 0 0 0 0 n1(end)];
  model.Elt=feutil('addelt','beam1',[2 1 301 301;1 3 301 301;
      6 5 301 301;5 7 301 301;
-     9 8 201 201;8 4 201 201;4 10 201 201]);
- model.il=[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000];
- model.il=p_beam(model.il,'dbval 201 rect .24 .26');
- model.pl=[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000
-     201 fe_mat('m_elastic','SI',1) 60e9 .3 2400
-     ];
+     9 8 201 201;8 11 201 201;11 4 201 201;4 10 201 201]);
+ RO.PreIl={'name','ProId';'RailA',301;'SleeperA',201};
+ RO.PrePl={'name','MatId';'Rail',301;'Sleeper',201};
  if RO.simpack
   model.Node(end+(1:2),:)=[11 0 0 0  0 RO.gaug/2 -.2;
       12 0 0 0  0 -RO.gaug/2 -.2];
@@ -1291,8 +1343,9 @@ if RO.halftrack==0
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6',...
      'FixDof','clamped bottom','z==-.2'};
  else
-  r3=[1 4 -03 0  0 0 RO.kp ; 4 0 -03 0  0 0 RO.kb;
-      5 8 -03 0  0 0 RO.kp ; 8 0 -03 0  0 0 RO.kb;
+  n2=[10 4 11 8 9]';
+  r3=[1 4 -03 0  0 0 RO.kp ;5 8 -03 0  0 0 RO.kp ;  % pads
+      n2(:) ones(length(n2),1)*[ 0 -03 0  0 0 RO.kb/length(n2)]; % ballast
       %1 4 -04 0  0 0 RO.kpr; 5 8 -04 0  0 0 RO.kpr; % axial rotation
       %1 4 -05 0  0 0 RO.kps; 5 8 -05 0  0 0 RO.kps; % transverse
       ];
@@ -1318,8 +1371,8 @@ if RO.halftrack==0
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6'};
  end
  
-elseif RO.halftrack==2
- %% #One_rail_and_volume_ballast -4
+elseif RO.half==3
+ %% #One_rail_and_volume_ballast -3
     mob=dv18('MeshCubeV2',struct('hetero','homog','lx',.6)); %ballast beam
     mob.name='BallastSoil';
     NodeB=feutil('GetNode x== & y== & z==',mob,mean(mob.Node(:,5)),...
@@ -1349,8 +1402,8 @@ elseif RO.halftrack==2
     moT=feutil('Extrude 2 0 0 0.17',moT); %Extrusion of 0.17cm
     moT=q16p('h8Toh125',moT);
  
-elseif RO.halftrack==3
- %% #One_rail_and_beam_ballast -4
+elseif RO.half==4
+ %% #One_rail_and_beam_ballast -3
  z=zeros(1,3);
  model=struct('Node',[1 z 0 0 0;2 z -.3 0 0;3 z .3 0 0;
     4 z  0 0 -.1;5 z 0 0 -.2;6 z -.3 0 -.2;7 z .3 0 -.2; ]);% Sleeper
@@ -1376,6 +1429,7 @@ elseif RO.halftrack==3
  model.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];
  model.il=p_beam(model.il,'dbval 400 rectangle 1 .25');
  
+ %model.Prepl={'name','MatId';'Rail',301;'Ballast',400}
  model.pl=[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .25
      400 fe_mat('m_elastic','SI',1) 68e6 .40 1700 0 .02]; % Ballast
  model.name='BeamMass';
@@ -1383,11 +1437,11 @@ elseif RO.halftrack==3
  %feplot(model);fecom('textnode');
  
  
- elseif RO.halftrack==4
+elseif RO.half==5
  %% #3D FEM Track -4
  model=dyn_sem('ReadMeshV2');
 else
- %% #One_rail -4
+ %% #OneRail -4
  model=struct('Node',[1 0 0 0  0 0 0;2 0 0 0 -.3 0 0;3 0 0 0 .3 0 0;
     4 0 0 0  0 0 -.1]);
  model.Elt=feutil('addelt','beam1',[2 1 301 301;1 3 301 301;]);
@@ -1397,15 +1451,22 @@ else
       4 0 03 0  0 0 RO.kb*[1 0 0 .05]]);
  model=fe_case(model,'fixdof','2D',[.01;.02;.04;.06;4.02;4.01;4.05]);
  model=fe_case(model,'fixdof','zSleeper','z==-.1 -DOF 1 2 4 5 6');
- model.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];
- model.pl=[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .02];
- model.name='BeamMass';
+ RO.PreIl={'ProId','name';301,'RailA'};
+ RO.PrePl={'MatId','name';[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .02],'RailA'};
+ model.name='OneRail';
 end
 model=stack_set(model,'info','MeshParam',RO);
+if isfield(RO,'PreIl')
+ model=feutil('setpro',model,RO);
+end
+if isfield(RO,'PrePl')
+ model=feutil('setmat',model,RO);
+end
 
 n1=feutil('getnodematid301',model);
 % Now add rail
-x=[n1(n1(:,6)<-.1,5); RO.xsens(:)]; if isfield(RO,'addMass');x=[x;vertcat(RO.addMass{:,1})];end
+x=[n1(n1(:,6)>-.1,5); RO.xsens(:)]; 
+if isfield(RO,'addMass');x=[x;vertcat(RO.addMass{:,1})];end
 x=sort(unique(round(x*1000)))/1000;
 x=feutil(sprintf('refineline%.15g',RO.lc),x);%[x(1)-.3;x;x(end)+.3]);
 model.Elt=feutil('removeelt matid 301',model);
@@ -1419,6 +1480,7 @@ end
 if isfield(RO,'Other')&&any(strcmpi(RO.Other,'cyc'))
  model=fe_cyclic('build -1 .6 0 0',model);
 end
+
 
 % Now repeat
 if nargout>1
@@ -1435,7 +1497,7 @@ if nargout>1
     mt=fe_case(mt,RO.fix{:});
  end
  mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*RO.ncell+.3));
- if RO.halftrack==3
+ if RO.half==3
   %% #Ballast_beam_random properties -4
   %mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*RO.ncell+.3));
   mt=fe_case(mt,'remove','ends'); % No ends to allow base mode
@@ -1492,7 +1554,7 @@ if nargout>1
 
  if isfield(RO,'fix');mt=fe_case(mt,RO.fix{:});end
  if RO.Ftr
-     if RO.halftrack
+     if RO.half
         error('HalfTrack and FTR are not compatible options.') 
      end
   mt=feutil('joinall',mt);
@@ -2224,12 +2286,6 @@ RT.nmap('InitVT')=li;
 RT.nmap('MeshA')='MeshCfg{rail19(UniS{SimoA}),DofSetSine{A15,freq20,st3}}';
 RT.nmap('MeshB')='MeshCfg{d_fetime(VolTrack{matMatCur,st3}),TopZ{}}';
 RT.nmap('MeshC')='MeshCfg{d_fetime(VolTrack{matMatCur,st3}),TopFZ{}}';
-RT.nmap('MatCur')='m_hyper(urnSimoA{1,1,0,30,3,f5 20,g .33 .33,rho2.33n,unSI,isop100})';
-%RT.nmap('MatZhu')='m_hyper(urnZhu{tyYeoh,C10 2.5264, C20 -0.9177, C30 0.4711, g1 0.5688, tau 2.635,rho2.33n,unSI,isop100})';
-% m_hyper('urnzhu{Yeoh,C10 2.5264, C20 -0.9177, C30 0.4711,kappa 1000,rho2.33n,unSI,isop100}')
-RT.nmap('MatZhu')='m_hyper(urnZhu{Yeoh,C10 2.5264, C20 -0.9177, C30 0.4711,kappa 1000,rho2.33n,unSI,isop100})';
-RT.nmap('MatEZhu')='m_elastic(urnZhu{E15.2,nu.48,G5.05,rho2.33n,unSI,tyuMaxw,cells 8 .1 290 0 8 .1 390 0})'; % Elastic
-RT.nmap('MatRafaelA')='m_hyper(urnSimoA{2,2,0,500,fv5,f50 200,g .033 .033,rho2.33n,unTM,isop100,tydfr_ident(matsimoa)})';
 
 
 RT.nmap('SigA')='Sig{cnInput,Sin(15,20,TR32)}';
@@ -2248,7 +2304,7 @@ nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
 
  %% Without eclisse
  if exist('rail19','file') % Append
-   r2=rail19('nmap',struct('nmap',nmap));
+   append(nmap,rail19('nmap'));
  end
  ecM=useOrDefault(nmap,'Map:Slice');
  li= {'SecLab','xstart','xend','lc';
@@ -2351,6 +2407,7 @@ RT.nmap('Static')=li;
 nmap('PadA')=RT; 
 RO.CAM=CAM;
 
+%% #MatDb
 li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Eclisse',[4 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Eclisse
     'Bolt',[5 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Ecrou
@@ -2363,6 +2420,14 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
     'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
     };
+
+RT.nmap('MatCur')='m_hyper(urnSimoA{1,1,0,30,3,f5 20,g .33 .33,rho2.33n,unSI,isop100})';
+%RT.nmap('MatZhu')='m_hyper(urnZhu{tyYeoh,C10 2.5264, C20 -0.9177, C30 0.4711, g1 0.5688, tau 2.635,rho2.33n,unSI,isop100})';
+% m_hyper('urnzhu{Yeoh,C10 2.5264, C20 -0.9177, C30 0.4711,kappa 1000,rho2.33n,unSI,isop100}')
+RT.nmap('MatZhu')='m_hyper(urnZhu{Yeoh,C10 2.5264, C20 -0.9177, C30 0.4711,kappa 1000,rho2.33n,unSI,isop100})';
+RT.nmap('MatEZhu')='m_elastic(urnZhu{E15.2,nu.48,G5.05,rho2.33n,unSI,tyuMaxw,cells 8 .1 290 0 8 .1 390 0})'; % Elastic
+RT.nmap('MatRafaelA')='m_hyper(urnSimoA{2,2,0,500,fv5,f50 200,g .033 .033,rho2.33n,unTM,isop100,tydfr_ident(matsimoa)})';
+
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 
@@ -2370,6 +2435,9 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
+    'UIC60beam',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000] % xxx need check
+    'SleeperA',p_beam('dbval 201 rect .24 .26') % xxx need check
+    'RailA',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000]
         };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('ProDb')=r2;
@@ -2467,7 +2535,13 @@ elseif comstr(Cam,'tuto');
  %% #tuto : forward to sdtweb _tuto for handling -2
  r1=dbstack;eval(sdtweb('_tuto',struct('file',r1(1).name,'CAM',CAM)));
  if nargout==0; clear out; end
-
+elseif comstr(Cam,'pcin');
+    if carg>nargin; cinM=railu.pcin;
+    elseif isa(varargin{carg},'vhandle.nmap');cinM=varargin{carg};carg=carg+1;
+    end
+    if length(Cam)==4; out=cinM;
+    else;out=railu.pcin(cinM,CAM(5:end));
+    end
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);
 elseif ~isempty(CAM); error('%s',CAM);
