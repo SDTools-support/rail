@@ -1275,7 +1275,7 @@ elseif comstr(Cam,'beammass')
  %% #BeamMass (was Pinault) -2
  % initial revision was PJE/dynavoie/dv16.m
 DefString=[ ...
-   'ncell(4#%g#"number of cells") '...
+   'ncell(15#%g#"number of sleepers")' ...
    'half(#31#"1 one rail, 0 symmetric") '... %xxx_HP check
    'gaug(1.575#%g#"gaug") '...
    'Ltr(2.32#%g#"width") '...
@@ -1290,8 +1290,6 @@ DefString=[ ...
    'eta(0#31#"use eta") '...
    'cyc(0#31#"apply periodicity") '...
    'ms(130#%g#"sleeper mass")' ...
-   'kb(70e3#%g#"ballast stiffness")' ...
-   'ncell(15#%g#"number of sleepers")' ...
    'unit(SI#%s#"unit system")' ...
    'lc(.15#%g#"refine length")' ...
    'pk(75e3#%g#"pad stiffness")'   ]; 
@@ -1316,17 +1314,20 @@ if ~isfield(RO,'projM');RO.projM=d_rail('nmap');end
 
 if RO.half==0
  %% #Two_rails -3
+ % Nodes definition
  n1=[1 0 0 0  0 0 0;2 0 0 0 -.3 0 0;3 0 0 0 .3 0 0;
     4 0 0 0  0 0 -.1]; n1(:,6)=RO.gaug/2;
  model=struct('Node',n1);
  n1(:,6)=-RO.gaug/2; n1(:,1)=(5:8)';model.Node=[model.Node;n1;
      9 0 0 0  0 -RO.Ltr/2 n1(end);10 0 0 0  0 RO.Ltr/2 n1(end)
      11 0 0 0 0 0 n1(end)];
+ % Element definition
  model.Elt=feutil('addelt','beam1',[2 1 301 301;1 3 301 301;
      6 5 301 301;5 7 301 301;
      9 8 201 201;8 11 201 201;11 4 201 201;4 10 201 201]);
+ % Material and element properties 
  RO.PreIl={'name','ProId';'RailA',301;'SleeperA',201};
- RO.PrePl={'name','MatId';'Rail',301;'Sleeper',201};
+ RO.PrePl={'name','MatId';'Rail',301;'RSleeper',201};
  if RO.simpack
   model.Node(end+(1:2),:)=[11 0 0 0  0 RO.gaug/2 -.2;
       12 0 0 0  0 -RO.gaug/2 -.2];
@@ -1343,6 +1344,7 @@ if RO.half==0
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6',...
      'FixDof','clamped bottom','z==-.2'};
  else
+  % 
   n2=[10 4 11 8 9]';
   r3=[1 4 -03 0  0 0 RO.kp ;5 8 -03 0  0 0 RO.kp ;  % pads
       n2(:) ones(length(n2),1)*[ 0 -03 0  0 0 RO.kb/length(n2)]; % ballast
@@ -1353,7 +1355,7 @@ if RO.half==0
    loss=RO.eta; r3(r3(:,7)==RO.kb,10)=loss*RO.kb;
    loss=.1;  r3(r3(:,7)==RO.kp,10)=loss*RO.kp;
   else
-   loss=.05; freq=10;r3(r3(:,7)==RO.kb,9)=loss*RO.kb./(2*pi*freq);
+   loss=.05; freq=10;r3(r3(:,7)==RO.kb/length(n2),9)=loss*RO.kb./(2*pi*freq);
    loss=.1;  freq=10;r3(r3(:,7)==RO.kp,9)=loss*RO.kp./(2*pi*freq);
   end
   model=feutil('addelt',model,'celas',r3);
@@ -2414,6 +2416,7 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa
     'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 ] % Semelle, damping 0.1 kN/(m/s)
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
+    'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500] % Rigid sleeper
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
     'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
@@ -2430,6 +2433,7 @@ RT.nmap('MatRafaelA')='m_hyper(urnSimoA{2,2,0,500,fv5,f50 200,g .033 .033,rho2.3
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 
+% Element properties
 li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
