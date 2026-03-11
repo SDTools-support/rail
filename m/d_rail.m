@@ -1280,7 +1280,7 @@ DefString=[ ...
    'gaug(1.575#%g#"gaug") '...
    'Ltr(2.32#%g#"width") '...
    'kp(300e6#%g#"pad stiffness") '...
-   'kb(20e6#%g#"ballast stiffness") '...
+   'kb(50e9#%g#"ballast stiffness") '...
    'kpr(1e6#%g#"pad torsion stiffness") '...
    'kps(1e6#%g#"pad transverse torsion stiffness") '...
    'rand(0#%g#"ballast dispersion") '...
@@ -1292,7 +1292,7 @@ DefString=[ ...
    'ms(130#%g#"sleeper mass")' ...
    'unit(SI#%s#"unit system")' ...
    'lc(.15#%g#"refine length")' ...
-   'pk(75e3#%g#"pad stiffness")'   ]; 
+   'pk(75e3#%g#"pad stiffness")']; 
 
  %  railu.pcin('prero',{'d_rail.meshBeamMass',DefString});
 
@@ -1322,11 +1322,11 @@ if RO.half==0
      9 0 0 0  0 -RO.Ltr/2 n1(end);10 0 0 0  0 RO.Ltr/2 n1(end)
      11 0 0 0 0 0 n1(end)];
  % Element definition
- model.Elt=feutil('addelt','beam1',[2 1 301 301;1 3 301 301;
-     6 5 301 301;5 7 301 301;
-     9 8 201 201;8 11 201 201;11 4 201 201;4 10 201 201]);
+ model.Elt=feutil('addelt','beam1', ...
+    [2 1 301 301; 1 3 301 301; 6 5 301 301; 5 7 301 301; %Rail
+     9 8 201 201; 8 11 201 201; 11 4 201 201; 4 10 201 201]); %Sleepers
  % Material and element properties 
- RO.PreIl={'name','ProId';'RailA',301;'SleeperA',201};
+ RO.PreIl={'name','ProId';'UIC60beam',301;'SleeperA',201};
  RO.PrePl={'name','MatId';'Rail',301;'RSleeper',201};
  if RO.simpack
   model.Node(end+(1:2),:)=[11 0 0 0  0 RO.gaug/2 -.2;
@@ -1344,9 +1344,10 @@ if RO.half==0
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6',...
      'FixDof','clamped bottom','z==-.2'};
  else
-  % 
-  n2=[10 4 11 8 9]';
-  r3=[1 4 -03 0  0 0 RO.kp ;5 8 -03 0  0 0 RO.kp ;  % pads
+  %RO.PreIl
+  n2=[10 4 11 8 9]';          % ballast nodes
+  r3=[1 4 -03 0  0 0 RO.kp ;
+      5 8 -03 0  0 0 RO.kp ;  % pads nodes
       n2(:) ones(length(n2),1)*[ 0 -03 0  0 0 RO.kb/length(n2)]; % ballast
       %1 4 -04 0  0 0 RO.kpr; 5 8 -04 0  0 0 RO.kpr; % axial rotation
       %1 4 -05 0  0 0 RO.kps; 5 8 -05 0  0 0 RO.kps; % transverse
@@ -2410,17 +2411,23 @@ RO.CAM=CAM;
 
 %% #MatDb
 li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
-    'Eclisse',[4 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Eclisse
-    'Bolt',[5 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Ecrou
-    'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Rail Yield 800 MPa
-    'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa
-    'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 ] % Semelle, damping 0.1 kN/(m/s)
-    'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % Traverse
-    'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500] % Rigid sleeper
+    'Eclisse',[4 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Fishplate
+    'Bolt',[5 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Bolt
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
-    'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
+
     'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
     'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
+   
+    'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Rail Yield 800 MPa
+    'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa
+    
+    'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 ] % rail pad, damping 0.1 kN/(m/s)
+    'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
+
+    'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % sleeper  E nu rho
+    'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500] % Rigid sleeper
+
+    'Ballast',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000] 
     };
 
 RT.nmap('MatCur')='m_hyper(urnSimoA{1,1,0,30,3,f5 20,g .33 .33,rho2.33n,unSI,isop100})';
@@ -2438,10 +2445,16 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
-    'UIC60beam',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000] % xxx need check
-    'SleeperA',p_beam('dbval 201 rect .24 .26') % xxx need check
-    'RailA',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000]
-        };
+    
+    'UIC60beam',[301 fe_mat('p_beam','SI',1) 1e-5 3.0383e-5 5.123e-6 0.00767]; % J I1 I2 A xxx J need check
+    'RailA',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000];
+
+    'SleeperA',p_beam('dbval 201 rect .26 .22'); % rect base height 
+
+    'BallastA',[401 fe_mat('p_spring','SI',1) 50e6 0 0 0.05 0];
+
+    'PadA', [501 fe_mat('p_spring','SI',1) 300e6 0 0 0.1 0];
+     };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('ProDb')=r2;
 
