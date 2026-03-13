@@ -2526,12 +2526,12 @@ wd=pwd;
 st=fullfile(sdtcheck('SDTRootDir'),'tex');
 if exist(st,'dir')
    % keywords, - between, but not at beginning
-   setenv('sdtfun',['rail19-d_rail'  ]); 
-   wd1=sdtu.f.safe('@sdt/help/nlsim');
    if comstr(Cam,'hevea'); 
-     wdh=lat('hevea -module SNCF-DyRail','dyrail');
+    RA=struct('module','SNCF-rail','root','dyrail','sdtfun', ...
+        ['dyn_utils-dyn_solve-dyn_mesh-dyn_ui-dyn_post-nl_dynavoie' ...
+       '-rail19-d_rail-railu'],'jup',0,'xml',1,'search',{{fullfile(pwd,'plots')}});
+    lat('hevea',RA)
      st=sprintf('lat(''tex2svg -eq'',''%s'')',pwd);sdtweb('_link',st);
-     cd(wdh);!cp index.html dyrail.html 
    else;
       lat('colortex');lat('_dyrail.tex-shortlog');
       !bibtex _nlsim
@@ -2558,6 +2558,15 @@ elseif comstr(Cam,'pcin');
     if length(Cam)==4; out=cinM;
     else;out=railu.pcin(cinM,CAM(5:end));
     end
+elseif comstr(Cam,'idx')
+ %% manual indexing operations
+ sdtu.idx.pile('@sncf_ir/tex/*.tex');
+ sdtu.idx.pile('@sdt/help/Dynavoie/*.html');
+ sdtu.idx.pile('@dynavoie/*/*.m');
+ sdtu.idx.pile('@sdt/help/rail/*.html');
+ tagI=sdth.urn('tagI');
+ tagI('(^dv.*|^dyn.*)')
+
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);
 elseif ~isempty(CAM); error('%s',CAM);
