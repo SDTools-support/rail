@@ -52,7 +52,7 @@ function   out=asUo(r1);
  if nargout==0;sdtm.toString(out);clear out;end
 end
 function cinM=pcin(varargin)
- %% #pcin 
+ %% #pcin : add cinM nodes
  r1=sdtu.f.ppath;carg=1;
  if ~isKey(r1,'railu.pcin')||isequal(varargin,{'reset'})
   cinM=vhandle.nmap({},[],'Cin');

@@ -2264,7 +2264,7 @@ cinM.add={
 'gr:All','Experiment parameters', ...
       {'gr:s1','gr:Track','gr:Wheel','gr:Ctc','gr:SimuTime'}
       };
-
+nmap('Map:Cin')=cinM;
 % vhandle.uo('',C3.info,rail19('nmap.Map:Cin'))
 
 %% #UniS : hyper reduction uniaxial test cases -2
@@ -2306,7 +2306,9 @@ nmap('CMsh21')=struct('CRailEdge',.1,'Vel',20,'ToolTip','xxx');
 
  %% Without eclisse
  if exist('rail19','file') % Append
-   append(nmap,rail19('nmap'));
+   r2=GetKV(rail19('nmap'));
+   r2(ismember(r2(:,1),nmap.keys),:)=[];
+   append(nmap,r2);
  end
  ecM=useOrDefault(nmap,'Map:Slice');
  li= {'SecLab','xstart','xend','lc';
