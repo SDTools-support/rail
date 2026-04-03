@@ -93,8 +93,10 @@ dyn_post('ViewRestAll -light'); % display deformation animation
 
 %% EndTuto
 elseif comstr(Cam,'dv2')
-%% #TutoDvSpringMass: d_rail('ScriptDv2'); 
+%% #TutoDvSpringMass: beam mass model d_rail('ScriptDv2'); 
 
+%% step disp : analyze dispersion diagram 
+% keywords{var{},fcn{fe_homo.DftDisp}}
 %mo1=d_mesh('beamtrack{ncell 1,lc .05,cyc}');
 %mo1=d_rail('meshbeamMass{half0,cyc,lc.1}');
 PA=dyn_ui('paramvh');projM=PA.nmap;
@@ -102,7 +104,7 @@ PA=dyn_ui('paramvh');projM=PA.nmap;
 Range=struct('ncx',sdtm.urnValUG('@ll(2.01,20,40)'));
 RO=struct('Range',Range,'fmax',3e3,'ModalFilter',20, ...
     'EigOpt',[2 40 -1e5],'projM',projM,'UseLong',1);
-projM('fe_homo.dftDisp')=RO;
+projM('fe_homo.dftDisp')=RO; % store option
 RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
     'cios',{{'@line',{'marker','.','linestyle','none'}}},...
     'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3);
@@ -112,42 +114,51 @@ mo1=d_rail('meshbeamMass{half0,cyc,lc.1}');
 fe_homo('dftDisp',mo1,RO);
 fe_homo('dfpInitSelDef',struct('projM',projM))
 
-
-railu.MeshSlice('{SleeperM450beam,railUIC60beam,padSpring,SubSpring}')
-
-RA=struct('SubType','Spring');
-RB=struct('SleeperType','Monoblock','RailType','beam','RailName','UIC60');
-list={'Slice',struct('Sub',RA,'Arm',RB)};
-r1=struct('ToolTip','Ballast only track without symmetry and custom rails', ...
+% railu.MeshSlice('{SleeperM450beam,railUIC60beam,padSpring,SubSpring}')
+% xxx gaetan profiles 
+if 1==2
+ RA=struct('SubType','Spring');
+ RB=struct('SleeperType','Monoblock','RailType','beam','RailName','UIC60');
+ list={'Slice',struct('Sub',RA,'Arm',RB)};
+ r1=struct('ToolTip','Ballast only track without symmetry and custom rails', ...
     'value',{list});
-r2('RailBeam')=r1;
+ r2('RailBeam')=r1;
+end
 
-
-%% step forced response
+%% step dfrf : forced response
 mo1=stack_set(mo1,'info','Freq',sdtm.urnValUG('@ll{1,3k,500}')');
 mo1=fe_case(mo1,'DofLoad','In',struct('def',eye(2),'DOF',[1.03;1.02]));
-mo1=fe_case(mo1,'SensDof','Out',[1.03;5.03;4.03]);
+PreSens={'tlab','RailL:vz','RailR:vz','SleeperL:vz'
+         'SensId',1.03,5.03,4.03}';
+mo1=fe_case(mo1,'SensDofInFEM','Out',PreSens);
 mo1=stack_set(mo1,'info','EigOpt',[2 30]);
 
 RD=struct('Range',Range,'fmax',3e3,'ModalFilter',30);
 [d2,h2,perResp]=fe_homo('dftDisp-frf',mo1,RD);
-RD=struct('mno',(0:10)','cf',102,'ci',112,'ViewHist',h2,'ktype','kc','unit',SE.unit,'fmax',3e3);
+RD=struct('mno',(0:10)','cf',102,'ci',112,'ViewHist',h2,'ktype','kc','fmax',3e3);
 fe_homo('dfpInitSelDef',mo1,d2,RD);fecom('ShowFiCEvalz')
 
-
-% xxx finalize 
 RV=struct('hist',h2,'ktype','kc','doGetData',1);
 RV.sens=fe_case(mo1,'sens');
+RV.ci=2;RV.PlotInfo='2D-type"surface"';
+RV.os={'@axes',{'colormap',ii_plp('colormapband',parula(5))}, ...
+       '@OsDic',{'cbTR{string,log(vel)}'}};
 C2=fe_homo('DfpViewCurve',perResp,RV); % Build curve model for q(omega,k)
-C2.PlotInfo=ii_plp('plotinfo2D-type"mesh"',C2);
-C2.X{1}(501:end,:)=[];C2.Y(501:end,:)=[];C2.Y=C2.Y.*(2i*pi*C2.X{1});
-C2.Y=reshape(C2.Y,[],size(C2.X{2},1),size(C2.X{3},1));
 
-C2=sdsetprop(C2,'PlotInfo','ua.axProp',{'@surface',{'FaceColor','interp','EdgeColor','none'}});
-ci=iiplot; iicom('curveinit','Check',C2)
-ii_plp('colormapband',parula(5))
+%% step dvTimeImpact : time impact using dynavoie
 
-%[C2.ID{1}.po.X{1},h2.X{1},2*pi./C2.X{2}/.1]
+PreExp={'MeshCfg{railu(BeamMass{half0,lc.1}),{rep{nb_slice15},prr}})}'};
+RT=struct('nmap',vhandle.nmap);RT.nmap('CurExp')=PreExp;
+sdtm.range(RT);mo1b=RT.nmap('CurModel');%d2=mo2.nmap('CurTime');
+
+if 1==2
+l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
+   'Time',struct('NeedV',1,'NeedA',1,'dt',1e-4)}; % time integration par.
+Range=struct('SimuCfg',{{'S1',l1}});
+dyn_solve('RangeLoop',Range);
+
+dyn_post('ViewRestAll -light'); % display deformation animation
+end
 
 
 
@@ -1273,233 +1284,14 @@ elseif nargin==3&&isfield(varargin{3},'nmap')
  % end
 elseif comstr(Cam,'beammass') 
  %% #BeamMass (was Pinault) -2
- % initial revision was PJE/dynavoie/dv16.m
-DefString=[ ...
-   'ncell(15#%g#"number of sleepers")' ...
-   'half(#31#"1 one rail, 0 symmetric") '... %xxx_HP check
-   'gaug(1.575#%g#"gaug") '...
-   'Ltr(2.32#%g#"width") '...
-   'kp(300e6#%g#"pad stiffness") '...
-   'kb(50e9#%g#"ballast stiffness") '...
-   'kpr(1e6#%g#"pad torsion stiffness") '...
-   'kps(1e6#%g#"pad transverse torsion stiffness") '...
-   'rand(0#%g#"ballast dispersion") '...
-   'randp(0#%g#"pad dispersion") '...
-   'simpack(0#%g#"use simpack compatible elements") '...
-   'Ftr(0#3#" renumber for simpack") '...
-   'eta(0#31#"use eta") '...
-   'cyc(0#31#"apply periodicity") '...
-   'ms(130#%g#"sleeper mass")' ...
-   'unit(SI#%s#"unit system")' ...
-   'lc(.15#%g#"refine length")' ...
-   'pk(75e3#%g#"pad stiffness")']; 
 
- %  railu.pcin('prero',{'d_rail.meshBeamMass',DefString});
+[model,RO]=railu.Mesh(varargin{:});
 
-
-
-if ~isempty(strfind(Cam,'getedit'));out=DefString; return;end 
-if carg<=nargin; RO=varargin{carg};carg=carg+1;else; RO=struct;end
-[RO,st,CAM]=cingui('paramedit -DoClean',DefString,{RO,CAM});Cam=lower(CAM);
-RO.isFullModel=1;
- if RO.cyc; RO.ncell=1;
- elseif length(RO.ncell)<2;RO.ncell(2)=0;
- end
- if ~isfield(RO,'xsens'); RO.xsens=[];end
-
-
-%      ms=feutil('setmat',ms,'dyn_mesh(matdb{399,prrLine})');
-% feutil('setpro',ms,'d_rail(nmap.ProDb.prrLine)');
-if ~isfield(RO,'projM');RO.projM=d_rail('nmap');end
-
-if RO.half==0
- %% #Two_rails -3
- % Nodes definition
- n1=[1 0 0 0  0 0 0;2 0 0 0 -.3 0 0;3 0 0 0 .3 0 0;
-    4 0 0 0  0 0 -.1]; n1(:,6)=RO.gaug/2;
- model=struct('Node',n1);
- n1(:,6)=-RO.gaug/2; n1(:,1)=(5:8)';model.Node=[model.Node;n1;
-     9 0 0 0  0 -RO.Ltr/2 n1(end);10 0 0 0  0 RO.Ltr/2 n1(end)
-     11 0 0 0 0 0 n1(end)];
- % Element definition
- model.Elt=feutil('addelt','beam1', ...
-    [2 1 301 301; 1 3 301 301; 6 5 301 301; 5 7 301 301; %Rail
-     9 8 201 201; 8 11 201 201; 11 4 201 201; 4 10 201 201]); %Sleepers
- % Material and element properties 
- RO.PreIl={'name','ProId';'UIC60beam',301;'SleeperA',201};
- RO.PrePl={'name','MatId';'Rail',301;'RSleeper',201};
- if RO.simpack
-  model.Node(end+(1:2),:)=[11 0 0 0  0 RO.gaug/2 -.2;
-      12 0 0 0  0 -RO.gaug/2 -.2];
-  model=feutil('addelt',model,'beam1', ...
-     [1 4 151 151 ; 4 11 152 152;
-      5 8 151 151 ; 8 12 152 152]);
-  model.pl(end+[1:2],:)=[
-     151 fe_mat('m_elastic','SI',1) 1e9 .3    1
-     152 fe_mat('m_elastic','SI',1) 1e9 .3    1];
-  il=[151 fe_mat('p_beam','SI',1) 1e-5  .1*[RO.kpr RO.kps]/1e9  .1*RO.kp/1e9
-      152 fe_mat('p_beam','SI',1) 1e-5  .1*RO.kpr/1e9*[.01 .01] .1*RO.kb/1e9];
-  model=feutil('setpro',model,il);
-  RO.fix={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
-     'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6',...
-     'FixDof','clamped bottom','z==-.2'};
- else
-  %RO.PreIl
-  n2=[10 4 11 8 9]';          % ballast nodes
-  r3=[1 4 -03 0  0 0 RO.kp ;
-      5 8 -03 0  0 0 RO.kp ;  % pads nodes
-      n2(:) ones(length(n2),1)*[ 0 -03 0  0 0 RO.kb/length(n2)]; % ballast
-      %1 4 -04 0  0 0 RO.kpr; 5 8 -04 0  0 0 RO.kpr; % axial rotation
-      %1 4 -05 0  0 0 RO.kps; 5 8 -05 0  0 0 RO.kps; % transverse
-      ];
-  if isfield(RO,'eta')&&RO.eta % Use a loss factor
-   loss=RO.eta; r3(r3(:,7)==RO.kb,10)=loss*RO.kb;
-   loss=.1;  r3(r3(:,7)==RO.kp,10)=loss*RO.kp;
-  else
-   loss=.05; freq=10;r3(r3(:,7)==RO.kb/length(n2),9)=loss*RO.kb./(2*pi*freq);
-   loss=.1;  freq=10;r3(r3(:,7)==RO.kp,9)=loss*RO.kp./(2*pi*freq);
-  end
-  model=feutil('addelt',model,'celas',r3);
-  % Add random oscil around 50 Hz with 10 % sleeper mass
-  if isfield(RO,'randm') % Add random mass
-    RO.mm=40; model.Node=[model.Node;
-        11 0 0 0  0 RO.gaug/2 -.11;
-        12 0 0 0  0 -RO.gaug/2 -.11];
-    model=feutil('addelt',model,'mass1',[11 RO.mm*[1 1 1];12 RO.mm*[1 1 1]]);
-    RO.km=(40*2*pi)^2*RO.mm;
-    r3=[4 11 -03;8 12 -03];r3(:,7)=RO.km;r3(:,10)=RO.km*.1;
-    model=feutil('addelt',model,'celas',r3);
-  end
-  RO.fix={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
-     'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6'};
- end
- 
-elseif RO.half==3
- %% #One_rail_and_volume_ballast -3
-    mob=dv18('MeshCubeV2',struct('hetero','homog','lx',.6)); %ballast beam
-    mob.name='BallastSoil';
-    NodeB=feutil('GetNode x== & y== & z==',mob,mean(mob.Node(:,5)),...
-        mean(mob.Node(:,6)),max(mob.Node(:,7))); %Upper middle node
-    posnodeB=NodeB(5:7); indB=NodeB(1);
-    indBmax=max(mob.Node(:,1)); 
-    mo1=struct('Node',[indBmax+1 0 0 0 posnodeB+[0 0 .1];...
-        indBmax+2 0 0 0 posnodeB+[-.3 0 .1];...
-        indBmax+3 0 0 0 posnodeB+[.3 0 .1];...
-        indB 0 0 0 posnodeB]);
-    mo1.Elt=feutil('addelt','beam1',[indBmax+2 indBmax+1 301 301;...
-        indBmax+1 indBmax+3 301 301;]); %rail beam
-%     mo1=feutil('addelt',mo1,'mass1',[elt 0 0 80 0 0 0]); %sleeper mass
-    mo1=feutil('addelt',mo1,'celas',[indBmax+1 indB 03 0 ...
-        0 0 300e6*[1 0 0 .05]]); %railpad spring
-    mo1.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];
-    mo1.pl=[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .02];
-    mo1.name='Track1';
-    mo1=feutil('AddTest Merge',mo1,mob);
-    
-    %xxx_HP
-    [NodeTc,IndTc]=feutil('GetNode x>= & x<= & z==',mob,...
-        mean(mob.Node(:,5))-0.15,mean(mob.Node(:,5))+0.15,...
-        max(mob.Node(:,7))); %Nodes connected to the sleeper
-    [~,EltT]=feutil('FindElt ConnectedTo IndT');
-    moT=struct('Node',NodeT,'Elt',EltT);
-    moT=feutil('Extrude 2 0 0 0.17',moT); %Extrusion of 0.17cm
-    moT=q16p('h8Toh125',moT);
- 
-elseif RO.half==4
- %% #One_rail_and_beam_ballast -3
- z=zeros(1,3);
- model=struct('Node',[1 z 0 0 0;2 z -.3 0 0;3 z .3 0 0;
-    4 z  0 0 -.1;5 z 0 0 -.2;6 z -.3 0 -.2;7 z .3 0 -.2; ]);% Sleeper
- % Ballast
- model.Elt=feutil('addelt','beam1',[6 5 400 400 0  0 1 0;5 7 400 400 0   0 1 0]);
- model=feutil('refinebeam .05',model);
- model=feutil('addelt',model,'beam1',[2 1 301 301;1 3 301 301]);
- %model=feutil('addelt',model,'rigid',[5 4 12346]);
- model=feutil('addelt',model,'celas',[5 4 -3 0  0 0 10e9 0 10e9/(2*pi*30)*.5]);%ballast sleeper connect
-
- model=feutil('addelt',model,'mass1',[4 0 0 80 0 0 0]);
- model=feutil('addelt',model,'celas', ...
-     [1 4 3 0  0 0 300e6*[1 0 0 .05]]); % This is the pad 
-  
- % Add soil springs
- i1=feutil('findnode z==',model,min(model.Node(:,7)));
- i1(:,2)=0; i1(:,3)=-3; i1(:,7)=1e6;% xxx soil stiffness value
- model=feutil('addelt',model,'celas',i1);
- 
- model=fe_case(model,'fixdof','2D',[.02;.04;.06]);
- model=fe_case(model,'fixdof','zSleeper','z==-.1 -DOF 2 4 5 6');
- model=fe_case(model,'fixdof','BallastCompression','z==-.2 -DOF 1');
- model.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];
- model.il=p_beam(model.il,'dbval 400 rectangle 1 .25');
- 
- %model.Prepl={'name','MatId';'Rail',301;'Ballast',400}
- model.pl=[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .25
-     400 fe_mat('m_elastic','SI',1) 68e6 .40 1700 0 .02]; % Ballast
- model.name='BeamMass';
-
- %feplot(model);fecom('textnode');
- 
- 
-elseif RO.half==5
- %% #3D FEM Track -4
- model=dyn_sem('ReadMeshV2');
-else
- %% #OneRail -4
- model=struct('Node',[1 0 0 0  0 0 0;2 0 0 0 -.3 0 0;3 0 0 0 .3 0 0;
-    4 0 0 0  0 0 -.1]);
- model.Elt=feutil('addelt','beam1',[2 1 301 301;1 3 301 301;]);
- model=feutil('addelt',model,'mass1',[4 0 0 80 0 0 0]);
- model=feutil('addelt',model,'celas', ...
-     [1 4 03 0  0 0 300e6*[1 0 0 .05];
-      4 0 03 0  0 0 RO.kb*[1 0 0 .05]]);
- model=fe_case(model,'fixdof','2D',[.01;.02;.04;.06;4.02;4.01;4.05]);
- model=fe_case(model,'fixdof','zSleeper','z==-.1 -DOF 1 2 4 5 6');
- RO.PreIl={'ProId','name';301,'RailA'};
- RO.PrePl={'MatId','name';[301 fe_mat('m_elastic','SI',1) 210e9 .3 8000 0 .02],'RailA'};
- model.name='OneRail';
+if ~RO.cyc; RO.Case={'rep'};
+else; RO.Case={'cyc'};
 end
-model=stack_set(model,'info','MeshParam',RO);
-if isfield(RO,'PreIl')
- model=feutil('setpro',model,RO);
-end
-if isfield(RO,'PrePl')
- model=feutil('setmat',model,RO);
-end
-
-n1=feutil('getnodematid301',model);
-% Now add rail
-x=[n1(n1(:,6)>-.1,5); RO.xsens(:)]; 
-if isfield(RO,'addMass');x=[x;vertcat(RO.addMass{:,1})];end
-x=sort(unique(round(x*1000)))/1000;
-x=feutil(sprintf('refineline%.15g',RO.lc),x);%[x(1)-.3;x;x(end)+.3]);
-model.Elt=feutil('removeelt matid 301',model);
-for j1=1:2
- n2=x;n2(:,2)=abs(n1(1,6));n2(:,3)=n1(1,7); 
- if min(n1(:,6))==0;break;elseif j1==2; n2(:,2)=-n2(:,2);end
- [model.Node,i1]=feutil('addnode',model.Node,n2);i1=model.Node(i1,1);
- model=feutil('addelt',model,'beam1',[i1(1:end-1) i1(2:end) ones(length(i1)-1,2)*301]);
-end
-
-if isfield(RO,'Other')&&any(strcmpi(RO.Other,'cyc'))
- model=fe_cyclic('build -1 .6 0 0',model);
-end
-
-
+model=railu.Case('case',model,RO);
 if ~RO.cyc&&RO.ncell(1)>0
- %% Build track model in mt
- mo1=model; mt=model;
- for j1=1:RO.ncell(1);
-  mo1.Node(:,5)=mo1.Node(:,5)+.6;
-  mt=feutil('addtest-merge-noori;',mo1,mt);
- end
- mt=feutil('joinall',mt);
- mt.Elt=feutilb('SeparatebyProp',mt.Elt);
-
- if isfield(RO,'fix');
-    model=fe_case(model,RO.fix{:});
-    mt=fe_case(mt,RO.fix{:});
- end
- mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*RO.ncell+.3));
  if RO.half==3
   %% #Ballast_beam_random properties -4
   %mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*RO.ncell+.3));
@@ -1553,7 +1345,6 @@ if ~RO.cyc&&RO.ncell(1)>0
   coef=(1+(rand(size(i1))-.5)*RO.randm);
   mt.Elt(i1,7:end)=diag(sparse(coef))*mt.Elt(i1,7:end);
  end
- 
 
  if isfield(RO,'fix');mt=fe_case(mt,RO.fix{:});end
  if RO.Ftr
@@ -1569,11 +1360,10 @@ if ~RO.cyc&&RO.ncell(1)>0
  end
   model=mt; % mt
 end
-model.unit='SI';
-if RO.cyc
-  model=fe_cyclic('build -1 .6 0 0;',model);
+if isfield(RO,'fix');
+    sdtw('_ewt','should be in railu.Case')
+    model=fe_case(model,RO.fix{:});
 end
-if isfield(RO,'fix');model=fe_case(model,RO.fix{:});end
 
 out=model; % ms (slice)
 else
@@ -2554,12 +2344,20 @@ elseif comstr(Cam,'tuto');
  r1=dbstack;eval(sdtweb('_tuto',struct('file',r1(1).name,'CAM',CAM)));
  if nargout==0; clear out; end
 elseif comstr(Cam,'pcin');
-    if carg>nargin; cinM=railu.pcin;
-    elseif isa(varargin{carg},'vhandle.nmap');cinM=varargin{carg};carg=carg+1;
-    end
-    if length(Cam)==4; out=cinM;
-    else;out=railu.pcin(cinM,CAM(5:end));
-    end
+ %% #pcind -2
+ li={'key','ToolTip','DoOpt';
+  'd_rail.Mesh.xxx','beam mass track slice model',[ ...
+   'ncell(15#%g#"number of sleepers")' ...
+   ]  };
+  sdtm.pcin(['prero',comstr(CAM,5)],li);
+  if nargout>0; out=sdtm.pcin;else; sdtm.pedit('{disp}',li);end
+
+  % if carg>nargin; cinM=railu.pcin;
+  %   elseif isa(varargin{carg},'vhandle.nmap');cinM=varargin{carg};carg=carg+1;
+  %   end
+  %   if length(Cam)==4; out=cinM;
+  %   else;out=railu.pcin(cinM,CAM(5:end));
+  %   end
 elseif comstr(Cam,'idx')
  %% manual indexing operations
  sdtu.idx.pile('@sncf_ir/tex/*.tex');
@@ -2571,6 +2369,14 @@ elseif comstr(Cam,'idx')
 
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);
+elseif comstr(Cam,'keywords');
+  %% #keywords -2
+  tagI=sdth.urn('tagI');
+  if ~isKey(tagI.tagM,'d_ui')&&exist('dyn_ui','file')
+   li={'@sdt/help/dynavoie/*.html';'@dynavoie/tex/*.tex'};
+   sdtu.idx.pile(struct('do','now','ForceIndex',2),li);
+  end
+  sdtu.idx.keywords(dbstack,[],varargin{2:end});
 elseif ~isempty(CAM); error('%s',CAM);
 end
 end

@@ -536,13 +536,12 @@ wd=pwd;
 st=fullfile(sdtcheck('SDTRootDir'),'tex');
 if exist(st,'dir')
    % keywords, - between, but not at beginning
-   setenv('sdtfun',['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
-      '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'  ]); 
    wd1=sdtu.f.safe('@sdt/help/nlsim');
    if comstr(Cam,'hevea'); 
-     wdh=lat('hevea -module SNCF-DyRail','dyrail');
-     st=sprintf('lat(''tex2svg -eq'',''%s'')',pwd);sdtweb('_link',st);
-     cd(wdh);!cp index.html dyrail.html 
+    RA=struct('module','SNCF-DyRail','root','dyrail','sdtfun', ...
+        ['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
+      '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'],'jup',0,'xml',1,'search',{{fullfile(pwd,'plots')}});
+    lat('hevea',RA)
    else;
       lat('colortex');lat('_dyrail.tex-shortlog');
       !bibtex _nlsim
