@@ -125,6 +125,7 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
     end
   end
   n1=(mt.Node(:,1)>1000); % mt without any vehicle
+  if nnz(n1)==0; n1=true(size(mt.Node,1),1);end % Not shifted non-dynavoie
   if isfield(mv,'meta')&&isfield(mv.meta,'nomrad')
    mv.Node(:,7)=mv.Node(:,7)+Geo.z_rail_up+safeDistM(mv.meta.nomrad); %z/ vehicle put on the rails
    mv.bas=[];
@@ -134,12 +135,13 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   end
 
   % basis : add basis  1 99 range
-  basid=max([mt.bas(mt.bas(:,1)<100,1);0])+1;
-  n1=find(mt.Node(:,1)>1000); % mt without any vehicle
-  n1=mt.Node(mt.Node(n1,7)==max(mt.Node(n1,7)), ...
+  if ~isfield(mt,'bas');basid=398;mt.bas=[];
+  else; basid=max([mt.bas(mt.bas(:,1)<100,1);0])+1;
+  end
+  y=mt.Node(mt.Node(n1,7)==max(mt.Node(n1,7)), ...
       6); %Ys of nodes on the top of the slice (pad nodes if any)
   if ~RO.half;
-      ybas=(min(n1)+max(n1))/2;
+      ybas=(min(y)+max(y))/2;
   else
       ybas=0;
   end
@@ -223,14 +225,14 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
   end
   mo1.pl=mt.pl;mo1.pl=feutil('getpl',mo1);
   mo1.il=mt.il;mo1.il=feutil('getil',mo1);
-  mo1.bas=mt.bas(ismember(mt.bas(:,1),unique(mo1.Node(:,1))),:);
+  mo1.bas=mt.bas(ismember(mt.bas(:,1),unique(mo1.Node(:,2:3))),:);
   % FixDof to have a 2D motion without x motion for the vehicle :
   [Case,vDOF]=fe_mknl('init',mo1); i1=fe_c(vDOF,.01*[1 2 4 6]','dof');
   mt = fe_case(mt,'FixDof','2D',i1);
   mo1=fe_case(mo1,'FixDof','2D',i1);
 
    r1=stack_get(mt,'SE','#s\d');
-   if ~isfield(r1{1,3},'K') 
+   if ~isempty(r1)&&~isfield(r1{1,3},'K') 
     %% for just mesh display full model (typically rail)
     mt=stack_set(mt,'SE','mv',mv);
     mo1=fesuper('seadd-unique -name"mv" -owrite',mt,mv);
@@ -402,7 +404,13 @@ function   [model,RO]=Mesh(varargin);
  %  railu.pcin('prero',{'d_rail.meshBeamMass',DefString});
 
 if ~isempty(strfind(Cam,'getedit'));out=DefString; return;end 
-if carg<=nargin; RO=varargin{carg};carg=carg+1;else; RO=struct;end
+if carg<=nargin; RO=varargin{carg};carg=carg+1;
+  if isequal(RO,struct)&&carg<=nargin&&isfield(varargin{carg},'nmap');
+   model=struct; 
+   RO=varargin{carg};carg=carg+1;
+  end
+else; RO=struct;
+end
 [RO,st,CAM]=cingui('paramedit -DoClean',DoOpt,{RO,CAM});Cam=lower(CAM);
 RO.isFullModel=1;
  if RO.cyc; RO.ncell=1;
@@ -413,7 +421,12 @@ RO.isFullModel=1;
 
 %      ms=feutil('setmat',ms,'dyn_mesh(matdb{399,prrLine})');
 % feutil('setpro',ms,'d_rail(nmap.ProDb.prrLine)');
-if ~isfield(RO,'projM');RO.projM=d_rail('nmap');end
+r2=d_rail('nmap');
+if isfield(RO,'nmap')&&isa(RO.nmap,'vhandle.nmap');RO.projM=RO.nmap; 
+ if ~isKey(RO.projM,'MatDb');RO.projM('MatDb')=r2('MatDb');end
+ if ~isKey(RO.projM,'ProDb');RO.projM('ProDb')=r2('ProDb');end
+elseif ~isfield(RO,'projM');RO.projM=r2;
+end
 
 if RO.half==0
  %% #Two_rails -3
@@ -438,7 +451,7 @@ if RO.half==0
   model=feutil('addelt',model,'beam1', ...
      [1 4 151 151 ; 4 11 152 152;
       5 8 151 151 ; 8 12 152 152]);
-  model.pl(end+[1:2],:)=[
+  model.pl(end+(1:2),:)=[
      151 fe_mat('m_elastic','SI',1) 1e9 .3    1
      152 fe_mat('m_elastic','SI',1) 1e9 .3    1];
   il=[151 fe_mat('p_beam','SI',1) 1e-5  .1*[RO.kpr RO.kps]/1e9  .1*RO.kp/1e9
@@ -476,7 +489,7 @@ if RO.half==0
     r3=[4 11 -03;8 12 -03];r3(:,7)=RO.km;r3(:,10)=RO.km*.1;
     model=feutil('addelt',model,'celas',r3);
   end
-  RO.fix={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
+  RO.projM('NeedFix')={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6'};
  end
  
@@ -535,7 +548,7 @@ elseif RO.half==4
  model=fe_case(model,'fixdof','2D',[.02;.04;.06]);
  model=fe_case(model,'fixdof','zSleeper','z==-.1 -DOF 2 4 5 6');
  model=fe_case(model,'fixdof','BallastCompression','z==-.2 -DOF 1');
- model.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];
+ model.il=[301 fe_mat('p_beam','SI',1) 0 3.05e-5 3.05e-5 60/8000];error('revise')
  model.il=p_beam(model.il,'dbval 400 rectangle 1 .25');
  
  %model.Prepl={'name','MatId';'Rail',301;'Ballast',400}
@@ -565,10 +578,10 @@ else
  model.name='OneRail';
 end
 model=stack_set(model,'info','MeshParam',RO);
-if isfield(RO,'PreIl')
+if isfield(RO,'PreIl') % uses RO.projM('ProDb')
  model=feutil('setpro',model,RO);
 end
-if isfield(RO,'PrePl')
+if isfield(RO,'PrePl')% uses RO.projM('MatDb')
  model=feutil('setmat',model,RO);
 end
 
@@ -597,34 +610,63 @@ end
 function  [model,RO]=Case(varargin);
  %% #Case implement forwarding of sdtsys.stepmesh case handling
  [CAM,Cam]=comstr(varargin{1},1);model=varargin{2};RO=varargin{3};
- carg=4;
+ carg=4; if ~isfield(RO,'projM')&&isfield(RO,'nmap');RO.projM=RO.nmap;end
  for j1=1:length(RO.Case)
   [st1,RC]=sdtm.urnPar(RO.Case{j1},'{}{}');
   switch lower(st1)
   case 'rep' 
 %% #Case.Rep Full model with slice repetitions
-   dbstack; keyboard; 
+  [st1,RC]=sdtm.urnPar(RO.Case{j1},'{}{ncell%g,nb_slices%g,fixEnd%g}');
+  RC=sdth.sfield('rename;',RC,{'ncell','nb_slices'});
   %% Build track model in mt
- ms=model; mt=model;
- for j1=1:RO.ncell(1);
-  mo1.Node(:,5)=mo1.Node(:,5)+.6;
-  mt=feutil('addtest-merge-noori;',mo1,mt);
- end
+ ms=model;
+ RP=stack_get(ms,'info','MeshParam','g');RP=sdth.sfield('addmissing',RP,RC);
+ mt=feutil(sprintf('repeatsel %i .6 0 0',RC.nb_slices),ms);
  mt=feutil('joinall',mt);
  mt.Elt=feutilb('SeparatebyProp',mt.Elt);
 
- if isfield(RO,'fix');
-    model=fe_case(model,RO.fix{:});
+ if isKey(RO.projM,'NeedFix'); RO.fix=RO.projM('NeedFix');
+    %mt=fe_case(model,RO.fix{:});
     mt=fe_case(mt,RO.fix{:});
  end
- mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*RO.ncell+.3));
+ if isfield(RP,'fixEnd')
+  mt=fe_case(mt,'fixdof','ends',sprintf('x==-.3|x==%g',.6*nb_slices+.3));
+ end
+ mt=stack_set(mt,'info','MeshParam',RP);
+ model=mt;
+
  case {'cyc','per'}
 %% #Case.per #Case.cyc apply periodicity condition
   model=fe_cyclic('build -1 .6 0 0;',model);
 
   case 'track' % combination of superelements
  dbstack; keyboard;
-      otherwise
+  case 'prrline' 
+  %% #Case.prrline add rail surface reference line
+  pro=feutil('getpro 301 -struct',mt);
+  if isfield(pro,'I1') % beam
+    n1=sortrows(feutil('getnode proid 301',mt),[6 5]);
+    n2=n1(n1(:,6)<0,:);  % should allow curved rails
+    if ~isempty(n2)
+     el1=[n2(1:end-1,1) n2(2:end,1)];el1(:,3:4)=399;
+     mt=feutil('addelt',mt,'bar1',el1);
+    end
+    n2=n1(n1(:,6)>0,:); 
+    if ~isempty(n2)
+     el1=[n2(1:end-1,1) n2(2:end,1)];el1(:,3:4)=399;
+     mt=feutil('addelt',mt,'bar1',el1);
+    end
+    mt=feutil('setmat',mt,'dyn_mesh(matdb{399,prrLine})');
+    mt=feutil('setpro',mt,'d_rail(nmap.ProDb.prrLine)');
+  end
+  model=mt;
+  case 'vehicle' 
+  %% #Case.vehicle add vehicle
+  RV=RO.projM('Vehicle');
+  mt=dyn_mesh('vehicleadd MovingLoad',mt,RV);
+  model=mt;
+
+  otherwise
           keyboard; 
   end
  end

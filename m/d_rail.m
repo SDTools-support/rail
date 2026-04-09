@@ -4,6 +4,7 @@ function [out,out1]=d_rail(varargin)
 %
 % <a href="matlab:d_rail('nmap')">List configurations (nmap)</a>
 % <a href="matlab:d_rail('MeshDb')">Mesh database</a>
+% <a href="matlab:d_rail('tuto')">Tutorial</a> <a href="matlab:sdtweb('_taglist','d_rail')">TagList</a>
 
 %  Etienne Balmes, Guillaume Vermot des Roches
 % Copyright SDTools & SNCF I&R, 2019-2025
@@ -23,19 +24,15 @@ if comstr(Cam,'dv1')
 %% Step init : initialize interface
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
-PA=dyn_ui('paramvh');
-PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
+PA=dyn_ui('paramvh');projM=PA.nmap;
+projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
-RA=struct('ArmType','MainMono'); % standard monoblock parameters
-RS=struct('SubType','Ballast'); % just ballast
-RR=struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6]); % default reduction parameters
-SliceCfg={'Slice',struct('Arm',RA,'Sub',RS,'half',1);
-          'Reduce',RR}; % format the SliceCfg for a half track
 
 RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper');
-RA.value(end+1,1:2)={'Reduce',RR};SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
+RA.value(end+1,1:2)={'Reduce',struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6])};
+SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
       
 % define track parameters and place sensors
 TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}});
@@ -45,32 +42,54 @@ Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
 
-dyn_solve('RangeLoop -reset',Range); % build the model and store in the interface
+dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
 
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
 % sdtweb _bp fe_coor lrik
 % iicom ch[23 69]
 
-%% Step Impact : Transient impact
-% d_rail('tutoDvBeam -s{init,mesh} -reset')
-% Define the simulation to be done on the track model
-if 1==2
+%% Step Modal : analyze frequency response
 
 T30=TrackCfg;T30.nb_slices=30;
 dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
+PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 350 -1000], ...
+'freq','@ll{10,3000,1000}','cf',2,'ci',3,'name','Fz>Az','time',{{'a'}}, ...
+ 'po',2);
 dyn_solve('eig')
 
-SimuCfg={'Impact',struct('xload',4,'weight',10e-3);... % 10 kg at x=7.2m
-         'Time',struct('tf',.2,'dt',1e-4)}; % impact simulation
-R2=struct('SimuCfg',{{'S1',SimuCfg}}); % format the range
-sdtweb _bp fe_time iternewton
-clear SkipMkl%SkipMkl=1;
-dyn_solve('RangeLoop -reset',R2); % build the model and store in the interface
-
-dyn_post('PostRailDef')
-c3=iiplot(3,';');dyn_post('PostSpaceTime');c3.ua.YFcn='r3=(abs(r3));';iicom ylin
+if sdtweb('_TutoNeed','figgen')
+    % xxx prepare documentation pages
+ comgui('imwrite',1,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeamxxx.png')
 end
+
+
+%% Step Impact : Transient impact
+% d_rail('tutoDvBeam -s{init,mesh} -reset')
+% Define the simulation to be done on the track model
+
+% sdtweb dyn_solve time
+SimuCfg={'Impact',struct('xload',4,'weight',10e-3);... % 10 kg at x=7.2m
+         'Time',struct('tf',.01,'dt',1e-4,'sig','cnimpact:CosHan{1,1k,5}')
+         'dyn_post(PostSpaceTime)',struct('ci',3,'name','1kHz')}; % impact simulation
+R2=struct('SimuCfg',{{'S1',SimuCfg}}); % format the range
+%sdtweb _bp fe_time iternewton % clear SkipMkl%SkipMkl=1;
+dyn_solve('RangeLoop -reset -save0',R2); % build the model and store in the interface
+% verify vg close to 1600 m/s 
+% vg=ginput(2);vg=diff(vg);vg=vg(1)/vg(2)
+
+% same at lower frequencies
+SimuCfg={'Impact',struct('xload',4,'weight',10e-3);... % 10 kg at x=7.2m
+         'Time',struct('tf',.2,'dt',1e-4,'sig','cnimpact:CosHan{1,100,5}')
+         'dyn_post(PostSpaceTime)',struct('ci',3,'name','100Hz')}; % impact simulation
+R2=struct('SimuCfg',{{'S1',SimuCfg}}); % format the range
+dyn_solve('RangeLoop -reset -save0',R2); % build the model and store in the interface
+% verify vg close to 288 m/s 
+
+% dyn_post('PostRailDef')
+c3=iiplot(3,';');dyn_post('PostSpaceTime');c3.ua.YFcn='r3=log10(abs(r3));';
+c3.ua.YFcn='r3=real(r3)/max(r3(:));';iiplot(c3);iicom(';ylin;');clim([-.01 .01]);ylim([0 .02])
+
 
 %% Step TrackWheel : model with track and wheel
 l1={'Vehicle',struct('VehType','UIC60_Sections.mat#Wheel','v0',80, ...
@@ -146,18 +165,37 @@ RV.os={'@axes',{'colormap',ii_plp('colormapband',parula(5))}, ...
 C2=fe_homo('DfpViewCurve',perResp,RV); % Build curve model for q(omega,k)
 
 %% step dvTimeImpact : time impact using dynavoie
+% sdtu.grep('-R -i','formalGeo','@dynavoie\m\*.m')
+% sdtu.grep('-R -i','impact','@dynavoie\tex\*.tex')
 
-PreExp={'MeshCfg{railu(BeamMass{half0,lc.1}),{rep{nb_slice15},prr}})}'};
+PreExp={'MeshCfg{railu(BeamMass{half0,lc.1}),{rep{nb_slices15},prrline}}'};
 RT=struct('nmap',vhandle.nmap);RT.nmap('CurExp')=PreExp;
-sdtm.range(RT);mo1b=RT.nmap('CurModel');%d2=mo2.nmap('CurTime');
+RT.nmap('Vehicle')=struct('Type','MovingLoad','x0',5,'xf',5,'v0',0);
+RT.nmap('Impact')='Impact{xload 4.2,weigth10m,tlen.1}';
+RT.nmap('SimuCfg')='SimuCfg{2,1e-4,sigCosHan}';
+sdtm.range(RT);mt=RT.nmap('CurModel');%d2=mo2.nmap('CurTime');
+% mt=dyn_mesh('vehicleadd MovingLoad',mt,)
+
+RT.nmap('CurExp')={'MeshCfg{railu(CurModel),{Impact}}';'SimuCfg';'RunCfg{time,feplot}'};
+sdtm.range(RT);
+
+PA=dyn_ui('paramvh');PA.mt=mt;
+l1={'Impact',struct('xload',4.2,'weight',10e-3,'tlen',.1);... % impact at x=7.2m
+    'Time',struct('tf',2,'dt',1e-4)}; % 2s simu
+Range=struct('TrackCfg',{{'T1',mt}},... % give previous model as entry
+             'SimuCfg',{{'S1',l1}}); 
+dyn_solve('RangeLoop',Range); % compute
+dyn_post('PostRecept'); % display receptance of the track
+dyn_post('ViewRestAll'); % display deformation animation
+
+
 
 if 1==2
-l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
+ l1={'Vehicle',struct('VehType','Axle','v0',80,'x0','$x_start-2','xf','$x_start-1');... % define vehicle speed
    'Time',struct('NeedV',1,'NeedA',1,'dt',1e-4)}; % time integration par.
-Range=struct('SimuCfg',{{'S1',l1}});
-dyn_solve('RangeLoop',Range);
-
-dyn_post('ViewRestAll -light'); % display deformation animation
+ Range=struct('SimuCfg',{{'S1',l1}});
+ dyn_solve('RangeLoop',Range);
+ dyn_post('ViewRestAll -light'); % display deformation animation
 end
 
 
