@@ -28,6 +28,8 @@ PA=dyn_ui('paramvh');projM=PA.nmap;
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
+% keywords{var{ms,mt},fcn{dyn_mesh.Rail}}
+
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
 RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper');
@@ -50,6 +52,7 @@ dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the i
 % iicom ch[23 69]
 
 %% Step Modal : analyze frequency response
+% keywords{var{ms,mt},fcn{dyn_solve.Eig}}
 
 T30=TrackCfg;T30.nb_slices=30;
 dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
@@ -59,8 +62,8 @@ PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 350 -1000], ...
 dyn_solve('eig')
 
 if sdtweb('_TutoNeed','figgen')
-    % xxx prepare documentation pages
- comgui('imwrite',1,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeamxxx.png')
+ % xxx prepare documentation pages
+ comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Track.png')
 end
 
 
@@ -2398,22 +2401,20 @@ elseif comstr(Cam,'pcin');
   %   end
 elseif comstr(Cam,'idx')
  %% manual indexing operations
- sdtu.idx.pile('@sncf_ir/tex/*.tex');
- sdtu.idx.pile('@sdt/help/Dynavoie/*.html');
- sdtu.idx.pile('@dynavoie/*/*.m');
- sdtu.idx.pile('@sdt/help/rail/*.html');
- tagI=sdth.urn('tagI');
- tagI('(^dv.*|^dyn.*)')
+ if sdtm.Contains(Cam,'verb'); st1={'{verb}'};else;st1={};end
+ sdtu.idx.pile(st1{:},'@sncf_ir/tex/*.tex');
+ sdtu.idx.pile(st1{:},'@sdt/help/Dynavoie/*.html');
+ sdtu.idx.pile(st1{:},'@dynavoie/*/*.m');
+ sdtu.idx.pile(st1{:},'@dynavoie/tex/*.tex');
+ sdtu.idx.pile(st1{:},'@sdt/help/rail/*.html');
+ sdtweb('_link','tagI=sdth.urn(''tagI''); tagI(''(^dv.*|^dyn.*)'')');
 
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);
 elseif comstr(Cam,'keywords');
   %% #keywords -2
   tagI=sdth.urn('tagI');
-  if ~isKey(tagI.tagM,'d_ui')&&exist('dyn_ui','file')
-   li={'@sdt/help/dynavoie/*.html';'@dynavoie/tex/*.tex'};
-   sdtu.idx.pile(struct('do','now','ForceIndex',2),li);
-  end
+  if ~isKey(tagI.tagM,'dyn_ui')&&exist('dyn_ui','file');d_rail('idx');end
   sdtu.idx.keywords(dbstack,[],varargin{2:end});
 elseif ~isempty(CAM); error('%s',CAM);
 end
