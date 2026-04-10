@@ -28,7 +28,7 @@ PA=dyn_ui('paramvh');projM=PA.nmap;
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
-% keywords{var{ms,mt},fcn{dyn_mesh.Rail}}
+% keywords{var{PA.ms>ms,PA.mt>mt},fcn{dyn_mesh.Slice}}
 
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
@@ -45,6 +45,15 @@ Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
 
 dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
+
+if sdtweb('_TutoNeed','figgen')
+ cf=feplot(2,';');feplot(PA.ms);fecom showfipro
+ comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Slice.png')
+ cf=feplot(2,';');feplot(PA.mt);fecom showfipro
+ comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Track.png')
+ % xxx prepare documentation pages
+end
+
 
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
@@ -111,6 +120,16 @@ Range=struct('SimuCfg',{{'S1',l1}});
 dyn_solve('RangeLoop',Range);
 
 dyn_post('ViewRestAll -light'); % display deformation animation
+
+
+%% Step Admin : end step for tutorial administration
+
+if sdtweb('_TutoNeed','figgen')
+ %% d_visco('TutoCompPly -s{admin} -reset ')
+ cd(sdtu.f.safe('@tempdir/sdtdemos/plots'))
+ ls('d_rail_*png')
+ sdtu.f.copyIfChanged(sdtu.f.safe('@tempdir/sdtdemos/plots/d_rail_*png'),sdtu.f.safe('@dynavoie/tex/plots'))
+end
 
 
 %% EndTuto
@@ -2400,7 +2419,7 @@ elseif comstr(Cam,'pcin');
   %   else;out=railu.pcin(cinM,CAM(5:end));
   %   end
 elseif comstr(Cam,'idx')
- %% manual indexing operations
+ %% #idx manual indexing operations  d_rail('idxverb')
  if sdtm.Contains(Cam,'verb'); st1={'{verb}'};else;st1={};end
  sdtu.idx.pile(st1{:},'@sncf_ir/tex/*.tex');
  sdtu.idx.pile(st1{:},'@sdt/help/Dynavoie/*.html');
