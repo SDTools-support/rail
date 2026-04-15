@@ -28,24 +28,28 @@ PA=dyn_ui('paramvh');projM=PA.nmap;
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
-% keywords{var{PA.ms>ms,PA.mt>mt},fcn{dyn_mesh.Slice}}
+% keywords{var{PA.ms>ms,PA.mt>mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
+% xxxgm2eb Where is the documentation associated to this tuto ?
 
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
-RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper');
+% Define Slice parameters
+RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper'); % xxxgm2eb miss Convert in SliceCfg doc
 RA.value(end+1,1:2)={'Reduce',struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6])};
 SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
       
-% define track parameters and place sensors
+% Define track Parameters and place sensors
 TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}});
 TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
 Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
+% xxxgm2eb : in doc sdtweb dv_range => Range=dyn_solve('Range',Range); => useful ?
 
 dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
 
+% xxxgm2eb : PA.ms and PA.mt not used outside of figgen ?
 if sdtweb('_TutoNeed','figgen')
  cf=feplot(2,';');feplot(PA.ms);fecom showfipro
  comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Slice.png')
