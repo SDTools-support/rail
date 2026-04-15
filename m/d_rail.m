@@ -43,11 +43,14 @@ TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
 Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
+% xxx RunCfg{feplot}
+
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
 % xxxgm2eb : in doc sdtweb dv_range => Range=dyn_solve('Range',Range); => useful ?
 % sdtwe dyn_mesh 
 
 dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
+PA.ms % current slice
 
 % xxxgm2eb : PA.ms and PA.mt not used outside of figgen ?
 if sdtweb('_TutoNeed','figgen')
