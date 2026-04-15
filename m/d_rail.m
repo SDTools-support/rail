@@ -24,12 +24,11 @@ if comstr(Cam,'dv1')
 %% Step init : initialize interface
 wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
 dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
-PA=dyn_ui('paramvh');projM=PA.nmap;
+PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
 % keywords{var{PA.ms>ms,PA.mt>mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
-% xxxgm2eb Where is the documentation associated to this tuto ?
 
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
@@ -46,6 +45,7 @@ Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
 % Range.SimuCfg={'S1',SimuCfg}; % format the range
 % xxxgm2eb : in doc sdtweb dv_range => Range=dyn_solve('Range',Range); => useful ?
+% sdtwe dyn_mesh 
 
 dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
 
@@ -58,11 +58,28 @@ if sdtweb('_TutoNeed','figgen')
  % xxx prepare documentation pages
 end
 
+%% step disp : analyze dispersion diagram 
+% keywords{var{},fcn{fe_homo.DftDisp}}
+
+PA=dyn_ui('paramvh');projM=PA.nmap;
+if ~isfield(PA,'ms')||isempty(PA.ms); d_rail('tutoDvBeam -s{init,mesh}');end
+
+Range=struct('ncx',1./linspace(.05,.49,50));
+%Range=struct('kcx',linspace(.05,.49,50)'*pi);
+RO=struct('Range',Range,'fmax',3e3,'ModalFilter',20, ...
+    'EigOpt',[2 40 -1e5],'projM',projM,'UseLong',1);
+projM('fe_homo.dftDisp')=RO; % store option
+RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
+    'cios',{{'@line',{'marker','.','linestyle','none'}}},...
+    'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3);
+projM('fe_homo.dftInitSelDef')=RD;
+fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struct('projM',projM))
+
+
 
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
 % sdtweb _bp fe_coor lrik
-% iicom ch[23 69]
 
 %% Step Modal : analyze frequency response
 % keywords{var{ms,mt},fcn{dyn_solve.Eig}}
@@ -2310,7 +2327,21 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'BallastA',[401 fe_mat('p_spring','SI',1) 50e6 0 0 0.05 0];
 
     'PadA', [501 fe_mat('p_spring','SI',1) 300e6 0 0 0.1 0];
-     };
+    % Beams J I1 I2 A    hyp J=I1+I2
+    % from DB_sleeper2 
+   '36E1beam',[303 fe_mat('p_beam','SI',1) 1.1622e-05 1.0121e-5 1.501e-6 0.004619]; 
+   '36E2beam',[304 fe_mat('p_beam','SI',1) 1.2228e-05 1.0201e-5 2.027e-6 0.004661]; 
+   '40E1beam',[305 fe_mat('p_beam','SI',1) 1.6290e-05 1.3669e-5 2.621e-6 0.005217]; 
+   '46E1beam',[306 fe_mat('p_beam','SI',1) 1.9393e-05 1.6411e-5 2.982e-6 0.005882]; 
+   '46E2beam',[307 fe_mat('p_beam','SI',1) 1.9720e-05 1.6427e-5 3.293e-6 0.005894]; 
+   '49E2beam',[308 fe_mat('p_beam','SI',1) 2.1147e-05 1.7963e-5 3.184e-6 0.006255]; 
+   '50E1beam',[309 fe_mat('p_beam','SI',1) 2.3528e-05 1.9878e-5 3.650e-6 0.006416]; 
+   '50E6beam',[302 fe_mat('p_beam','SI',1) 2.4146e-05 2.0178e-5 3.968e-6 0.006484];%UIC50
+   '52E1beam',[310 fe_mat('p_beam','SI',1) 2.4051e-05 1.9709e-5 4.342e-6 0.006643];
+   '54E1beam',[311 fe_mat('p_beam','SI',1) 2.6571e-05 2.3379e-5 3.192e-6 0.006977];
+   '55E1beam',[312 fe_mat('p_beam','SI',1) 2.5688e-05 2.1504e-5 4.184e-6 0.007137];
+   '60E1beam',[301 fe_mat('p_beam','SI',1) 3.5506e-05 3.0383e-5 5.123e-6 0.00767]; %UIC60
+    };
 r2=vhandle.nmap(li,'Map:MatDb');
 nmap('ProDb')=r2;
 

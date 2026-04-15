@@ -328,9 +328,7 @@ if ischar(RO);
    if isKey(nmap,RO);RA=nmap(RO);end
   end
 end
-if isfield(RO,'Arm')
-     RA=RO.Arm;
-end
+if isfield(RO,'ArmType');RA=RO;end
 if isfield(m_rail,'Elt')
 elseif isfield(RA,'lar1')
      % dynavoie coarse rail model
