@@ -175,9 +175,10 @@ RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
     'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3);
 projM('fe_homo.dftInitSelDef')=RD;
 
-mo1=d_rail('meshbeamMass{half0,cyc,lc.1}');
-fe_homo('dftDisp',mo1,RO);
-fe_homo('dfpInitSelDef',struct('projM',projM))
+RB=struct('projM',projM);
+mo1=d_rail('meshbeamMass{half0,cyc,lc.1}',RB);projM('CurModel')=mo1;
+projM('CurExp')={'RunCfg{fe_homo(dftDisp),fe_homo(dfpInitSelDef)}'};
+sdtm.range(struct('nmap',projM))
 
 % railu.MeshSlice('{SleeperM450beam,railUIC60beam,padSpring,SubSpring}')
 % xxx gaetan profiles 
@@ -199,9 +200,14 @@ mo1=fe_case(mo1,'DofLoad','In',struct('def',eye(2),'DOF',[1.03;1.02]));
 PreSens={'tlab','RailL:vz','RailR:vz','SleeperL:vz'
          'SensId',1.03,5.03,4.03}';
 mo1=fe_case(mo1,'SensDofInFEM','Out',PreSens);
-mo1=stack_set(mo1,'info','EigOpt',[2 30]);
+mo1=stack_set(mo1,'info','EigOpt',[2 30]);projM('CurModel')=mo1;
 
-RD=struct('Range',Range,'fmax',3e3,'ModalFilter',30);
+
+RD=struct('Range',Range,'fmax',3e3,'ModalFilter',30,'FRF',1,'projM',projM,'UseLong',1);
+% cingui('paramedit -doclean2','prero.fe_homo.dftDisp',{RD,''})
+projM('fe_homo.dftDisp')=RD; % store option
+sdtm.range(struct('nmap',projM))
+
 [d2,h2,perResp]=fe_homo('dftDisp-frf',mo1,RD);
 RD=struct('mno',(0:10)','cf',102,'ci',112,'ViewHist',h2,'ktype','kc','fmax',3e3);
 fe_homo('dfpInitSelDef',mo1,d2,RD);fecom('ShowFiCEvalz')
@@ -1373,9 +1379,13 @@ elseif comstr(Cam,'beammass')
  %% #BeamMass (was Pinault) -2
 
 [model,RO]=railu.Mesh(varargin{:});
+if isfield(RO,'fix');
+    sdtw('_ewt','should be in railu.Case')
+    model=fe_case(model,RO.fix{:});
+end
 
-if ~RO.cyc; RO.Case={'rep'};
-else; RO.Case={'cyc'};
+if ~RO.cyc; RO.preCase={'rep'};
+else; RO.preCase{end+1,1}='fe_cyclic(build -1 .6 0 0)';
 end
 model=railu.Case('case',model,RO);
 if ~RO.cyc&&RO.ncell(1)>0
@@ -1446,10 +1456,6 @@ if ~RO.cyc&&RO.ncell(1)>0
   %mt.Node(:,5)=mt.Node(:,5)-1;
  end
   model=mt; % mt
-end
-if isfield(RO,'fix');
-    sdtw('_ewt','should be in railu.Case')
-    model=fe_case(model,RO.fix{:});
 end
 
 out=model; % ms (slice)

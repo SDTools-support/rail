@@ -51,44 +51,44 @@ function   out=asUo(r1);
  end
  if nargout==0;sdtm.toString(out);clear out;end
 end
-function cinM=pcin(varargin)
+function out=pcin(varargin)
  %% #pcin : add cinM nodes
  CAM='pcin';
- li={'key','ToolTip','DoOpt';
-  'railu.Mesh.BeamMass','beam mass track slice model',[ ...
-   'ncell(15#%g#"number of sleepers")' ...
-   'half(#31#"1 one rail, 0 symmetric") '... %xxx_HP check
-   'gaug(1.575#%g#"gaug") '...
-   'Ltr(2.32#%g#"width") '...
-   'kp(300e6#%g#"pad stiffness") '...
-   'kb(20e7#%g#"ballast stiffness") '... % value of Arlaud 2016
-   'kpr(1e6#%g#"pad torsion stiffness") '...
-   'kps(1e6#%g#"pad transverse torsion stiffness") '...
-   'rand(0#%g#"ballast dispersion") '...
-   'randp(0#%g#"pad dispersion") '...
-   'simpack(0#%g#"use simpack compatible elements") '...
-   'Ftr(0#3#" renumber for simpack") '...
-   'eta(0#31#"use eta") '...
-   'cyc(0#31#"apply periodicity") '...
-   'ms(130#%g#"sleeper mass")' ...
-   'unit(SI#%s#"unit system")' ...
-   'lc(.15#%g#"refine length")' ...
-   'pk(75e3#%g#"pad stiffness")']  
-   'dyn_mesh.arm','spleeper/rail/pad',{'key';'Slice.ArmP.ArmType';'Slice.ArmP.RailType'
+ preRO={'key','ToolTip','DoOpt';
+  'railu.Mesh.BeamMass','beam mass track slice model',{'DoOpt'
+   'ncell(15#%g#"number of sleepers")' 
+   'half(#31#"1 one rail, 0 symmetric") ' %xxx_HP check
+   'gaug(1.575#%g#"gaug") '
+   'Ltr(2.32#%g#"width") '
+   'kp(300e6#%g#"pad stiffness") '
+   'kb(20e7#%g#"ballast stiffness") ' % value of Arlaud 2016
+   'kpr(1e6#%g#"pad torsion stiffness") '
+   'kps(1e6#%g#"pad transverse torsion stiffness") '
+   'rand(0#%g#"ballast dispersion") '
+   'randp(0#%g#"pad dispersion") '
+   'simpack(0#%g#"use simpack compatible elements") '
+   'Ftr(0#3#" renumber for simpack") '
+   'eta(0#31#"use eta") '
+   'cyc(0#31#"apply periodicity") '
+   'ms(130#%g#"sleeper mass")' 
+   'unit(SI#%s#"unit system")' 
+   'lc(.15#%g#"refine length")' 
+   'pk(75e3#%g#"pad stiffness")';'projM';'preCase'}  
+  'dyn_mesh.arm','spleeper/rail/pad',{'key';'Slice.ArmP.ArmType';'Slice.ArmP.RailType'
          'Slice.ArmP.PadType';'Slice.ArmP.SleeperType'
    }
    };
-  sdtm.pcin(['prero',comstr(CAM,5)],li);
 
  r1=sdtu.f.ppath;carg=1;
  if nargin>0&&isa(varargin{1},'vhandle.nmap');cinM=varargin{1};carg=2;
  else; cinM=sdtm.pcin;
  end
  if ~isKey(cinM,'prero.railu.Range')
-    DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab');
+    DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab','Methods');
     sdtm.pcin(cinM,'append',DefBut);
  end
- if nargout>0; out=cinM;else; sdtm.pedit('{disp}',li);end
+ Nargout=nargout;
+ sdtm.pInitPre; % augment cinM/osM using preRO/preOs
 end
 
 function mt=addVehicle(mt,mv,RO,RunOpt)
@@ -409,8 +409,7 @@ if carg<=nargin; RO=varargin{carg};carg=carg+1;
   end
 else; RO=struct;
 end
-[RO,st,CAM]=cingui('paramedit -DoClean',DoOpt,{RO,CAM});Cam=lower(CAM);
-RO.isFullModel=1;
+[RO,st,CAM]=cingui('paramedit -DoClean2',DoOpt,{RO,CAM});Cam=lower(CAM);
  if RO.cyc; RO.ncell=1;
  elseif length(RO.ncell)<2;RO.ncell(2)=0;
  end
@@ -421,10 +420,10 @@ RO.isFullModel=1;
 % feutil('setpro',ms,'d_rail(nmap.ProDb.prrLine)');
 r2=d_rail('nmap');
 if isfield(RO,'nmap')&&isa(RO.nmap,'vhandle.nmap');RO.projM=RO.nmap; 
- if ~isKey(RO.projM,'MatDb');RO.projM('MatDb')=r2('MatDb');end
- if ~isKey(RO.projM,'ProDb');RO.projM('ProDb')=r2('ProDb');end
 elseif ~isfield(RO,'projM');RO.projM=r2;
 end
+if ~isKey(RO.projM,'MatDb');RO.projM('MatDb')=r2('MatDb');end
+if ~isKey(RO.projM,'ProDb');RO.projM('ProDb')=r2('ProDb');end
 
 if RO.half==0
  %% #Two_rails -3
@@ -455,7 +454,7 @@ if RO.half==0
   il=[151 fe_mat('p_beam','SI',1) 1e-5  .1*[RO.kpr RO.kps]/1e9  .1*RO.kp/1e9
       152 fe_mat('p_beam','SI',1) 1e-5  .1*RO.kpr/1e9*[.01 .01] .1*RO.kb/1e9];
   model=feutil('setpro',model,il);
-  RO.fix={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
+  RO.preCase={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6',...
      'FixDof','clamped bottom','z==-.2'};
  else
@@ -487,7 +486,7 @@ if RO.half==0
     r3=[4 11 -03;8 12 -03];r3(:,7)=RO.km;r3(:,10)=RO.km*.1;
     model=feutil('addelt',model,'celas',r3);
   end
-  RO.projM('NeedFix')={'fixdof','2DRail','matid 301 -DOF 1 2 4 6', ...
+  RO.preCase(end+(1:2),1:3)={'fixdof','2DRail','matid 301 -DOF 1 2 4 6';
      'FixDof','2dSleeper','matid 201 -DOF 1 2 5 6'};
  end
  
@@ -609,12 +608,12 @@ function  [model,RO]=Case(varargin);
  %% #Case implement forwarding of sdtsys.stepmesh case handling
  [CAM,Cam]=comstr(varargin{1},1);model=varargin{2};RO=varargin{3};
  carg=4; if ~isfield(RO,'projM')&&isfield(RO,'nmap');RO.projM=RO.nmap;end
- for j1=1:length(RO.Case)
-  [st1,RC]=sdtm.urnPar(RO.Case{j1},'{}{}');
+ for j1=1:length(RO.preCase)
+  [st1,RC]=sdtm.urnPar(RO.preCase{j1},'{}{}');
   switch lower(st1)
   case 'rep' 
 %% #Case.Rep Full model with slice repetitions
-  [st1,RC]=sdtm.urnPar(RO.Case{j1},'{}{ncell%g,nb_slices%g,fixEnd%g}');
+  [st1,RC]=sdtm.urnPar(RO.preCase{j1},'{}{ncell%g,nb_slices%g,fixEnd%g}');
   RC=sdth.sfield('rename;',RC,{'ncell','nb_slices'});
   %% Build track model in mt
  ms=model;
@@ -633,9 +632,6 @@ function  [model,RO]=Case(varargin);
  mt=stack_set(mt,'info','MeshParam',RP);
  model=mt;
 
- case {'cyc','per'}
-%% #Case.per #Case.cyc apply periodicity condition
-  model=fe_cyclic('build -1 .6 0 0;',model);
 
   case 'track' % combination of superelements
  dbstack; keyboard;
@@ -664,8 +660,13 @@ function  [model,RO]=Case(varargin);
   mt=dyn_mesh('vehicleadd MovingLoad',mt,RV);
   model=mt;
 
-  otherwise
-          keyboard; 
+ otherwise
+  if exist(st1,'file')
+   %% #Case.per #Case.cyc apply periodicity condition
+   model=feval(st1,RC.Other{1},model,RC.Other{2:end});
+  else % attempt to use fe_case
+    model=fe_case(model,RO.preCase{j1,1:3});
+  end
   end
  end
 
