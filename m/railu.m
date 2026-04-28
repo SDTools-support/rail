@@ -87,8 +87,8 @@ function out=pcin(varargin)
     DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab','Methods');
     sdtm.pcin(cinM,'append',DefBut);
  end
- Nargout=nargout;
- sdtm.pInitPre; % augment cinM/osM using preRO/preOs
+  % augment cinM/osM using preRO/preOs
+  sdtm.pInitPre([nargout exist('preRO','var') exist('preOS','var')]);
 end
 
 function mt=addVehicle(mt,mv,RO,RunOpt)

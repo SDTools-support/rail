@@ -14887,6 +14887,7 @@ cntc : interface between SDT and CONTACT
     cntc.setwheelsetvelocity(''); % wheelsetVel
     cntc.setwheelsetflexibility('');%wheelsetFlex
 
+    % mix of geometric parameters and observations 
     r2=sdth.sfield('addmissing',sdtu.ui.EditT2struct(LI.Track), ...
      sdtu.ui.EditT2struct(LI.wheelsetPos));
     r2=sdth.sfield('addmissing',r2,sdtu.ui.EditT2struct(LI.wheelsetVel));
@@ -14907,12 +14908,16 @@ cntc : interface between SDT and CONTACT
      elseif length(r4.Other)~=4;
       fprintf('Not valid %s\n',sdtm.toString(r2.(st{j1})))
      else
-      %% tooltip{tlab,TeX,state,LI position}
-      if isempty(colM);colM=sdtu.ivec('ColList',st(j1));end
+      %% r2.(st{j1}) ToolTip{tlab,TeX,state,LI position}
+      % 'dyrail(#%g#"Offset {Mr_tr:y,y_{dr},state,LI.Traj}")'
+      if isempty(colM);
+          colM=sdtu.ivec('ColList',st(j1));
+      end
       r3.tlab=r4.Other{1};r3.Tex=r4.Other{2};
       r3.param=r4.Other{3};r3.ipos=r4.Other{4};
       r2.(st{j1})=r3;
-      icol=colM(st{j1});colM.prop(icol)=r3;
+      % don't propagate value to colM since will be preemptive on extract
+      icol=colM(st{j1});colM.prop(icol)=sdtm.rmfield(r3,{'value','format','SetFcn'});
       [i1,i2]=ismember(st{j1},NL.cnllab);
       if strcmpi(r4.Other{3},'param');continue;end
      end
@@ -17305,7 +17310,7 @@ nlAstable : generate tables for tex
        cntc.set(RT.Model);
       else
        %% Initialize model and Traj from info in caller
-       LI.ProjectWd=RT.ProjectWd;
+       % LI.ProjectWd=RT.ProjectWd; obsolete should use 'SliceWd' map entry
        LI.flags=RT.flags;
        cntc.initializeflags; %initialize Global_flags
        cntc.setflags;
