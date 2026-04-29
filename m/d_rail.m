@@ -22,8 +22,8 @@ if comstr(Cam,'script');[CAM,Cam]=comstr(CAM,7);
 if comstr(Cam,'dv1')
 %% #TutoDvbeam: d_rail('ScriptDv1'); 
 %% Step init : initialize interface
-wd=fullfile(sdtdef('tempdir'),'TutoBallast'); % change the working directory if necessary
-dyn_ui('SetWD',wd);ofact('mklserv_utils -silent');
+dyn_ui('SetWD','@tempdir/TutoBallast'); % change the working directory if necessary
+ofact('mklserv_utils -silent');
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
@@ -36,20 +36,20 @@ sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper'); % xxxgm2eb miss Convert in SliceCfg doc
 RA.value(end+1,1:2)={'Reduce',struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6])};
 SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
+projM('S1')=SliceCfg;
       
 % Define track Parameters and place sensors
 TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}});
 TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
+projM('T1')=TrackCfg;
+projM('CurExp')={'SliceCfg{S1}';'TrackCfg{T1}';'RunCfg{feplot}'}; % save current experiment
 Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
              'TrackCfg',{{'T1',TrackCfg}});
-% xxx RunCfg{feplot}
+% xxx should be sdtm.range call
+%dyn_solve('RangeLoop -reset -save1',Range); 
+dyn_solve('RangeLoop -save0',Range); 
 
-% Range.SimuCfg={'S1',SimuCfg}; % format the range
-% xxxgm2eb : in doc sdtweb dv_range => Range=dyn_solve('Range',Range); => useful ?
-% sdtwe dyn_mesh 
-
-dyn_solve('RangeLoop -reset -save0',Range); % build the model and store in the interface
 PA.ms % current slice
 
 % xxxgm2eb : PA.ms and PA.mt not used outside of figgen ?
@@ -79,7 +79,6 @@ projM('fe_homo.dftInitSelDef')=RD;
 fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struct('projM',projM))
 
 
-
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
 % sdtweb _bp fe_coor lrik
@@ -87,9 +86,9 @@ fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struc
 %% Step Modal : analyze frequency response
 % keywords{var{ms,mt},fcn{dyn_solve.Eig}}
 
-T30=TrackCfg;T30.nb_slices=30;
+T30=TrackCfg;T30.nb_slices=30;T30.slice0s=9; T30.Sens={'prrLine:z';'prrLine:y'};
 dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
-PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 350 -1000], ...
+PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 400 -1000], ...
 'freq','@ll{10,3000,1000}','cf',2,'ci',3,'name','Fz>Az','time',{{'a'}}, ...
  'po',2);
 dyn_solve('eig')
@@ -97,6 +96,18 @@ dyn_solve('eig')
 if sdtweb('_TutoNeed','figgen')
  % xxx prepare documentation pages
  comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Track.png')
+ C1=sdtm.rmfield(ci.Stack{'Fz>Az'},'Ylab');
+ C1.Y=reshape(C1.Y,size(C1.Y,1),size(C1.Y,2)/2,2*size(C1.Y,3));
+ C1.X={C1.X{1},strrep(C1.X{2}(1:size(C1.Y,2),1),':z',''),{'z<Z';'y<z';'z<y';'y<y'}};
+ C1.Xlab(2:3)={'Pos','IO'};
+ C1.name='FX';iicom(ci,'curveinit',C1);
+ nameM=PA.mt.nmap('Map:Nodes');n1=feutil('getnode nodeid',PA.mt,cell2mat(nameM(C1.X{2})));
+ C1.X{2}=n1(:,5);
+ 
+ fe_homo('viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*real(Y)" scale semilogx')
+
+ figure(1);ch=1; cdm.pcolor(C1,struct('YFcn',@(Y)(real(Y(:,:,ch))./max(abs(Y(:,:,ch)),[],2)).'));  ii_plp('colormapband',parula(4));
+
 end
 
 
