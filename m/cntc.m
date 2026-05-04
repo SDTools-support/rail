@@ -14841,7 +14841,6 @@ cntc : interface between SDT and CONTACT
      NL.unl.rot=vhandle.nmap([NL.unl.X{2}(:,1), num2cell(1:size(NL.unl.X{2},1))'; ...
          i1]);
 
-    if isfield(LI,'Track')&&isempty(LI.Track.raily0)
      % offset in unl = [c]{q} + {unl0}
      NL.unl0={% geometric Gauge Ow position
       '0';'-cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
@@ -14853,18 +14852,10 @@ cntc : interface between SDT and CONTACT
       '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)';
       'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
       '0';'0';'0';'0';'0';'0'}; %Mcp_r
-    else
-     'old gauge point'
-     NL.unl0={ % geometric absolut Ow position
-      '0';'0';'0';'0';'0';'0'%Mw_gl   xxxgae initial position not true
-      '0';'0';'0';'0';'0';'0';%Mr_gl
-      '0';'0';'0';   '0'; '0';  '0'   % MwsL-ws
-
-      '0';'0';'0';'0';'0';'0';%Mtr_gl
-      '0';'cntc.leftCoef(LI)*(LI.wheelsetDim.fbdist/2-LI.wheelsetDim.fbpos)'
-      'LI.wheelsetDim.nomrad';'0';'0';'0'% Mw_ws
-      '0';'0';'0';'0';'0';'0'};%Mcp_r
-    end
+   
+     if ~(isfield(LI,'Track')&&isempty(LI.Track.raily0))
+      warning('Track not defined');
+     end
 
     NL.vnllab= {
      'vs';'vywhl';'vzwhl';   'vrollw';'vpitch';'vyaww'       % vMw-gl
