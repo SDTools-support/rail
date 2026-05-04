@@ -521,43 +521,9 @@ RO=sdtm.jup('build',RO);
 
 
 %% #Latex #Tex #Hevea -------------------------------------------------------2
-elseif comstr(Cam,'svg')
-  cd(fullfile(fileparts(which('rail19')),'../tex/plots'));
-  lat('tex2svg',{'nl_maxwell.tex';'nl_maxwell_m.tex';'nl_GapCyl.tex'; 
-      'nl_sts.tex'})
     
 elseif comstr(Cam,'latex')||comstr(Cam,'tex')||comstr(Cam,'hevea')
-
-pw0=pwd;
-%cd(fullfile(HOME,'tex'));
-HOME=fileparts(fileparts(which('rail19')));
-wd=sdth.fileutil('firstdir',{fullfile(HOME,'tex'),fullfile(HOME,'../tex')});
-cd(wd);
-wd=pwd;
-st=fullfile(sdtcheck('SDTRootDir'),'tex');
-if exist(st,'dir')
-   % keywords, - between, but not at beginning
-   wd1=sdtu.f.safe('@sdt/help/nlsim');
-   if comstr(Cam,'hevea'); 
-    RA=struct('module','SNCF-DyRail','root','dyrail','sdtfun', ...
-        ['rail19-hbm_solve-hbmui-hbm_post-nl_solve-nl_mesh' ...
-      '-nl_spring-nl_inout-chandle-mkl_utils-d_hbm'],'jup',0,'xml',1,'search',{{fullfile(pwd,'plots')}});
-    lat('hevea',RA)
-   else;
-      lat('colortex');lat('_dyrail.tex-shortlog');
-      !bibtex _nlsim
-      eval(sprintf('!mv _nlsim.pdf "%s"',fullfile(wd1,'nlsim.pdf')));
-      sdtweb('_link',sprintf('sdtweb(''%s'')',...
-              fullfile(fileparts(wd),'help','nlsim.pdf')),'PDF DOC')
-   end
-else
- st=sprintf('%s nlsim',sd_pref('get','OpenFEM','LatexFcn','!pdflatex'));
- eval(st);
-end
-cd(pw0);
-sdtweb('_link','hbm_utils(''helpputall'')');
-sdtweb('_link','sd helpcursync helphbm');
-
+ error('Use d_rail');
 
 elseif comstr(Cam,'cvs'); out=sdtcheck('revision'); 
 elseif comstr(Cam,'@');out=eval(CAM);

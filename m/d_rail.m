@@ -21,14 +21,16 @@ if comstr(Cam,'script');[CAM,Cam]=comstr(CAM,7);
 
 if comstr(Cam,'dv1')
 %% #TutoDvbeam: d_rail('ScriptDv1'); 
+
 %% Step init : initialize interface
+% keywords{var{projM,osM},fcn{}}
 dyn_ui('SetWD','@tempdir/TutoBallast'); % change the working directory if necessary
 ofact('mklserv_utils -silent');
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
-% keywords{var{PA.ms>ms,PA.mt>mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
+% keywords{var{PA.ms>var.ms,PA.mt>var.mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
 
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
@@ -44,16 +46,16 @@ TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
 projM('T1')=TrackCfg;
 projM('CurExp')={'SliceCfg{S1}';'TrackCfg{T1}';'RunCfg{feplot}'}; % save current experiment
-Range=struct('SliceCfg',{{'S1',SliceCfg}}, ...
-             'TrackCfg',{{'T1',TrackCfg}});
-% xxx should be sdtm.range call
+Range=dyn_solve('Range',projM('CurExp'));
+RT=struct('nmap',projM);sdtm.range(RT,Range);
+
 %dyn_solve('RangeLoop -reset -save1',Range); 
-dyn_solve('RangeLoop -save0',Range); 
+%dyn_solve('RangeLoop -save0',Range); 
 
-PA.ms % current slice
+PA.ms % current slice, see sdtweb var.ms
 
-% xxxgm2eb : PA.ms and PA.mt not used outside of figgen ?
 if sdtweb('_TutoNeed','figgen')
+ % xxxeb2gm : PA.ms and PA.mt commonly used in dynavoie
  cf=feplot(2,';');feplot(PA.ms);fecom showfipro
  comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Slice.png')
  cf=feplot(2,';');feplot(PA.mt);fecom showfipro
@@ -62,14 +64,13 @@ if sdtweb('_TutoNeed','figgen')
 end
 
 %% step disp : analyze dispersion diagram 
-% keywords{var{},fcn{fe_homo.DftDisp}}
+% keywords{var{},fcn{fe_homo.DftDisp,tutoDvBeam.d_rail.tutoDvBeam.disp}}
 
 PA=dyn_ui('paramvh');projM=PA.nmap;
 if ~isfield(PA,'ms')||isempty(PA.ms); d_rail('tutoDvBeam -s{init,mesh}');end
 
-Range=struct('ncx',1./linspace(.05,.49,50));
-%Range=struct('kcx',linspace(.05,.49,50)'*pi);
-RO=struct('Range',Range,'fmax',3e3,'ModalFilter',20, ...
+RO=struct('Range',struct('ncx',1./linspace(.05,.49,50)), ...
+    'fmax',3e3,'ModalFilter',20, ...
     'EigOpt',[2 40 -1e5],'projM',projM,'UseLong',1);
 projM('fe_homo.dftDisp')=RO; % store option
 RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
@@ -78,13 +79,12 @@ RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
 projM('fe_homo.dftInitSelDef')=RD;
 fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struct('projM',projM))
 
-
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
 % sdtweb _bp fe_coor lrik
 
 %% Step Modal : analyze frequency response
-% keywords{var{ms,mt},fcn{dyn_solve.Eig}}
+% keywords{var{ms,mt},fcn{dyn_solve.Eig,tutoDvBeam.d_rail.tutoDvBeam.modal}}
 
 T30=TrackCfg;T30.nb_slices=30;T30.slice0s=9; T30.Sens={'prrLine:z';'prrLine:y'};
 dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
@@ -157,6 +157,27 @@ dyn_solve('RangeLoop',Range);
 dyn_post('ViewRestAll -light'); % display deformation animation
 
 
+%% Step meshJoint  : mesh section and joint
+
+projM('S2')=sprintf('railu(%s)',rail19('nmap.Trk21ref.Ref21'));
+projM('CurExp')={'SliceCfg{S2}'}; % save current experiment
+Range=dyn_solve('Range',projM('CurExp'));
+RT=struct('nmap',projM);sdtm.range(RT,Range);
+
+% 
+% % Define Slice parameters
+% RA=d_dynavoie('nmap.Map:SliceMesh.Rail+Sleeper'); % xxxgm2eb miss Convert in SliceCfg doc
+% RA.value(end+1,1:2)={'Reduce',struct('RedType','Modal{fmax3000}','Rayleigh',[0 1e-6])};
+% SliceCfg=RA;SliceCfg.value(2,:)=[];% no convert here
+% projM('S1')=SliceCfg;
+% 
+% % Define track Parameters and place sensors
+% TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}});
+% TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
+%                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
+% projM('T1')=TrackCfg;
+
+
 %% Step Admin : end step for tutorial administration
 
 if sdtweb('_TutoNeed','figgen')
@@ -191,7 +212,7 @@ mo1=d_rail('meshbeamMass{half0,cyc,lc.1}',RB);projM('CurModel')=mo1;
 projM('CurExp')={'RunCfg{fe_homo(dftDisp),fe_homo(dfpInitSelDef)}'};
 sdtm.range(struct('nmap',projM))
 
-% railu.MeshSlice('{SleeperM450beam,railUIC60beam,padSpring,SubSpring}')
+% railu.MeshSlice('{SleeperM450beam,rail60E1beam,padSpring,SubSpring}')
 % xxx gaetan profiles 
 if 1==2
  RS=struct( ...
@@ -699,174 +720,6 @@ elseif comstr(Cam,'wheel')
 
    end
       
-   
-        
- 
-elseif comstr(Cam,'trackli');
- %% #MeshTrackLi MeshRailDb : database of track configurations (includes before/after)
- 
- if carg<=nargin;RM=varargin{carg};carg=carg+1;
- else; RM=struct; 
- end
- projM=RM.projM;% Expect projM of experiment
-
-r1=struct('Nb',4,... % Number of bolt
-       'Ns',5); % Number of sleepers (doubled by symmetry)
-   % 504*2e3+.1 approximately 1 MN/m
-RM=sdth.sfield('addmissing',RM,r1);
-if RM.Ns==1 % Single slice for periodic computations
-elseif isnumeric(RM.Nb); RM.Nb={num2str(RM.Nb),'Air'};
-end
-
-li=[];st1=RM.Nb{1};
-
-li=d_rail(['MeshDb.' st1],projM);
-if ischar(li{1})&&strcmpi(li{1},'seclab');li(1,:)=[];end
-if isempty(li)||~iscell(li)
- error('''%s'' obsolete use of unknown Eclisse configuration',st1)
-end
-% switch RM.Nb{1} % Select configuration in rail19('nmap')
- % case {'61','xxx6bolt'};li=nmap('Ec61');
- % case {'62'};li=nmap('Ec62');  
- % case {'41','E120'};li=nmap('Ec41'); %%  Choice of 4 bolts
- % case {'42'};li=nmap('Ec42');
- % case {'0','no','Ec0'};li=nmap('Ec0');
- % otherwise
- %  error('''%s'', Not a known case see Ec entries in rail19(''nmap'')',RM.Nb{1})
- % end
-li(cellfun(@(x)isequal(x,15),li(:,4)),4)={RM.Lc};
-
-%% #MeshDb.add_sleeper before and after -3
-Ns=2*RM.Ns; % Correspond of the real number of sleeper 
-            % Permit to input also odd number at the beginning
-if ~isfield(RM,'Lc');RM.Lc=15;end
-if length(RM.Lc)==2
-elseif isfield(RM,'Vel')
-   RM.Lc(2)=RM.Vel*1e3/5e3*3; % advancement at 5 kHz 
-   if isfield(RM,'topCoarse')&&any(isequal(RM.topCoarse,{1,'coar'}))
-   else; RM.Lc(2)=RM.Lc(2)*3;
-   end
-end
-if RM.Ns==1; % Single slice {seclab,xstart,xend,lc}
- li=[{'SecLab','xstart','xend','lc'};li];
-elseif any(strcmpi(RM.Nb{1},{'Ec0','no'})); 
- % Sleeper width 255, cell length(600)
- r1=(0:Ns)'*600;r1=r1(:,[1 1 1])+[0 (600-255)/2 (600-255)/2+255];
- r1=r1-r1(end,1)/2;r1=[r1(1);reshape(r1(1:end-1,2:3)',[],1);r1(end,1)];
- li=[repmat({'ra'},length(r1),1) num2cell(r1)];li(:,4)={RM.Lc};
- li(diff(r1)==255,1)={'ra+s'};li{end,1}='';
- li=[{'SecLab','xstart','xend','lc'};li];
- 
-elseif ~any(strcmpi(RM.Nb{1},{'42'}));
- %% For all model except 4 bolts without sleeper
- li=[{'ra',li{1,2}-225,[],RM.Lc};li];
-
- for j1=1:(Ns-2)/2-1 % left side
-  li=[{'ra+s',li{1,2}-255,[],RM.Lc};li];
-  li=[{'ra',li{1,2}-345,[],RM.Lc};li];
- end
- li=[{'ra+s',li{1,2}-255,[],RM.Lc};li];% Add of the last term for the left side 
- li=[li;{'ra+s',li{end,2}+225,[],RM.Lc}];% Add the first term for the right side
- li=flipud(li); % We reverse the order to built the same way for the right
-
- for j1=1:(Ns-2)/2-1  % right side
-  li=[{'ra',li{1,2}+255,[],RM.Lc};li];
-  li=[{'ra+s',li{1,2}+345,[],RM.Lc};li];% Each time we add in a constant way 
- end
- li=[{'',li{1,2}+255,[],RM.Lc};li]; % Add the last term for the right side
- li=flipud(li);
- li=[{'SecLab','xstart','xend','lc'};li];
-
-else
-%% For 4 bolts without sleeper 
-  li=[{'ra',li{1,2}-125,[],RM.Lc};li];
-  
- for j1=1:(Ns-2)/2-1 % left side
-  li=[{'ra+s',li{1,2}-255,[],RM.Lc};li];
-  li=[{'ra',li{1,2}-345,[],RM.Lc};li];
- end
- li=[{'ra+s',li{1,2}-255,[],RM.Lc};li];% Add of the last term for the left side 
- %li=[{'ra',li{a,2}-225,[],RM.Lc};li];
- li=[li;{'ra+s',li{end,2}+125,[],RM.Lc}];% Add the first term for the right side
- li=flipud(li); % We reverse the order to built the same way for the right
-
- for j1=1:(Ns-2)/2-1  % right side
-  li=[{'ra',li{1,2}+255,[],RM.Lc};li];
-  li=[{'ra+s',li{1,2}+345,[],RM.Lc};li];% Each time we add in a constant way 
- end
- li=[{'',li{1,2}+255,[],RM.Lc};li]; % Add the last term for the right side
- li=flipud(li);
- li=[{'SecLab','xstart','xend','lc'};li];
-
-end
-if length(RM.Lc)==2
- r1=vertcat(li{2:end,2});
- li(2:end,4)={RM.Lc(2)};
- li(setdiff(find(r1<min(RM.top)),1),4)={RM.Lc(1)};
- li(find(r1(2:end)>max(RM.top))+2,4)={RM.Lc(1)};
-end
-%% #Mesh.TGrad : creation of gradient if not given in KC -3
-if isfield(RM,'TGrad') % Selection of gradient types
- switch lower(RM.TGrad); 
- case 'ga';
-  RM=sdth.sfield('AddMissing',RM,struct( ... 
-       'Ngrad',3,... % From the 3rd sleeper, the gradient begins
-       'C',32e3,... % Constant value of C later divided by surface
-       'K',45e6,... % value for standard sleeper K (N/m) later divided by surface
-       'Cedge',64e3,... % Maximum value of C for gradient
-       'Kedge',90e6)); % Edge value K for gradient
-     % Damping ratio xi=C/2sqrt(Km) with m=117.5kg the mass of half sleeper 
-     % xi= 0.44 
-  case 'gb';
-  RM=sdth.sfield('AddMissing',RM,struct( ... 
-       'Ngrad',3,... % From the 3rd sleeper, the gradient begins
-       'C',32e3,... % Constant value of C later divided by surface
-       'K',45e6,... % value for standard sleeper K (N/m) later divided by surface
-       'Cedge',128e3,... % Maximum value of C for gradient
-       'Kedge',180e6)); % Edge value K for gradient
-     % Damping ratio xi=C/2sqrt(Km) with m=117.5kg the mass of half sleeper 
-     % xi= 0.44 
- case 'gc';
- RM=sdth.sfield('AddMissing',RM,struct( ... 
-       'Ngrad',3,... % From the 3rd sleeper, the gradient begins
-       'C',32e3,... % Constant value of C later divided by surface
-       'K',45e6,... % value for standard sleeper K (N/m) later divided by surface
-       'Cedge',640e3,... % Maximum value of C for gradient
-       'Kedge',900e6)); % Edge value K for gradient
-     % Damping ratio xi=C/2sqrt(Km) with m=117.5kg the mass of half sleeper 
-     % xi= 0.44
-     case 'gd';
- RM=sdth.sfield('AddMissing',RM,struct( ... 
-       'Ngrad',3,... % From the 3rd sleeper, the gradient begins
-       'C',32e3,... % Constant value of C later divided by surface
-       'K',45e6,... % value for standard sleeper K (N/m) later divided by surface
-       'Cedge',32e3,... % Maximum value of C for gradient
-       'Kedge',45e6)); % Edge value K for gradient
-     % Damping ratio xi=C/2sqrt(Km) with m=117.5kg the mass of half sleeper 
-     % xi= 0.44    
- otherwise
-         error('''%s'' not a known gradient',RM.TGrad);
- end
-else; error('Expecting TGrad');
-end
-if ~isfield(RM,'KC')
- K=[linspace(RM.Kedge,RM.K,RM.Ngrad)]'; % Built the gradient for K from input data
- C=[linspace(RM.Cedge,RM.C,RM.Ngrad)]'; % Built the gradient for C from input data
- RM.KC=struct('X',{{[],{'K';'C'}}},'Y',[K,C]);% define sleeper gradient
-end
-out=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
-
-  %% #MeshList.wc4 parameters see sdtweb rail19 MeshRailDb -3
-  % sdtw('_ewt','should be done MeshRailDb')
-  % RM=d_rail('MeshRailDb',struct('Nb',41, ... % Eclisse 41/42/61/62
-  %      'Ns',3,...     % N sleeper before eclisse/brackets
-  %      'Ngrad',1,...  % xxx
-  %      'C',1e-1,'K',2e5,'Cmax',200,'Kmax',1.26e6));
-  % li=RM.rail;
-  % 
-  % RO.name='WC4';
-
-
 elseif comstr(Cam,'railfromcontour')
  %% #d_rail('MeshRailFromContour'); -2
  %% ToDo25  sdtweb d_visco 'nl_mesh contour'
@@ -1138,192 +991,7 @@ end
 out=model;
 
 elseif isempty(Cam)&&(nargin>1||isfield(varargin{2},'rail'))
-%% #MeshList : generic meshing strategy
- li=varargin{carg};carg=carg+1;
- if isfield(li,'rail');RO=li;li=li.Track;else; RO=struct;end
- projM=RO.projM; 
 
-%%
-
-if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
- mo1=[]; 
- for j1=2:size(li,1) 
-  %% #Mesh.Generate_segments from sections -3
-  if isempty(li{j1}); continue;end
-  if isempty(li{j1,3});li{j1,3}=li{j1+1,2};end % xend
-  % Refine along x using lc 
-  r1=feutil(sprintf('refineline %g',li{j1,4}),[li{j1,2:3}]);
-  if max(abs(r1))>10; RO.unit='MM';else;RO.unit='SI';end
-  st=sdth.findobj('_sub:',li{j1,1}); st={st.subs};% Split at :
-  mo2=d_rail(sprintf('MeshDb.%s.%s',RO.rail,st{1}),projM);%U30.e ...
-
-  if length(st)>1&&RO.gap.isKey(st{2})
-   % change properties for the gap 'ra+e:Air'
-   r2=RO.gap(st{2});
-   mo2.Elt=feutil('setsel mat 104 pro 104',mo2,'proid7');
-   mo1=feutil('setmat',mo1,fe_mat(['convert SI' RO.unit], ...
-       [104 fe_mat('m_elastic','SI',1) r2.E,r2.nu,r2.rho]));
-   mo1.info.xgap=[li{j1,2:3}];mo1.info.GapMat=st{2};
-  end
-  if all(mo2.Node(:,5)==0);mo2=feutil('extrude 0  1 0 0',mo2,r1);
-  else;mo2.Node(:,5)=mo2.Node(:,5)+li{j1,2};
-  end
-  if isempty(mo1);% First segment initialized model
-      mo1=mo2;
-      mo1=sdth.sfield('addselected',mo1,RO,{'pl','il','unit','Stack'});
-      mo1.nmap=vhandle.nmap; % should use material names here 
-      mo1.nmap{'Map:MatName'}(5)='Bolt';
-      mo1=sdth.urn('nmap.mat.set',mo1,struct('value',int32([1 4 5 7 8 9 10 11 ])', ...
-          'ID',{{'Shaft','Eclisse','Bolt','Rail','Wheel','Pad','Sleeper','Screw'}}));
-      mo1.nmap{'Map:ProName'}(5)='Bolt'; %xxx should not be needed 
-      mo1=sdth.urn('nmap.pro.set',mo1,struct('value',int32([1 2 3 4 5 7 8 9 10 11 13])', ...
-          'ID',{{'Shaft','CtcRail','CtcWheel','Eclisse','Bolt','Rail','Wheel','Pad','Sleeper','Screw','RailEdge'}}));
-
-  else; mo1=feutil('addtest Merge -noori;',mo1,mo2);
-  end
- end
- mo1.Node=feutil('getnode groupall',mo1);
-
- %%  #MeshList.Contacts -3
- mo1=feutil('joinhexa8',mo1); if ~isfield(mo1,'info');mo1.info=struct;end
- mo1=feutil('joinpenta6',mo1);
- if ~isfield(RO,'top')
- elseif ~isfield(RO,'Wheel')||isequal(RO.Wheel,{'W0'})
-   i1=feutil('findnode z>82 & x> & x<',mo1,RO.top(1),RO.top(2));
-   if isempty(i1); warning('No selected node t%s',sdtm.toString(RO.top));
-   else
-    mo1=fe_case(mo1,'DofLoad','Impact',struct('def',ones(size(i1)),'DOF',i1+.03));
-   end
-   RO.Wheel={'W0'};
- else
-   d_rail('MeshRailDist{back}',projM); % Define rail profile no display
-   if isnumeric(RO.top)
-     RO.topsel=sprintf('selface & withnode {z>82 & x>%.15g & x<%.15g}',RO.top);
-     mo1.info.top=RO.top;
-   end
-   if isfield(RO,'topsel')
-    r2=struct('sel',RO.topsel);r2=sdth.sfield('addselected',r2,RO,{'topCoarse','projM'});
-    mo1=d_rail('MeshRailTop',mo1,r2);
-   end
- end
-
- %% #MeshList.Wheel -3
- if isfield(RO,'Wheel')
-  RW=struct('wfrom','WheelCut','wref','coarse1','Lc',RO.Lc,'integ',-1, ...
-      'top',RO.top);
-  RW.projM=RO.projM; 
-
-  if length(RO.Wheel)>1
-   i1=find(strncmpi(RO.Wheel{2},'in',2));%in104
-   if ~isempty(i1);RW.integ=comstr(RO.Wheel{2}{i1}(3:end),-1);end
-   i1=find(strncmpi(RO.Wheel{2},'wref',2));%wref
-   if ~isempty(i1);RW.wref=comstr(RO.Wheel{2}{i1}(5:end),1);end
-  end
-  dbM=projM('Map:Sections');
-  if strcmpi(RO.Wheel{1},'wa');RO.Wheel{1}='Wheel';
-      error('eb check')
-  elseif strcmpi(RO.Wheel{1},'w1');
-    %% W1 single point contact
-    mo2=d_rail('MeshWheel',RW);
-    dbM(RO.Wheel{1})=mo2;
-
-  elseif strcmpi(RO.Wheel{1},'w2');
-    %% W2 Change density to add brake disc
-    if RW.integ==-1; RW.integ=-3; end
-    mo2=d_rail('MeshWheel',RW);
-    %mo1=feutil(sprintf('setpro 3 Integ=%i Match -2',RW.integ),mo1);
-    %mo1.pl(1,5)=mo1.pl(1,5)+1.995e-5;
-    dbM(RO.Wheel{1})=mo2;
-  elseif ~isKey(dbM,RO.Wheel{1})&&~strcmpi(RO.Wheel{1},'w0')
-    warning('''%s'' not known using ''Wheel''',RO.Wheel{1})
-    RO.Wheel{1}='Wheel';
-  end
- else; RO.Wheel={'Wheel','XuZu'};
- end
- if ~strcmpi(RO.Wheel{1},'w0')
-  %% there is a wheel
-  mo2=dbM(RO.Wheel{1});
-  % place wheel at 0 
-  data=mo2.info; %stack_get(mo1,'','wheel_geom','g');
-  mo2.Node(:,5)=mo2.Node(:,5)-data.Origin(1);data.Origin(1)=-2;
-  mo1=stack_set(mo1,'info','wheel_geom',data);
-  %-(min(mo2.Node(:,5))+max(mo2.Node(:,5)))/2;
-  mo1=feutil('addtest -noori -keeptest;',mo1,mo2);
-  try; 
-   mo1.nmap(sprintf('Wheel:%s',RO.Wheel{1}))=mo2.info;
-  end 
-  % renumber contact xxx check
-  %n1=feutil('findnode matid 2;',mo1); 
-  %if ~isempty(n1)
-  % n1(:,2)=max(mo1.Node(:,1))+10e3+n1(:,1); 
-  % mo1=feutil('renumber -noOri ;',mo1,n1);
-  % mo1.Node=sortrows(mo1.Node);
-  %end
-  mo1=feutil('addsetNodeId',mo1,'Wheel','matid 1 8');
-  mo1=feutil('addsetNodeId',mo1,'Rail','matid 7');
-  mo1=d_rail(['MeshCase' RO.Wheel{2}{1}],mo1);%XaZu, ...
- end
- mo1.info=sdth.sfield('addselected',mo1.info, ...
-     sdtm.rmfield(RO,'Stack','il','pl','sections','unit','topsel','gap'));
- %% #MeshList.KC_Under sleeper springs ProId 12  -3
-  
- mo2=mo1;mo2.Elt=feutil('selelt selface & innode {z==}',mo2,min(mo1.Node(:,7)));
- mo2.Elt=feutil('divideingroups',mo2);
- [EGroup,nGroup]=getegroup(mo2.Elt);elt=[];
- NNode=sparse(mo2.Node(:,1),1,1:size(mo2.Node,1));
- for jGroup=1:nGroup
-     cEGI=EGroup(jGroup)+1:EGroup(jGroup+1)-1;
-     i1=unique(mo2.Elt(cEGI,1:4));
-     n1=mo2.Node(NNode(i1),5);
-     mo1.info.xgap(jGroup+1,1:2)=[min(n1) max(n1)];
-     if ~isfield(RO,'KC'); continue;end
-     if jGroup==1 %% Gradient
-      r2=[RO.KC.Y; repmat(RO.KC.Y(end,:),nGroup-2*size(RO.KC.Y,1),1);flipud(RO.KC.Y)];
-     end
-     i1(:,3)=-3; 
-     % Value given for K / C is total divide uniformly
-     i1(:,7)=r2(jGroup,1)/size(i1,1); i1(:,9)=r2(jGroup,2)/size(i1,1);
-     elt=[elt;i1];  %#ok<AGROW>
- end
- if ~isempty(elt)
-   mo1=feutil('addelt',mo1,'celas',elt);
-   if ~isempty(mo1.il);mo1.il(mo1.il(:,2)==12,:)=[];end
- else % uniform spring
-  i1=feutil('findnode z==',mo1,min(mo1.Node(:,7)));
-  i1(:,3)=-3; i1(:,5)=12; mo1.nmap{'Map:ProName'}(12)='UniSoil'; 
-  mo1=feutil('addelt',mo1,'celas',i1);
- end
- 
- %% #MeshList.Rail_end dampers (proid 13) -3
- if RO.Ns==1&&~isfield(RO,'CRailEdge') 
-  %% use the periodic solution for a single slide
-  mo1=fe_cyclic('build -1 600 0 0',mo1);
- else
-  i1=feutil('findnode x== | x== & matid7',mo1,min(mo1.Node(:,5)),max(mo1.Node(:,5)));
-  i1(:,3)=-3; i1(:,5)=13; mo1.nmap{'Map:ProName'}(13)='RailEnd'; 
-  mo1=feutil('addelt',mo1,'celas',i1);
-  if isfield(RO,'CRailEdge');
-   mo1.il(mo1.il(:,1)==13,5)=RO.CRailEdge;
-  end
-  % boundary condition for multiple slices
-  st=sprintf('x==%g|x==%g& proid 7 -DOF 1 2',min(mo1.Node(:,5)),max(mo1.Node(:,5)));
-  mo1=fe_case(mo1,'fixdof','RailEdge',st);
- end
-
- %% Boundary conditions 
- mo1=fe_case(mo1,'fixdof','Ground',sprintf('z==%g -DOF 1 2',min(mo1.Node(:,7))));
- mo1=fe_case(mo1,'fixdof','SymY',sprintf('y==%g -DOF 2',max(mo1.Node(:,6))));
- 
- %% how prepare output
- mo1=p_solid('default;',mo1);
- mo1.il(mo1.il(:,1)==3,:)=[];% Dont' duplicate contact
- if isfield(RO,'name');mo1.name=RO.name;end
-  %% #MeshList.end -3
- if nargout==0;
-    cf=feplot(2);cf=feplot(mo1);cf.sel='eltname~=celas';fecom('showfipro');
- else; out=mo1; 
- end
- 
 elseif comstr(Cam,'raildist');
  %% #MeshRailDist : distance to rail (force clean) 
  if isa(varargin{carg},'vhandle.nmap');projM=varargin{carg};carg=carg+1;end
@@ -1375,7 +1043,7 @@ elseif nargin==3&&isfield(varargin{3},'nmap')
  if nargin>2&&~isfield(evt,'projM')&&isfield(varargin{3},'nmap');
      evt.projM=varargin{3}.nmap;
  end
- RM=nameToMeshRO(CAM,evt);
+ RM=railu.nameToMeshRO(CAM,evt);
  out=d_rail('Mesh',RM); % sdtweb d_rail meshlist
  % if ishandle(2)
  %   try % Set feplot(2).nmap to experiment
@@ -2342,16 +2010,9 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
     
-    'UIC60beam',[301 fe_mat('p_beam','SI',1) 1e-5 3.0383e-5 5.123e-6 0.00767]; % J I1 I2 A xxx J need check
     'RailA',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000];
-
-    'SleeperA',p_beam('dbval 201 rect .26 .22'); % rect base height 
-
-    'BallastA',[401 fe_mat('p_spring','SI',1) 50e6 0 0 0.05 0];
-
-    'PadA', [501 fe_mat('p_spring','SI',1) 300e6 0 0 0.1 0];
-    % Beams J I1 I2 A    hyp J=I1+I2
-    % from DB_sleeper2 
+    % sdtu.f.open('@onedrive/*/sncf*/e*/21*/rail_IN10208.pdf#page=49')
+    % J I1 I2 A xxx J need check
    '36E1beam',[303 fe_mat('p_beam','SI',1) 1.1622e-05 1.0121e-5 1.501e-6 0.004619]; 
    '36E2beam',[304 fe_mat('p_beam','SI',1) 1.2228e-05 1.0201e-5 2.027e-6 0.004661]; 
    '40E1beam',[305 fe_mat('p_beam','SI',1) 1.6290e-05 1.3669e-5 2.621e-6 0.005217]; 
@@ -2364,8 +2025,22 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
    '54E1beam',[311 fe_mat('p_beam','SI',1) 2.6571e-05 2.3379e-5 3.192e-6 0.006977];
    '55E1beam',[312 fe_mat('p_beam','SI',1) 2.5688e-05 2.1504e-5 4.184e-6 0.007137];
    '60E1beam',[301 fe_mat('p_beam','SI',1) 3.5506e-05 3.0383e-5 5.123e-6 0.00767]; %UIC60
+   %'UIC60beam',[301 fe_mat('p_beam','SI',1) 1e-5 3.0383e-5 5.123e-6 0.00767]; 
+
+    'BallastA',[401 fe_mat('p_spring','SI',1) 50e6 0 0 0.05 0];
+
+    % sdtu.f.open('@onedrive/*/sncf*/doc/R23_Stage_Hassan.pdf#page=43')
+    'PadA', [501 fe_mat('p_spring','SI',1) 300e6 0 0 0.1 0];
+    % Beams J I1 I2 A    hyp J=I1+I2
+    % sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116')
+    % https://hal.science/hal-04894600/file/VJMech_21542-OnlineFirst.pdf#page=10
+    % B2 = 8.13 MNm2, Msl=145.92 kg/m, SL=2.41 
+    % Kfoundation : MNm-2 182.57, viscosity MNsm^2 24.4, 
+    'M450beam',[301 fe_mat('p_beam','SI',1) 3.5506e-05 3.0383e-5 5.123e-6 0.00767];
+    'SleeperA',p_beam('dbval 201 rect .26 .22'); % rect base height 
+
     };
-r2=vhandle.nmap(li,'Map:MatDb');
+r2=vhandle.nmap(li,'Map:ProDb');
 nmap('ProDb')=r2;
 
 
@@ -2411,20 +2086,10 @@ elseif comstr(Cam,'pwd')
 
 elseif comstr(Cam,'jup')
 %% #jup : jupyter notebook building -2
-wd=fullfile(fileparts(which('d_rail')),'../jup');
-
-RO=struct('BuildDir',sdtm.safeFileName('@tempdir\_jup'), ...
-      'reset',1,'book','rail'); 
-RO.helpDir=sdtu.f.cffile('@sdt/helpj');
-RO.endCopy='jup{rail}';
-RO=sdtm.jup('build',RO);
+error('Obsolete')
 
 %% #Latex #Tex #Hevea -------------------------------------------------------2
-elseif comstr(Cam,'svg')
-  cd(fullfile(fileparts(which('rail19')),'../tex/plots'));
-  lat('tex2svg',{'nl_maxwell.tex';'nl_maxwell_m.tex';'nl_GapCyl.tex'; 
-      'nl_sts.tex'})
-    
+elseif comstr(Cam,'svg'); error('Use MathJax')    
 elseif comstr(Cam,'latex')||comstr(Cam,'tex')||comstr(Cam,'hevea')
 
 pw0=pwd;
@@ -2454,8 +2119,8 @@ else
  eval(st);
 end
 cd(pw0);
-sdtweb('_link','hbm_utils(''helpputall'')');
-sdtweb('_link','sd helpcursync helphbm');
+sdtweb('_link','xxxhbm_utils(''helpputall'')');
+sdtweb('_link','xxxsd helpcursync helphbm');
 
 elseif comstr(Cam,'tuto'); 
  %% #tuto : forward to sdtweb _tuto for handling -2
@@ -2498,60 +2163,6 @@ end
 end
 
 %% #SubFunc
-
-function RM=nameToMeshRO(name,evt);
-%% #nameToMeshRO analyze naming nomenclature 
-%  'U30{5,Gc,tc-700_300,PadFuSN{io4}}:no:W2{XaZa}'
-if name(1)=='{';name(1)=[];name(end)='';end
-if nargin==1;evt=struct;end
-r1=sdth.findobj('_sub:',name);st={r1.subs};
-RM=struct; 
-if isfield(evt,'projM')
- if isKey(evt.projM,'CMsh');RM=evt.projM('CMsh'); end
- RM.projM=evt.projM;
-else; RM.projM=vhandle.nmap;
-end
-% Rail U30{3,Ga}
-switch lower(st{1})
-case 'wc2'; [opts,model]=rail19('LoadForContact RailWCoarse2');
-otherwise; 
-  if isempty(st);error('Not found %s',name);end
-  RM.rail=st{1};st(1)=[];st1=st{1};st(1)=[];
-  RM.Ns=str2double(st1{1});
-  i2=strncmpi(st1,'pad',3);if any(i2);RM.Pad=st1{i2};st1(i2)=[];end
-  i2=strncmpi(st1,'G',1);if any(i2);RM.TGrad=st1{i2};end
-  i2=strncmpi(st1,'t',1);if any(i2);RM.top=st1{i2};else;RM.top='';end
-  i2=strncmpi(st1,'Lc',1);
-  if any(i2);RM.Lc=comstr(st1{i2}(3:end),-1);else;RM.Lc=15;end
-  if ~isempty(RM.top) % tc
-   RM.topCoarse='fine';
-   if strncmpi(RM.top,'tc',2); RM.topCoarse='coar';RM.top(2)='';end
-   name=strrep(name,[',' RM.top],'');
-   st2=regexp(RM.top,'t([^_]*)_(.*)','tokens');
-   RM.top=[str2double(st2{1})];
-  end
-end
-% Eclisse/Bracket Ec41{Air}
-if ~isempty(st); i2=min(2,length(st)); if strncmpi(st{2},'w',1);i2=1;end
-    RM.Nb=st(1:i2); st(1:i2)=[];
-end
-% Wheel Wa{XaZu}
-if ~isempty(st);RM.Wheel=st(1:min(end,2)); end
-RM.name=name;
-r2=d_rail('MeshTrackLi',RM); 
-RM.Track=r2.rail;RM.KC=r2.KC;
-if isempty(evt);evt=struct;end
-st=intersect(fieldnames(evt),fieldnames(RM));
-for j1=1:length(st);RM.(st{j1})=evt.(st{j1});end
-try
-    cinM=d_rail('nmap.Map:Cin');%evt.projM('Map:Cin');
-    r2=sdtm.pcin(cinM,'gr:All','asTabUo');
-    st1=fieldnames(RM);st1(ismember(st1,r2.table(:,1)))=[];
-    st1(sdtm.regContains(st1,'(gr.|ToolTip|projM|name'))=[];
-    fprintf('%s not in sdtweb d_rail cinM, add ? \n',sdtm.toString(st1(:)'))
-end
-
-end % nameToMeshRO
 
 
 function RT=WheelTraj(varargin)

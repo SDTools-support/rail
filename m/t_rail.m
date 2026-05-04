@@ -25,7 +25,7 @@ if comstr(Cam,'mesh')
 
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 RT=d_rail('nmap.Trk21ref');nmap=RT.nmap; 
-%sdtweb d_rail 'MeshDOE' / sdtweb d_rail nameToMeshRO
+%sdtweb d_rail 'MeshDOE' / sdtweb railu nameToMeshRO
 % nmap('Ref21')
 RT.nmap('CurExp')={'MeshCfg{d_rail(Ref21):21ref}','RunCfg{feplot}'};
 sdtm.range(RT)
