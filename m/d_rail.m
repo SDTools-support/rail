@@ -45,7 +45,7 @@ TrackCfg=struct('type','GenTrack','nb_slices',15,'Sens',{{'s1(4:12):Std:Rail:z'}
 TrackCfg.Link={'dyn_solve(''eig 5 150 -1e3'')','Compute/display track modes'
                'dyn_post(''ViewSlice{cf10}'')','Compute/display slice modes'};
 projM('T1')=TrackCfg;
-projM('CurExp')={'SliceCfg{S1}';'TrackCfg{T1}';'RunCfg{feplot}'}; % save current experiment
+projM('CurExp')={'SliceCfg{S1}';'TrackCfg{T1}'};%;'RunCfg{feplot}'}; % save current experiment
 Range=dyn_solve('Range',projM('CurExp'));
 RT=struct('nmap',projM);sdtm.range(RT,Range);
 
@@ -60,7 +60,7 @@ if sdtweb('_TutoNeed','figgen')
  comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Slice.png')
  cf=feplot(2,';');feplot(PA.mt);fecom showfipro
  comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Track.png')
- % xxx prepare documentation pages
+ % sdtweb tutoDvBeam xxx prepare documentation pages
 end
 
 %% step disp : analyze dispersion diagram 
@@ -79,6 +79,11 @@ RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
 projM('fe_homo.dftInitSelDef')=RD;
 fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struct('projM',projM))
 
+
+if sdtweb('_TutoNeed','figgen')
+ comgui('imwrite',112,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_DispF.png')
+end
+
 % s1=sdth.urn('s1',PA.mt);cdm.spy(s1)
 % dyn_post('PostRecept'); % calculate transfer at sensors and plot
 % sdtweb _bp fe_coor lrik
@@ -86,35 +91,42 @@ fe_homo('dftDisp',stack_get(PA.mt,'','s1','g'),RO);fe_homo('dfpInitSelDef',struc
 %% Step Modal : analyze frequency response
 % keywords{var{ms,mt},fcn{dyn_solve.Eig,tutoDvBeam.d_rail.tutoDvBeam.modal}}
 
-T30=TrackCfg;T30.nb_slices=30;T30.slice0s=9; T30.Sens={'prrLine:z';'prrLine:y'};
+T30=TrackCfg;T30.nb_slices=30;T30.slice0s=9; T30.Sens={'S+.*:z'};
 dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
 PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 400 -1000], ...
-'freq','@ll{10,3000,1000}','cf',2,'ci',3,'name','Fz>Az','time',{{'a'}}, ...
+'freq','@ll{10,3000,1000}','cf',2,'ci',3,'name','Fz>Az{f,pos,io}','time',{{'a'}}, ...
  'po',2);
 dyn_solve('eig')
 
 if sdtweb('_TutoNeed','figgen')
  % xxx prepare documentation pages
- comgui('imwrite',2,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_Track.png')
- C1=sdtm.rmfield(ci.Stack{'Fz>Az'},'Ylab');
- C1.Y=reshape(C1.Y,size(C1.Y,1),size(C1.Y,2)/2,2*size(C1.Y,3));
- C1.X={C1.X{1},strrep(C1.X{2}(1:size(C1.Y,2),1),':z',''),{'z<Z';'y<z';'z<y';'y<y'}};
- C1.Xlab(2:3)={'Pos','IO'};
- C1.name='FX';iicom(ci,'curveinit',C1);
- nameM=PA.mt.nmap('Map:Nodes');n1=feutil('getnode nodeid',PA.mt,cell2mat(nameM(C1.X{2})));
- C1.X{2}=n1(:,5);
  
  fe_homo('viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*real(Y)" scale semilogx')
+ comgui('imwrite',3,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_zz_fpos.png')
+ iicom('ch4');
+ comgui('imwrite',3,'@tempdir/sdtdemos/plots/d_rail_TutoDvbeam_yy_fpos.png')
 
- figure(1);ch=1; cdm.pcolor(C1,struct('YFcn',@(Y)(real(Y(:,:,ch))./max(abs(Y(:,:,ch)),[],2)).'));  ii_plp('colormapband',parula(4));
+ % analyze evolution of transfers
+ ci=iiplot;C1=ci.Stack{'Fz>Az'};x=C1.X{2}
+ iicom('ch',{'Pos',find(ismember(round(x*100),[0:4]'*60));'IO',1})
+ c4=sdth.urn('iiplot(3).clone'); iicom(c4,'curveinit',C1);
+ %fe_homo('viewNodeLines ci4 YFcn"@(Y)phaseb(Y,1)-phaseb(Y(:,145),1)" scale semilogx ')
+ fe_homo('viewNodeLines ci4 YFcn"@(Y)phaseb(Y,1)" scale semilogx ')
+ cingui('objset',c4,{'@OsDic',{'CbR{string,phase}'}})
+
+ fe_homo('ShowcbTR')
 
 end
 
 
 %% Step Impact : Transient impact
-% d_rail('tutoDvBeam -s{init,mesh} -reset')
 % Define the simulation to be done on the track model
 
+if size(PA.mt.Elt,1)~=320
+    d_rail('tutoDvBeam -s{init,mesh}')
+    T30=TrackCfg;T30.nb_slices=30;T30.slice0s=6; T30.Sens={'S+.*:z'};
+    dyn_solve('RangeLoop',struct('TrackCfg',{{'T1',T30}})); 
+end
 % sdtweb dyn_solve time
 SimuCfg={'Impact',struct('xload',4,'weight',10e-3);... % 10 kg at x=7.2m
          'Time',struct('tf',.01,'dt',1e-4,'sig','cnimpact:CosHan{1,1k,5}')
@@ -160,7 +172,10 @@ dyn_post('ViewRestAll -light'); % display deformation animation
 %% Step meshJoint  : mesh section and joint
 
 projM('S2')=sprintf('railu(%s)',rail19('nmap.Trk21ref.Ref21'));
+% projM('S2')='railu(UIC60{}:sleeperM450PI:padSN)'
+% projM('S2')='railu(U60{padSN,sleeperM450PI}:ec41:w2{})'
 projM('CurExp')={'SliceCfg{S2}'}; % save current experiment
+%
 Range=dyn_solve('Range',projM('CurExp'));
 RT=struct('nmap',projM);sdtm.range(RT,Range);
 
@@ -182,9 +197,7 @@ RT=struct('nmap',projM);sdtm.range(RT,Range);
 
 if sdtweb('_TutoNeed','figgen')
  %% d_visco('TutoCompPly -s{admin} -reset ')
- cd(sdtu.f.safe('@tempdir/sdtdemos/plots'))
- ls('d_rail_*png')
- sdtu.f.copyIfChanged(sdtu.f.safe('@tempdir/sdtdemos/plots/d_rail_*png'),sdtu.f.safe('@dynavoie/tex/plots'))
+ d_rail('heveaCpFig')
 end
 
 
@@ -212,7 +225,7 @@ mo1=d_rail('meshbeamMass{half0,cyc,lc.1}',RB);projM('CurModel')=mo1;
 projM('CurExp')={'RunCfg{fe_homo(dftDisp),fe_homo(dfpInitSelDef)}'};
 sdtm.range(struct('nmap',projM))
 
-% railu.MeshSlice('{SleeperM450beam,rail60E1beam,padSpring,SubSpring}')
+% railu.MeshSlice('{SleeperM450pi,rail60-E1,padSpring,SubSpring}')
 % xxx gaetan profiles 
 if 1==2
  RS=struct( ...
@@ -2070,7 +2083,9 @@ nmap('ProDb')=r2;
 %% #end
 elseif comstr(Cam,'wd')
  %% #wd : Resolve fullfile from ProjectWd ----------------------------2
- wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections','@tempdir/rail19/mat/21_sections'};
+ % d_rail('wd','UIC60_Sections.mat')
+ wd={'@d_rail.m','@sdtdata/rail19/mat/21_sections','@tempdir/rail19/mat/21_sections', ...
+     '@onedrive/*/s*/ex*/21_sections'};
  if nargin==2&&ischar(varargin{2})
      out=sdtu.f.find(wd,varargin{2});
      if isempty(out);
@@ -2096,25 +2111,25 @@ elseif comstr(Cam,'latex')||comstr(Cam,'tex')||comstr(Cam,'hevea')
 
 pw0=pwd;
 %cd(fullfile(HOME,'tex'));
-HOME=fileparts(fileparts(which('rail19')));
-wd=sdth.fileutil('firstdir',{fullfile(HOME,'tex'),fullfile(HOME,'../tex')});
-cd(wd);
-wd=pwd;
+if contains(Cam,'cpfig')
+ cd(sdtu.f.safe('@tempdir/sdtdemos/plots'))
+ ls('d_rail_*png')
+ sdtu.f.copyIfChanged(sdtu.f.safe('@tempdir/sdtdemos/plots/d_rail_*png'),sdtu.f.safe('@rail/tex/plots'))
+end
+wd=sdtu.f.firstdir('@sncf_ir/tex');cd(wd);wd=pwd;
 st=fullfile(sdtcheck('SDTRootDir'),'tex');
+
 if exist(st,'dir')
    % keywords, - between, but not at beginning
    if comstr(Cam,'hevea'); 
     RA=struct('module','SNCF-rail','root','dyrail','sdtfun', ...
         ['dyn_utils-dyn_solve-dyn_mesh-dyn_ui-dyn_post-nl_dynavoie' ...
-       '-rail19-d_rail-railu'],'jup',0,'xml',1,'search',{{fullfile(pwd,'plots')}});
+       '-rail19-d_rail-railu'],'jup',0,'xml',1,'search',{{fullfile(pwd,'plots'), ...
+       fullfile(pwd,'../../rail/tex/plots')}});
     lat('hevea',RA)
-     st=sprintf('lat(''tex2svg -eq'',''%s'')',pwd);sdtweb('_link',st);
    else;
       lat('colortex');lat('_dyrail.tex-shortlog');
-      !bibtex _nlsim
-      eval(sprintf('!mv _nlsim.pdf "%s"',fullfile(wd1,'nlsim.pdf')));
-      sdtweb('_link',sprintf('sdtweb(''%s'')',...
-              fullfile(fileparts(wd),'help','nlsim.pdf')),'PDF DOC')
+      !bibtex _dyrail
    end
 else
  st=sprintf('%s nlsim',sd_pref('get','OpenFEM','LatexFcn','!pdflatex'));

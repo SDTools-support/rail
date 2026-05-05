@@ -1,0 +1,601 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{macros_tex}[2019/02/18]
+
+\newif\if@SDT \@SDTfalse
+\DeclareOption{SDT}{\@SDTtrue}
+\newif\if@SNCF \@SNCFfalse
+\DeclareOption{SNCF}{\@SNCFtrue}
+
+% \newif\if@OPT \@OPTfalse % For other keyword
+% \DeclareOption{OPT}{\@OPTtrue}
+
+\DeclareOption*{}%% Ne rien faire quand une option est inconnue
+\ProcessOptions
+
+%% -----------------
+%% #Doc type (packages, layout ...)-1
+%% -----------------
+\if@SNCF
+ \RequirePackage{hevea}
+\else
+ \RequirePackage{hevea}
+ \RequirePackage[pdftex]{graphicx}
+ %\RequirePackage{color}
+\fi
+\RequirePackage{float}
+\RequirePackage{verbatim}
+\RequirePackage{makeidx}
+\RequirePackage{ifthen}
+\RequirePackage{xstring} % , \noexpand
+\RequirePackage{alltt}
+\DeclareGraphicsExtensions{.pdf,.png}
+
+
+\RequirePackage[table]{xcolor}
+\definecolor{MediumVioletRed}{HTML}{C71585}
+\definecolor{DeepPink}{HTML}{FF1493}
+\definecolor{PaleVioletRed}{HTML}{DB7093}
+\definecolor{HotPink}{HTML}{FF69B4}
+\definecolor{LightPink}{HTML}{FFB6C1}
+\definecolor{Pink}{HTML}{FFC0CB}
+\definecolor{DarkRed}{HTML}{8B0000}
+\definecolor{Red}{HTML}{FF0000}
+\definecolor{Firebrick}{HTML}{B22222}
+\definecolor{Crimson}{HTML}{DC143C}
+\definecolor{IndianRed}{HTML}{CD5C5C}
+\definecolor{LightCoral}{HTML}{F08080}
+\definecolor{Salmon}{HTML}{FA8072}
+\definecolor{DarkSalmon}{HTML}{E9967A}
+\definecolor{LightSalmon}{HTML}{FFA07A}
+\definecolor{OrangeRed}{HTML}{FF4500}
+\definecolor{Tomato}{HTML}{FF6347}
+\definecolor{DarkOrange}{HTML}{FF8C00}
+\definecolor{Coral}{HTML}{FF7F50}
+\definecolor{Orange}{HTML}{FFA500}
+\definecolor{DarkKhaki}{HTML}{BDB76B}
+\definecolor{Gold}{HTML}{FFD700}
+\definecolor{Khaki}{HTML}{F0E68C}
+\definecolor{PeachPuff}{HTML}{FFDAB9}
+\definecolor{Yellow}{HTML}{FFFF00}
+\definecolor{PaleGoldenrod}{HTML}{EEE8AA}
+\definecolor{Moccasin}{HTML}{FFE4B5}
+\definecolor{PapayaWhip}{HTML}{FFEFD5}
+\definecolor{LightGoldenrodYellow}{HTML}{FAFAD2}
+\definecolor{LemonChiffon}{HTML}{FFFACD}
+\definecolor{LightYellow}{HTML}{FFFFE0}
+\definecolor{Maroon}{HTML}{800000}
+\definecolor{Brown}{HTML}{A52A2A}
+\definecolor{SaddleBrown}{HTML}{8B4513}
+\definecolor{Sienna}{HTML}{A0522D}
+\definecolor{Chocolate}{HTML}{D2691E}
+\definecolor{DarkGoldenrod}{HTML}{B8860B}
+\definecolor{Peru}{HTML}{CD853F}
+\definecolor{RosyBrown}{HTML}{BC8F8F}
+\definecolor{Goldenrod}{HTML}{DAA520}
+\definecolor{SandyBrown}{HTML}{F4A460}
+\definecolor{Tan}{HTML}{D2B48C}
+\definecolor{Burlywood}{HTML}{DEB887}
+\definecolor{Wheat}{HTML}{F5DEB3}
+\definecolor{NavajoWhite}{HTML}{FFDEAD}
+\definecolor{Bisque}{HTML}{FFE4C4}
+\definecolor{BlanchedAlmond}{HTML}{FFEBCD}
+\definecolor{Cornsilk}{HTML}{FFF8DC}
+\definecolor{Indigo}{HTML}{4B0082}
+\definecolor{Purple}{HTML}{800080}
+\definecolor{DarkMagenta}{HTML}{8B008B}
+\definecolor{DarkViolet}{HTML}{9400D3}
+\definecolor{DarkSlateBlue}{HTML}{483D8B}
+\definecolor{BlueViolet}{HTML}{8A2BE2}
+\definecolor{DarkOrchid}{HTML}{9932CC}
+\definecolor{Fuchsia}{HTML}{FF00FF}
+\definecolor{Magenta}{HTML}{FF00FF}
+\definecolor{SlateBlue}{HTML}{6A5ACD}
+\definecolor{MediumSlateBlue}{HTML}{7B68EE}
+\definecolor{MediumOrchid}{HTML}{BA55D3}
+\definecolor{MediumPurple}{HTML}{9370DB}
+\definecolor{Orchid}{HTML}{DA70D6}
+\definecolor{Violet}{HTML}{EE82EE}
+\definecolor{Plum}{HTML}{DDA0DD}
+\definecolor{Thistle}{HTML}{D8BFD8}
+\definecolor{Lavender}{HTML}{E6E6FA}
+\definecolor{MidnightBlue}{HTML}{191970}
+\definecolor{Navy}{HTML}{000080}
+\definecolor{DarkBlue}{HTML}{00008B}
+\definecolor{MediumBlue}{HTML}{0000CD}
+\definecolor{Blue}{HTML}{0000FF}
+\definecolor{RoyalBlue}{HTML}{4169E1}
+\definecolor{SteelBlue}{HTML}{4682B4}
+\definecolor{DodgerBlue}{HTML}{1E90FF}
+\definecolor{DeepSkyBlue}{HTML}{00BFFF}
+\definecolor{CornflowerBlue}{HTML}{6495ED}
+\definecolor{SkyBlue}{HTML}{87CEEB}
+\definecolor{LightSkyBlue}{HTML}{87CEFA}
+\definecolor{LightSteelBlue}{HTML}{B0C4DE}
+\definecolor{LightBlue}{HTML}{ADD8E6}
+\definecolor{PowderBlue}{HTML}{B0E0E6}
+\definecolor{Teal}{HTML}{008080}
+\definecolor{DarkCyan}{HTML}{008B8B}
+\definecolor{LightSeaGreen}{HTML}{20B2AA}
+\definecolor{CadetBlue}{HTML}{5F9EA0}
+\definecolor{DarkTurquoise}{HTML}{00CED1}
+\definecolor{MediumTurquoise}{HTML}{48D1CC}
+\definecolor{Turquoise}{HTML}{40E0D0}
+\definecolor{Aqua}{HTML}{00FFFF}
+\definecolor{Cyan}{HTML}{00FFFF}
+\definecolor{Aquamarine}{HTML}{7FFFD4}
+\definecolor{PaleTurquoise}{HTML}{AFEEEE}
+\definecolor{LightCyan}{HTML}{E0FFFF}
+\definecolor{DarkGreen}{HTML}{006400}
+\definecolor{Green}{HTML}{008000}
+\definecolor{DarkOliveGreen}{HTML}{556B2F}
+\definecolor{ForestGreen}{HTML}{228B22}
+\definecolor{SeaGreen}{HTML}{2E8B57}
+\definecolor{Olive}{HTML}{808000}
+\definecolor{OliveDrab}{HTML}{6B8E23}
+\definecolor{MediumSeaGreen}{HTML}{3CB371}
+\definecolor{LimeGreen}{HTML}{32CD32}
+\definecolor{Lime}{HTML}{00FF00}
+\definecolor{SpringGreen}{HTML}{00FF7F}
+\definecolor{MediumSpringGreen}{HTML}{00FA9A}
+\definecolor{DarkSeaGreen}{HTML}{8FBC8F}
+\definecolor{MediumAquamarine}{HTML}{66CDAA}
+\definecolor{YellowGreen}{HTML}{9ACD32}
+\definecolor{LawnGreen}{HTML}{7CFC00}
+\definecolor{Chartreuse}{HTML}{7FFF00}
+\definecolor{LightGreen}{HTML}{90EE90}
+\definecolor{GreenYellow}{HTML}{ADFF2F}
+\definecolor{PaleGreen}{HTML}{98FB98}
+\definecolor{MistyRose}{HTML}{FFE4E1}
+\definecolor{AntiqueWhite }{HTML}{FAEBD7}
+\definecolor{Linen}{HTML}{FAF0E6}
+\definecolor{Beige}{HTML}{F5F5DC}
+\definecolor{WhiteSmoke}{HTML}{F5F5F5}
+\definecolor{LavenderBlush}{HTML}{FFF0F5}
+\definecolor{OldLace}{HTML}{FDF5E6}
+\definecolor{AliceBlue}{HTML}{F0F8FF}
+\definecolor{Seashell}{HTML}{FFF5EE}
+\definecolor{GhostWhite}{HTML}{F8F8FF}
+\definecolor{Honeydew}{HTML}{F0FFF0}
+\definecolor{FloralWhite}{HTML}{FFFAF0}
+\definecolor{Azure}{HTML}{F0FFFF}
+\definecolor{MintCream}{HTML}{F5FFFA}
+\definecolor{Snow }{HTML}{FFFAFA}
+\definecolor{Ivory}{HTML}{FFFFF0}
+\definecolor{White}{HTML}{FFFFFF}
+\definecolor{Black}{HTML}{000000}
+\definecolor{DarkSlateGray}{HTML}{2F4F4F}
+\definecolor{DimGray}{HTML}{696969}
+\definecolor{SlateGray}{HTML}{708090}
+\definecolor{Gray}{HTML}{808080}
+\definecolor{LightSlateGray}{HTML}{778899}
+\definecolor{DarkGray}{HTML}{A9A9A9}
+\definecolor{Steel}{HTML}{71797E}
+\definecolor{Silver}{HTML}{C0C0C0}
+\definecolor{LightGray}{HTML}{D3D3D3}
+\definecolor{Gainsboro}{HTML}{DCDCDC}
+\definecolor{Aluminum}{HTML}{888B8D}
+
+
+
+\if@SDT % Load packages and layouts for SDT doc
+	% Load packages
+	\RequirePackage{scalefnt}
+	\RequirePackage{version}
+	\RequirePackage{adjustbox}
+        \RequirePackage{minitoc-hyper}
+        \RequirePackage{fancyhdr}
+	
+	% Assign layout
+	\hoffset -19.4mm     % reference at 6.0mm
+	\voffset -1in
+	\textwidth 167mm   
+	\textheight 19cm
+	%\topmargin -23.5mm %\topmargin -1cm 
+	\headheight 6mm
+	\headsep 4mm
+	\footskip 9mm
+	\oddsidemargin  15mm %44.2mm
+	\evensidemargin 15mm %31mm
+	\paperwidth 197mm
+	\paperheight 229mm
+
+        %% The fancy page that is really used
+        \fancyhead{}\fancyhf{}
+        \fancyhead[LE]{\hspace*{-\evensidemargin}\leftmark}
+        \fancyhead[RO]{\rightmark}
+        \fancyfoot[RO]{\thepage}
+        \fancyfoot[LE]{\hspace*{-\evensidemargin}\thepage}
+
+        \fancypagestyle{plain}{%
+          \fancyhf{}%
+          \fancyhead[RO]{}%
+          \fancyhead[LE]{\hspace*{-\evensidemargin}\leftmark}
+          \fancyfoot[RO]{\thepage}%
+          \fancyfoot[LE]{\hspace*{-\evensidemargin}\thepage}}
+
+
+  \renewcommand{\headrulewidth}{0pt}
+
+  \fancypagestyle{empty}{%
+  \fancyhf{}%
+  \fancyhead[LO,RO,CE,LE,CO,RE]{}%
+  \fancyfoot[LO,RO,LE,RE]{}}
+  \setlength{\parindent}{0pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\abovedisplayskip}{0pt plus 0pt minus -6pt}
+  \setlength{\belowdisplayskip}{2pt plus 2pt minus 0pt}
+  \setlength{\abovedisplayshortskip}{3pt plus 3pt minus -3pt}
+  \setlength{\belowdisplayshortskip}{3pt plus 3pt minus 0pt}
+  \setlength{\unitlength}{18mm}
+ \RequirePackage{tikz}\usetikzlibrary{arrows,shapes,calc,patterns,decorations.pathmorphing,decorations.markings,graphs}
+	% Patch tickz \usetikzlibrary, resolving local\global confusion (allows to put tikz scripts inside figure environment)
+ \RequirePackage{etoolbox}
+ \makeatletter
+ \AtBeginDocument{%
+	  \patchcmd{\use@@tikzlibrary}{\global}{}{}{}%
+ }
+ \makeatother
+ \RequirePackage{tabularx}
+ \RequirePackage{amsmath}
+  \RequirePackage[pdftex=true,bookmarks=true,bookmarksopen=false,pdfpagemode=UseOutlines,colorlinks=false,linkcolor=blue,raiselinks=true]{hyperref}
+\else
+ \RequirePackage{tikz}\usetikzlibrary{arrows,shapes,calc,patterns,decorations.pathmorphing,decorations.markings,graphs}
+	% Patch tickz \usetikzlibrary, resolving local\global confusion (allows to put tikz scripts inside figure environment)
+ \RequirePackage{etoolbox}
+ \makeatletter
+ \AtBeginDocument{%
+	  \patchcmd{\use@@tikzlibrary}{\global}{}{}{}%
+ }
+ \makeatother
+ \RequirePackage{tabularx}
+ \RequirePackage{amsmath}
+\fi
+
+% Load macros.tex whatever the option
+\IfFileExists{d:/balmes/sdt.cur/tex/macros.tex}{\input{d:/balmes/sdt.cur/tex/macros.tex}\def\LoadedMacro{yes}}{}
+
+\ifdefined\LoadedMacro
+\else 
+ \IfFileExists{c:/martin/sdt.cur/tex/macros.tex}{\input{c:/martin/sdt.cur/tex/macros.tex}\def\LoadedMacro{yes}}{}
+\fi
+\ifdefined\LoadedMacro
+\else 
+  \input{macros.tex}
+\fi
+
+%%--------------------------
+%% #Paragraph style macros-1
+%%--------------------------
+\def\matlab{{\sc Matlab}}
+
+\def\sdtsupport{{\tt support@sdtools.com}}
+\def\sdtsuggest{{\tt suggest@sdtools.com}}
+\def\sdtinfo{{\tt info@sdtools.com}}
+\def\rz{\rule{0pt}{1pt}}
+\def\nvs{}
+\def\tw{\textwidth}
+
+
+%%---------------
+%% #Target tags-1
+%%---------------
+
+%% #TargetReference : define anchor to reference function in last chapter-2
+\newcommand{\htr}[2]{\CleanTarg{#1}{#2}{\ts{#2}}} % RUI command target
+\newcommand{\hts}[2]{\CleanTarg{#1}{#2}{{\tt #2}}} % RUI command target
+
+%% #TargetText : In text targets-2
+\newcommand{\htt}[1]{% HyperTargetText with text in tt
+ \StrSubstitute{#1}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{.}{}[\temp]%
+ \hypertarget{\temp}{{\ttfamily\color{blue}#1}} %
+}
+\newcommand{\httts}[1]{% HyperTargetText with text in ts
+ \StrSubstitute{#1}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{.}{}[\tempt]%
+ \hypertarget{\tempt}{{\ttfamily\color{String}#1}} %
+}
+
+%% #TargetEquation : define anchor to equation-2
+\newcommand{\eql}[1]{\label{eq*#1}} % should not be used directly anymore : called by eqsvg using the first argument
+
+%% #TargetFigure : define anchor to figure-2
+\newcommand{\fgl}[2]{\caption{#1}\label{fg*#2}} 
+
+%% #TargetTable : define anchor to table-2
+\newcommand{\tbl}[2]{\caption{#1}\label{tb*#2}} 
+
+%% ------------------------
+%% #Section Structuration-1
+%% ------------------------
+
+%% #SectionStandard : Chapter, sections, subsection...-2
+\newcommand{\Tchapter}[2]{\chapter{#1\label{s*#2}}\minitoc%
+\thispagestyle{empty}\newpage}
+\newcommand{\csection}[2]{\section{#1\label{s*#2}}\hypertarget{#2}{\vspace*{-5mm}\rule{0mm}{.1mm}}}
+\newcommand{\cssection}[2]{\subsection{#1\label{s*#2}}\hypertarget{#2}{\vspace*{-5mm}\rule{0mm}{.1mm}}}
+\newcommand{\csssection}[2]{\subsubsection{#1\label{s*#2}}\hypertarget{#2}{\vspace*{-5mm}\rule{0mm}{.1mm}}}
+
+%% #SectionReference : structuring of reference FUNCTIONS in last chapter-2
+\newcommand{\rtop}[2]{% Beginning of a function documentation (handle graphic display + hpertarget)
+\newpage\bection{\hspace*{15mm}#1\ \hrulefill}\vspace*{-\parskip}% First line
+\hypertarget{#2}{\hspace*{-\evensidemargin}{\bf Purpose}}%
+%\vspace*{-\parskip}\vspace*{-\baselineskip}
+\fancyhead[LE]{\hspace*{-\evensidemargin} {\bf #1}\ \hrulefill}
+\fancyhead[RO]{\hrulefill {\bf #1}}
+\pagestyle{fancy}\thispagestyle{empty}% Header given here
+}
+
+\newcommand{\rmain}[1]{ % Used in function reference to separate the blocks : Description, Theory, Warnings ...
+\vspace*{\parskip}\hspace*{-\evensidemargin}%
+{\bf #1}\hspace*{5mm}%\vspace*{-\parskip}\vspace*{-\baselineskip}
+}
+\newcommand{\rsyntax}{ % Same as rmain but writing Syntax
+\vspace*{\parskip}\hspace*{-\evensidemargin}{\bf Syntax}\par\vspace*{-1\parskip}%\vspace*{-\baselineskip}
+}
+\newcommand{\ruic}[3]{% Separate function commands, sdtweb ruic 
+ \StrSubstitute{#1.#2}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{ }{}[\temp]%
+\subsubsection*{\hypertarget{\temp}{\hspace*{-.5cm}}{\ttfamily\color{String}#2#3%
+}\vspace*{-.5ex}}%
+}
+\newcommand{\rui}[1]{
+\vspace*{-1.5ex}\subsubsection*{%
+  \hspace*{-.5cm}{\large\ttfamily\color{String}#1}\vspace*{-.5ex}%
+}}
+\newcommand{\ruj}[1]{\subsubsection*{{#1}}
+}
+\newcommand{\ruih}[1]{%
+\vspace*{-1.5ex}\subsubsection*{\hspace*{-.5cm}\hypertarget{#1}{\tt\large #1}}%
+\vspace*{-.5ex}}
+
+%%----------------------------------------------------------------------------------------------------
+%% #Links : rely to targets (defined with htr/hts or by csection/rtop/ruic or by equations commands)-1
+%%----------------------------------------------------------------------------------------------------
+
+%% #LinksSections : to targets defined by \csection... (write section number)-2
+\newcommand{\ser}[1]{%
+ \StrSubstitute{s*#1}{\_}{_}[\temp]%
+ section~\ref{\temp}
+}
+\newcommand{\Ser}[1]{Section~\ref{s*#1}}
+\newcommand{\chr}[1]{%
+ \StrSubstitute{s*#1}{\_}{_}[\temp]%
+ chapter~\ref{\temp}
+}
+\newcommand{\Chr}[1]{Chapter~\ref{s*#1}}
+
+%% #LinksReference : to targets defined by \htr or \ruic -2
+\newcommand{\ltr}[2]{% \ltr{fevisco}{AddMat} link to fevisco#AddMat and display \tt{fevisco}\ts{AddMat}
+ \StrSubstitute{#1.#2}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{ }{}[\temp]%
+ \hyperlink{\temp}{\ttfamily\color{blue}#1 \ttfamily\color{String}#2}%
+}
+
+\newcommand{\lts}[2]{% \lts{fevisco}{AddMat} link to fevisco#AddMat and display \ts{AddMat}
+ \StrSubstitute{#1.#2}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{ }{}[\temp]%      
+ \hyperlink{\temp}{\ttfamily\color{String}#2}%
+}
+\newcommand{\ltstt}[2]{% \ltstt{fevisco}{AddMat} link to fevisco#AddMat and display \tt{AddMat}
+ \StrSubstitute{#1.#2}{\_}{_}[\temp]%
+ \hyperlink{\temp}{\ttfamily\color{blue}#2}%
+}
+
+%% #LinksText : to targets defined by \htt -2
+\newcommand{\ltt}[1]{% \ltt{Freq} links to Freq (htt entry) dans displays {\tt Freq} 
+ \StrSubstitute{#1}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{.}{}[\temp]%
+ \hyperlink{\temp}{\ttfamily\color{blue}#1}%
+}
+\newcommand{\lttts}[1]{% \lttts{Freq} links to Freq (htt entry) dans displays \ts{Freq}
+ \StrSubstitute{#1}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{.}{}[\temp]%
+ \hyperlink{\temp}{\ttfamily\color{String}#1}%
+}
+
+%% #LinksEq : to equations-2
+\newcommand{\eqr}[1]{(\ref{eq*#1})}
+
+%% #LinksFg : to figures-2
+\newcommand{\fgr}[1]{figure~\ref{fg*#1}}
+\newcommand{\Fgr}[1]{Figure~\ref{fg*#1}}
+
+%% #LinksTb : to tables-2
+\newcommand{\tbr}[1]{table~\ref{tb*#1}}
+\newcommand{\Tbr}[1]{Table~\ref{tb*#1}}
+%% --------------------
+%% #Math style macros-1
+%% --------------------
+
+\newcommand{\oft}{\left( t \right)}
+\newcommand{\ofw}{\left( \omega \right)}
+\newcommand{\ve}[1]{\left\{#1\right\}}
+\newcommand{\ma}[1]{\left[#1\right]}
+\newcommand{\mam}[1]{\begin{bmatrix}#1 \end{bmatrix}}
+\newcommand{\vem}[1]{\begin{Bmatrix}#1 \end{Bmatrix}}
+\newcommand{\pam}[1]{\begin{pmatrix}#1 \end{pmatrix}}
+
+\newcommand{\smma}[1]{\mbox{$[#1]$}} %not in macros_hevea.tex
+\newcommand{\smve}[1]{\mbox{$\{#1\}$}} %not in macros_hevea.tex
+\newcommand{\su}[1]{\underline{#1}} % single underbar %not in macros_hevea.tex
+\newcommand{\du}[1]{\underline{\underline{#1}}} % double underbar %not in macros_hevea.tex
+\newcommand{\diag}[1]{\left[^{\backslash} \mbox{$#1$} _{\backslash} \right]}
+\newcommand{\norm}[1]{\left\Vert #1 \right\Vert} %not in macros_hevea.tex
+
+%% ---------------------------------
+%% #Insert (figures, equations...)-1
+%% ---------------------------------
+
+\newcommand{\InsertDocString}[1]{
+ \StrSubstitute{_docstring/#1}{\_}{_}[\temp]%
+ \IfFileExists{\temp}{\input{\temp}}{%
+   \pdftooltip{See {\tt #1}}{sdtweb('#1')}\par  %
+   }%
+}
+%% #InsertFigures-2
+\newcommand{\ingraph}[2]{% width + fname
+\includegraphics[width=.#1\textwidth]{#2}
+}
+\newcommand{\ingraphpdf}[2]{% Insert native resolution in HTML but uses width in pdf (used for screen captures)
+{\centering\includegraphics[width=.#1\textwidth]{#2}\par}
+}
+\newcommand{\ingraphpdfl}[2]{% Insert native resolution in HTML but uses width in pdf (used for screen captures)
+{\includegraphics[width=.#1\textwidth]{#2}\par}
+}
+
+\newcommand{\ingraphpdff}[4]{% Same with 2images in same row
+{\centering\includegraphics[width=.#1\textwidth]{#2}\includegraphics[width=.#3\textwidth]{#4}\par}
+}
+\newcommand{\ingraphpdfff}[6]{% Same with 3images in same row
+{\centering\includegraphics[width=.#1\textwidth]{#2}\includegraphics[width=.#3\textwidth]{#4}\includegraphics[width=.#5\textwidth]{#6}\par}
+}
+\newcommand{\ingraphpdffff}[8]{% Same with 4images in same row
+{\centering\includegraphics[width=.#1\textwidth]{#2}\includegraphics[width=.#3\textwidth]{#4}\includegraphics[width=.#5\textwidth]{#6}\includegraphics[width=.#7\textwidth]{#8}\par}
+}
+\newcommand{\intex}[2]{% Insert tex figure generation in pdf but uses png corresponding image in HTML
+\input{plots/#2.tex}
+}
+\newcommand{\intexsvg}[2]{% Insert tex figure generation in pdf but uses svg corresponding image in HTML (sdtweb lat('tex2svg'))
+\input{plots/#2.tex}
+}  
+\newcommand{\intexsvglink}[2]{% Same with fname_link.svg containing links (sdtweb docinsert)
+\input{plots/#2.tex}
+}
+\newcommand{\figepss}[2]%
+{\begin{center}\includegraphics[width=#1]{#2}\end{center}
+}
+
+%% #InsertEquations-2
+\newenvironment{eqsvg}[1] % Replace the Equation environment to properly display the svg image in html (standard equation for the pdf version)
+{\begin{equation}\eql{#1}}%
+{\end{equation}}
+
+\newcommand{\mathsvg}[2]{$#1$} % If needed (accents, frac...), svg replacement for in text equation. In script replace $equation_script$ with \mathsvg{equation_script}{equationtag}
+
+%% #InsertIcons-2
+\newcommand{\button}[1]{\raisebox{-3bp}{\includegraphics{#1}}}
+\newcommand{\buttonb}[1]{\raisebox{-3bp}{\includegraphics[height=12pt]{#1}}} %not in macros_hevea.tex ?
+
+\newcommand{\emoji}[1]{\includegraphics[height=1em]{#1}}
+
+%% -----------------
+%% #TextColoration-1
+%% -----------------
+
+\renewcommand{\tt}{\ttfamily\color{blue}} %not in macros_hevea.tex
+\newcommand{\ts}[1]{{\ttfamily\color{String}#1}}
+\newcommand{\tsi}[1]{{\ttfamily\itshape\color{String}#1}}
+\newenvironment{realverbatim}{\verbatim}{\endverbatim} % To color .tex script examples
+
+%% ----------------
+%% #ExternalLinks-1
+%% ----------------
+% Thing that was in piezo.tex : \extref{base}{hexa8.html}
+\newcommand{\extref}[2]{%
+ \StrSubstitute{#1/#2}{\_}{_}[\temp]%
+ \StrSubstitute{#2}{.html}{}[\tg]%
+ \href{https://www.sdtools.com/helpcur/\temp}{%
+   {\ttfamily\color{blue} \tg}%
+}%
+}
+\newcommand{\extrefb}[2]{% External fun use \_ in input but _ in reference
+ \StrSubstitute{#1}{\_}{_}[\temp]%
+ \hypertarget{\temp}{\href{https://www.sdtools.com/helpcur/#2}{\ttfamily\color{blue} #1}}%
+} 
+
+\newcommand{\ltrE}[3]{% \ltr{fevisco}{AddMat} link to fevisco#AddMat and display \tt{fevisco}\ts{AddMat}
+ \StrSubstitute{#3}{\_}{_}[\temp]%
+ \href{https://www.sdtools.com/helpcur/\temp}{%
+ {\ttfamily\color{blue}#1 \ttfamily\color{String}#2}%
+}%
+}
+
+\newcommand{\ltsE}[3]{% \lts{fevisco}{AddMat} link to fevisco#AddMat and display \ts{AddMat}
+ \extref{#3}{\ttfamily\color{String}#2}%
+}
+\newcommand{\ltsttE}[3]{% \ltstt{fevisco}{AddMat} link to fevisco#AddMat and display \tt{AddMat}
+ \extref{#3}{\ttfamily\color{blue}#2}%
+}
+
+%% #LinksText : to targets defined by \htt -2
+\newcommand{\lttE}[2]{% \lttE{m\_piezo}{piezo} links to  Freq (htt entry) dans displays {\tt Freq} 
+ \extref{#1}{#2}{\ttfamily\color{blue}#1}%
+}
+\newcommand{\ltttsE}[2]{% \lttts{Freq} links to Freq (htt entry) dans displays \ts{Freq}
+ \extref{#2}{\ttfamily\color{String}#1}%
+}
+
+ 
+% \item \exttrefb{fe\_mknl}{MatType}{help/fe\_mknl.html\#MatType}
+\newcommand{\exttrefb}[3]{% External fun use \_ in input but _ in reference
+ \CleanTarg{#1}{#2}%
+ {\url{https://www.sdtools.com/#3}}%
+}  
+\newcommand{\exttref}[3]{% External ltt
+ \StrSubstitute{#1}{_}{}[\temp]%
+ \hypertarget{\temp.#2}{\url{https://www.sdtools.com/#3}}%
+} % External equation ref
+\newcommand{\exteqref}[2]{%
+ $ExtEq\label{eq*#1}${\url{https://www.sdtools.com/#2}}%
+} 
+
+%%---------------------------------------------------------------------------------------------------
+%% #LowLevel commands (should not be called directly, called by other higher level macro commands)-1
+%%---------------------------------------------------------------------------------------------------
+
+\newcommand{\khref}[2]{\hyperlink{#2}{\ttfamily\color{SDT} #1}} % Used in macros.tex to define links to SDT functions
+
+\newcommand{\lhref}[2]{\hyperlink{#2}{\tt #1}} % Used in macros.tex to define links to SDT locations that are not functions
+\newcommand{\CleanTarg}[2]{ % Used by htr, hts to remove "_" and " " from target tags and set the cleaned target
+ \StrSubstitute{#1.#2}{\_}{_}[\temp]%
+ \StrSubstitute{\temp}{ }{}[\temp]%
+ \hypertarget{\temp}%
+}
+
+% Column types for tabular
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} % left middle
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} % center middle
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}} % right middle
+
+\newcolumntype{G}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}p{#1}} % left top
+\newcolumntype{M}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}p{#1}} % center top
+\newcolumntype{D}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}p{#1}} % right top
+
+%% -----------------
+%% #Other commands-1
+%% -----------------
+
+\newcommand{\texline}[0]{\newline}% Introduce a line brake in LaTex
+\newcommand{\swref}[1]{{\ttfamily\color{SDT} sdtweb} \ts{#1}} % Display sdtweb "command"
+\newcommand{\lsec}[2]{\hyperlink{#1}{#2}}
+\newcommand{\ecite}[1]{\cite{#1}}
+\newenvironment{Eitem}%
+  {\begin{list}{$\bullet$}{%
+     \setlength{\leftmargin}{12pt}\setlength{\itemsep}{0pt}%
+     \setlength{\topsep}{6pt}\setlength{\partopsep}{0pt}}
+     \ignorespaces}{\unskip\end{list}
+  }
+
+\newcommand{\tutostep}[4]{\buttonb{run16}}
+% \pdftooltip{#3}{}
+%\newcommand{\tutostep}[4]{%\tutostep{d_cbi}{J92TestBas',1}{Do}
+%\ahref{matlab:sdtweb('\_tutostep',struct('file','#1','tuto','#2','step',#3,'show',1))}{\button{run16}#4}
+
+\RequirePackage{pdfcomment}
+\newcommand{\tstep}[3]{
+   \pdftooltip{\buttonb{run16}{\tt #3}}{#1('tuto#2 -s\{#3\}')}
+}
+%\newcommand{\tstep}[3]{%\tstep{d\_training}{DBPEMA-s3.2}{} % %\tstep{d\_training}{DBPEMA-s3.2}{{\tt d\_training('DBPEMA-s3.2')}}
+%\ahref{matlab:#1('Tuto#2')}{\button{run16}#3}
+%}
+
+
+	 
+\newcommand{\forlatex}[1]{#1}
+
+\pdfglyphtounicode{quoteright}{0027}
+\pdfgentounicode=1
+
+
+\endinput

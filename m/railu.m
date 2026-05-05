@@ -54,31 +54,30 @@ end
 function out=pcin(varargin)
  %% #pcin : add cinM nodes
  CAM='pcin';
+ % sdtu.f.open('@dynavoie/m/dynavoie_ui_en-us.csv')
  preRO={'key','ToolTip','DoOpt';
   'railu.Mesh.BeamMass','beam mass track slice model',{'DoOpt'
    'ncell(15#%g#"number of sleepers")' 
-   'half(#31#"1 one rail, 0 symmetric") ' %xxx_HP check
-   'gaug(1.575#%g#"gaug") '
-   'Ltr(2.32#%g#"width") '
-   'kp(300e6#%g#"pad stiffness") '
-   'kb(20e7#%g#"ballast stiffness") ' % value of Arlaud 2016
+   'Slice.Gen.half';'Slice.ArmP.SMass';% 'half(#31#"1 one rail, 0 symmetric") ' 'ms(130#%g#"sleeper mass")' 
+   'gaug(1.575#%g#"gaug [m|>20mm]") '
+   'Slice.ArmP.Ltr' % 'Ltr(2.32#%g#"width") '
+   'kp(300e6#%g#"pad stiffness") ' % Slice.ArmP.k_pad
    'kpr(1e6#%g#"pad torsion stiffness") '
    'kps(1e6#%g#"pad transverse torsion stiffness") '
+   'kb(20e7#%g#"ballast stiffness") ' % value of Arlaud 2016
    'rand(0#%g#"ballast dispersion") '
    'randp(0#%g#"pad dispersion") '
    'simpack(0#%g#"use simpack compatible elements") '
    'Ftr(0#3#" renumber for simpack") '
    'eta(0#31#"use eta") '
    'cyc(0#31#"apply periodicity") '
-   'ms(130#%g#"sleeper mass")' 
    'unit(SI#%s#"unit system")' 
-   'lc(.15#%g#"refine length")' 
+   'lc(.15#%g#"refine length [m|<1mm]")' 
    'pk(75e3#%g#"pad stiffness")';'projM';'preCase'}  
   'dyn_mesh.arm','spleeper/rail/pad',{'key';'Slice.ArmP.ArmType';'Slice.ArmP.RailType'
          'Slice.ArmP.PadType';'Slice.ArmP.SleeperType'
    }
    };
-
  r1=sdtu.f.ppath;carg=1;
  if nargin>0&&isa(varargin{1},'vhandle.nmap');cinM=varargin{1};carg=2;
  else; cinM=sdtm.pcin;
@@ -300,10 +299,67 @@ end
 
 
 function   m_rail=RailSection(RO);
-%% #RailSection : rail section mesh -2
-
+%{
+```DocString {module=rail} -2
+RailSection:  rail section mesh
+```EXAMPLE
+railu.RailSection('60-E1')
+railu.RailSection('U30_Sections.mat#ra')
+```keywords
+{var{mdl,pl},fcn{drmesh}}
+%}
+%%
 RA=struct;m_rail=[];
 if ischar(RO); 
+  if strcmpi(RO,'_genUIC60')    
+%% #_genUIC60 manual generation of UIC60 by morphing
+% G. Guillet section
+ RO=railu.getNmap('60-E1'); 
+ mo2=fe_gmsh('read',d_rail('wd','UIC60_GAE.msh'));mo2.Elt=feutil('selelt eltnamebeam1',mo2);
+ mo2.Node=feutil('getnodegroupall',mo2);
+ mo2.Node(:,7)=mo2.Node(:,7)-max(mo2.Node(:,7)); % prrLine is on top
+ RO.prrLine=mo2.Node(mo2.Node(:,6)>0,5:7);
+
+ f2=d_rail('wd','U30_Sections.mat');z=load(f2{1});mo3=z.sections('ra');
+ m_rail=railu.RailSection(mo3); % remove cant manually
+
+ mo3=m_rail;mo3.Node(:,6:7)=mo3.Node(:,6:7).*[RO.lar1/m_rail.meta.lar1 RO.hr3/m_rail.meta.hr3];
+ mo3.Node(:,7)=interp1([0 -43 -140 -172],[0 -29 -140  -172],mo3.Node(:,7));
+
+ n3=feutil('getnode inelt{seledge}',mo3);
+ n2=feutilb('addNode-nearest -epsl 10',mo2.Node(:,5:7),n3(:,5:7));
+ fecom('shownodemark',mo2.Node(n2,5:7))
+
+ RM=struct('base',mo3.Node(mo3.Node(:,7)<-171.9,1),'Morph', ...
+     {[{'Profile','Coarse'};num2cell(mo2.Node(n2,1)) num2cell(n3(:,5:7),2)]});
+ mo4=fe_shapeoptim('Morph',feutil('addtest',mo2,mo3),RM);
+ mo4.meta=sdth.sfield('addselected',mo3.meta,RO,{'lar1','hr3'});mo4.name='60-E1';
+ mo4.meta.ToolTip='UIC60 ';
+ mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
+
+ f2=d_rail('wd','UIC60_Sections.mat');r1=load(f2{1});
+ r1.sections('ra')=mo4;sdtm.save(f2{1},'-struct','r1');
+ 
+ %% now do the RA+BE section
+ mo3=railu.RailSection(r1.sections('ra+be')); 
+ mo3.Node(:,6:7)=mo3.Node(:,6:7).*[RO.lar1/m_rail.meta.lar1 RO.hr3/m_rail.meta.hr3]+[0 0];
+ mo3.Node(:,7)=interp1([0 -43 -63.3 -140 -172.1],[0 -29 -172+76.25 -140  -172.1],mo3.Node(:,7),'linear','extrap');
+ feplot(mo3);axis on; fecom view4
+
+ n3=feutil('getnode inelt{seledge}',mo3);
+ n2=feutilb('addNode-nearest -epsl 10',mo2.Node(:,5:7),n3(:,5:7));
+ fecom('shownodemark',mo2.Node(n2,5:7))
+
+ RM=struct('base',mo3.Node(mo3.Node(:,7)<-171.9,1),'Morph', ...
+     {[{'Profile','Coarse'};num2cell(mo2.Node(n2,1)) num2cell(n3(:,5:7),2)]});
+ mo4=fe_shapeoptim('Morph',feutil('addtest',mo2,mo3),RM);
+ mo4.meta=sdth.sfield('addselected',mo3.meta,RO,{'lar1','hr3'});mo4.name='60-E1';
+ mo4.meta.ToolTip='UIC60 ';
+ mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
+
+
+  return
+  end
   nmap=d_rail('nmap');
   if isKey(nmap,RO);RA=nmap(RO);
   elseif contains(RO,'.mat#');
@@ -329,7 +385,8 @@ if ischar(RO);
   end
 end
 if isfield(RO,'ArmType');RA=RO;end
-if isfield(m_rail,'Elt')
+if isfield(RO,'Elt'); m_rail=RO;
+elseif isfield(m_rail,'Elt')
 elseif isfield(RA,'lar1')
      % dynavoie coarse rail model
       m_rail=struct('Node',...
@@ -373,6 +430,7 @@ elseif isfield(RA,'lar1')
 else; error('Not implemented')
 end
 
+%% remove cant
 n1=sortrows(m_rail.Node,[6 7]); % bottom left
 i1=feutil('geolinetopo',m_rail,struct('starts',n1(1),'dir',[0 1 0],'cos',.99));
 n1=[n1(1,:);n1(n1(:,1)==i1{1}(end),:)];
@@ -388,6 +446,8 @@ m_rail.meta.OrigCant=abs(cant);
 % Node with mass element on the middle-top of the rail section  
 n1=feutil('findnode z==',m_rail,0);
 m_rail.meta.TopNodes=n1; 
+
+
 
 end % RailSection
 
@@ -410,6 +470,7 @@ if carg<=nargin; RO=varargin{carg};carg=carg+1;
 else; RO=struct;
 end
 [RO,st,CAM]=cingui('paramedit -DoClean2',DoOpt,{RO,CAM});Cam=lower(CAM);
+RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
  if RO.cyc; RO.ncell=1;
  elseif length(RO.ncell)<2;RO.ncell(2)=0;
  end
@@ -418,12 +479,7 @@ end
 
 %      ms=feutil('setmat',ms,'dyn_mesh(matdb{399,prrLine})');
 % feutil('setpro',ms,'d_rail(nmap.ProDb.prrLine)');
-r2=d_rail('nmap');
-if isfield(RO,'nmap')&&isa(RO.nmap,'vhandle.nmap');RO.projM=RO.nmap; 
-elseif ~isfield(RO,'projM');RO.projM=r2;
-end
-if ~isKey(RO.projM,'MatDb');RO.projM('MatDb')=r2('MatDb');end
-if ~isKey(RO.projM,'ProDb');RO.projM('ProDb')=r2('ProDb');end
+RO=railu.MatProDb(RO);
 
 if RO.half==0
  %% #Two_rails -3
@@ -764,6 +820,18 @@ RO=varargin{carg};carg=carg+1;
  else; error('Need implement ''%s''',CAM)
  end
 end
+
+
+function RO=MatProDb(RO);
+ %% #MatProDb initialized database 
+ r2=d_rail('nmap');
+ if isfield(RO,'nmap')&&isa(RO.nmap,'vhandle.nmap');RO.projM=RO.nmap; 
+ elseif ~isfield(RO,'projM');RO.projM=r2;
+ end
+ if ~isKey(RO.projM,'MatDb');RO.projM('MatDb')=r2('MatDb');end
+ if ~isKey(RO.projM,'ProDb');RO.projM('ProDb')=r2('ProDb');end
+end
+
 function out=MeshList(RO)
 %% #MeshList : generic meshing strategy from list
 
@@ -953,7 +1021,11 @@ end % end MeshList
 
 function RM=MeshSleeper(name,evt);
  %% #MeshSleeper 
- preMesh=struct('cuts', ...
+ % mo1=railu.MeshSleeper('m450pi')
+ if strncmpi(name,'m450pi',4)
+ %  #MeshSleeper.M450pi   % sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116')
+ RO=struct;
+ preMesh=struct('cuts', ... % mm
   {{[0     0  ;...
      290/2 0  ;...
      220/2 190;...
@@ -967,7 +1039,7 @@ function RM=MeshSleeper(name,evt);
      220/2 220-350/850*(220-170);...
      0     220-350/850*(220-170)]...          
     [0     0  ;...
-     220/2 0  ;...
+     220/2 0  ;...3
      180/2 170;...
      0     170]...
     [0     0  ;...
@@ -980,15 +1052,28 @@ function RM=MeshSleeper(name,evt);
  mo1=struct('Node',[],'Elt',[]); n1={};
  for j1=1:length(preMesh.cuts)
   node=[preMesh.cuts{j1}(:,1) repmat(preMesh.y(j1),length(preMesh.cuts{1}),1) preMesh.cuts{j1}(:,2)];
-  mo2=feutil('ObjectQuad 1 1',node,1,1); 
-  if j1>1
-   [mo1,n1{j1}]=feutil('AddTest-noori;',mo1,mo2);
-   mo1.Elt=feutil('AddElt',mo1.Elt,'beam1',[n1{j1-1:j1}]);
-  else; mo1=mo2; n1{1}=mo2.Node(:,1);
-  end
+  preMesh.cuts{j1}=node;
  end
- %feplot(mo1)
- RM=mo1;
+ mo2=feutil('objecthexa',[0 0 0;0 0 1;0 1 0;1 0 0],1,1,preMesh.y);mo2.Node(:,5:7)=vertcat(preMesh.cuts{:});
+ mo2.Elt(2:end,[3 4 7 8])= mo2.Elt(2:end,[4 3 8 7]);
+ mo2=feutil('addtest;',mo2,feutil('symsel 17  1 0 0',mo2));
+ mo2=feutil('addtest;',mo2,feutil('symsel 17  0 1 0',mo2));
+ mo2.Elt=feutil('orient;',mo2);
+ mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
+ RO=railu.MatProDb(RO);
+ mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
+ RO.PrePl={'name','MatId';'Sleeper',201};
+ RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
+ mo2=feutil('setpro',mo2,RO);
+ mo2=feutil('setmat',mo2,RO);
+ % adjust mass
+ mo2.meta=struct('half',0,'mass',300);
+ r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
+ 
+ RM=mo2;
+ if nargout==0; feplot(mo2);end
+
+ end
 end
 function RM=nameToMeshRO(name,evt);
 %% #nameToMeshRO naming nomenclature to parameter 
@@ -1126,6 +1211,12 @@ function   ms=MeshSlice(RO);
   end
  else % rail mesh 
   [~,R1]=sdtm.urnPar(RO,'{}{Sleeper%s,Rail%s,Pad%s,Sub%s}');
+  mo1=railu.MeshSleeper(R1.Sleeper);
+  mo2=railu.RailSection(R1.Rail);
+  if max(abs(mo2.Node(:,7)))>1; mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';end
+  'xxx offset '
+  'gamma'
+  feplot(feutil('addtest',mo1,mo2))
   error('Need extend implement slice meshing')
  end
 
@@ -1142,6 +1233,7 @@ if isempty(gnmap)||isequal(opt,'reset')
   gnmap.append({ ...
    '60-E1', struct('hr1',11.5,'hr2',51,'hr3',172, ...
       'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail') 
+   'UIC60',struct('alias','60-E1')
     '50-E6',struct('hr1',10.2,'hr2',49,'hr3',153, ...
       'lar1',140,'lar2',15.5,'lar3',65,'ToolTip','Coarse DV Rail')  
     '46-E2',struct('hr1',10.5,'hr2',47,'hr3',145, ...
@@ -1238,6 +1330,7 @@ function col=color(tag)
   end
 
 end
+
 
 end % Static
 end
