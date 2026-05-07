@@ -77,6 +77,10 @@ function out=pcin(varargin)
   'dyn_mesh.arm','spleeper/rail/pad',{'key';'Slice.ArmP.ArmType';'Slice.ArmP.RailType'
          'Slice.ArmP.PadType';'Slice.ArmP.SleeperType'
    }
+  'railu.MeshPad','beam mass track slice model',{'DoOpt'
+   'Slice.ArmP.PadType';'Slice.ArmP.lsem';'Slice.ArmP.hs';'Slice.ArmP.hs';
+   'Slice.ArmP.k_pad'
+   }
    };
  r1=sdtu.f.ppath;carg=1;
  if nargin>0&&isa(varargin{1},'vhandle.nmap');cinM=varargin{1};carg=2;
@@ -309,9 +313,13 @@ railu.RailSection('U30_Sections.mat#ra')
 {var{mdl,pl},fcn{drmesh}}
 %}
 %%
+name='';
+if isfield(RO,'RailType');name=RO.RailType;
+elseif ischar(RO);name=RO;
+end
 RA=struct;m_rail=[];
-if ischar(RO); 
-  if strcmpi(RO,'_genUIC60')    
+if ~isempty(name); 
+  if strcmpi(name,'_genUIC60')    
 %% #_genUIC60 manual generation of UIC60 by morphing
 % G. Guillet section
  RO=railu.getNmap('60-E1'); 
@@ -357,15 +365,26 @@ if ischar(RO);
  mo4.meta.ToolTip='UIC60 ';
  mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
 
+ %% #UIC60_U85 with meshing using GMSH and Gaetan's cut
+ mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
+ mo4.Elt=feutil('removeelt eltname bar',mo4);
+ mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
+ mo4=feutil('addtest -noori;',mo4,feutil('symsel 35  0 1 0',mo4));
+
+ feplot(mo4);
 
   return
   end
-  nmap=d_rail('nmap');
-  if isKey(nmap,RO);RA=nmap(RO);
-  elseif contains(RO,'.mat#');
+  nmap=d_rail('nmap');RA=struct;
+  sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
+  if isKey(nmap,name);RA=followAlias(nmap,name);
+  elseif isKey(sectionM,name);RA=followAlias(sectionM,name);
+  end
+  if contains(name,'.mat#')||isfield(RA,'section')
    % railu.RailSection('U30_Sections.mat#ra')
-   fname=RO(1:find(RO==35,1,'first')-1);tag=RO(length(fname)+2:end);
-   FileName=d_rail('wd',fname);
+   if isfield(RA,'section');st=RA.section;elseif ischar(name);st=name;end
+   fname=st(1:find(st==35,1,'first')-1);tag=st(length(fname)+2:end);
+   FileName=d_rail('wd',fname);if iscell(FileName);FileName=FileName{1};end
    if ~exist(FileName,'file');error('''%s''< d_rail(''wd'',''%s'') not found',FileName,fname);end
    sections=[];sdtm.load(FileName,'sections');
    if isa(sections,'containers.Map');sections=vhandle.nmap(sections);end
@@ -415,19 +434,18 @@ elseif isfield(RA,'lar1')
       11 12 13 14  301 301;
       13 14 15 16  301 301;
       3  11 14 6   301 301]);
-    if isfield(RA,'hs')
+    if isfield(RA,'hs') % sleeper height (obsolete)
      m_rail.Node(:,7)=m_rail.Node(:,7)+RA.hs;
     end
-     
-    m_rail=feutil('Divide 2 2',m_rail);
-    
-    if exist('dyn_mesh','file')
+    m_rail=feutil('Divide 2 2',m_rail);    
+    if exist('dyn_mesh','file') % xxx should use PrePl 
      m_rail.pl=dyn_mesh('matdb 301',{{'Rail','Standard'}});
     else;
      m_rail.pl=d_rail('nmap.MatDb.rail');m_rail.pl(1)=301;
     end
     m_rail.il = [301  fe_mat('p_solid','SI',1) 0 10002 0 1]; % new integration rule
-else; error('Not implemented')
+else; 
+  error('Not implemented')
 end
 
 %% remove cant
@@ -444,10 +462,8 @@ m_rail.meta=struct('GaugPoint',[NaN NaN],'lar1',diff(r2(:,1)), ...
     'OrigCant',abs(cant),'hr3',-min(m_rail.Node(:,7)));
 m_rail.meta.OrigCant=abs(cant); 
 % Node with mass element on the middle-top of the rail section  
-n1=feutil('findnode z==',m_rail,0);
+n1=feutil('findnode z== epsl1e-4',m_rail,0);
 m_rail.meta.TopNodes=n1; 
-
-
 
 end % RailSection
 
@@ -694,7 +710,7 @@ end
  % end
 li(cellfun(@(x)isequal(x,15),li(:,4)),4)={RM.Lc};
 
-%% #MeshDb.add_sleeper before and after -3
+%% #MeshDb.add_sleeper before and after -4
 Ns=2*RM.Ns; % Correspond of the real number of sleeper 
             % Permit to input also odd number at the beginning
 if ~isfield(RM,'Lc');RM.Lc=15;end
@@ -763,7 +779,7 @@ if length(RM.Lc)==2
  li(setdiff(find(r1<min(RM.top)),1),4)={RM.Lc(1)};
  li(find(r1(2:end)>max(RM.top))+2,4)={RM.Lc(1)};
 end
-%% #Mesh.TGrad : creation of gradient if not given in KC -3
+%% #Mesh.TGrad : creation of gradient if not given in KC -4
 if isfield(RM,'TGrad') % Selection of gradient types
  switch lower(RM.TGrad); 
  case 'ga';
@@ -816,7 +832,7 @@ model=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
  elseif comstr(Cam,'joint')
 %% #Mesh.Joint : meshing of rail joint from parts
 RO=varargin{carg};carg=carg+1;
-
+ error('Need implement')
  else; error('Need implement ''%s''',CAM)
  end
 end
@@ -833,7 +849,7 @@ function RO=MatProDb(RO);
 end
 
 function out=MeshList(RO)
-%% #MeshList : generic meshing strategy from list
+%% #MeshList : joint meshing strategy from list -2
 
 li=RO.Track; projM=RO.projM; 
 %%
@@ -1056,8 +1072,8 @@ function RM=MeshSleeper(name,evt);
  end
  mo2=feutil('objecthexa',[0 0 0;0 0 1;0 1 0;1 0 0],1,1,preMesh.y);mo2.Node(:,5:7)=vertcat(preMesh.cuts{:});
  mo2.Elt(2:end,[3 4 7 8])= mo2.Elt(2:end,[4 3 8 7]);
- mo2=feutil('addtest;',mo2,feutil('symsel 17  1 0 0',mo2));
- mo2=feutil('addtest;',mo2,feutil('symsel 17  0 1 0',mo2));
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  1 0 0',mo2));
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  0 1 0',mo2));
  mo2.Elt=feutil('orient;',mo2);
  mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
  RO=railu.MatProDb(RO);
@@ -1075,6 +1091,12 @@ function RM=MeshSleeper(name,evt);
 
  end
 end
+function RM=MeshPad(name,evt);
+ %% #MeshPad
+ dbstack; keyboard;
+
+end
+
 function RM=nameToMeshRO(name,evt);
 %% #nameToMeshRO naming nomenclature to parameter 
 %  'U30{5,Gc,tc-700_300,PadFuSN{io4}}:no:W2{XaZa}'
@@ -1210,10 +1232,11 @@ function   ms=MeshSlice(RO);
    PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
   end
  else % rail mesh 
-  [~,R1]=sdtm.urnPar(RO,'{}{Sleeper%s,Rail%s,Pad%s,Sub%s}');
-  mo1=railu.MeshSleeper(R1.Sleeper);
-  mo2=railu.RailSection(R1.Rail);
+  [~,R1]=sdtm.urnPar(RO,'{RailType%s,SleeperType%s,PadType%s}{Sub%s}');
+  mo1=railu.RailSection(R1);
+  mo2=railu.MeshSleeper(R1.SleeperType);
   if max(abs(mo2.Node(:,7)))>1; mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';end
+
   'xxx offset '
   'gamma'
   feplot(feutil('addtest',mo1,mo2))
@@ -1225,6 +1248,7 @@ end
 
 function out=getNmap(opt)
 %% #getNMap : implementation of nmap (legacy compatibility)
+% railu.getNmap('reset');
 persistent gnmap
 if nargin==0; opt=[];end
 if isempty(gnmap)||isequal(opt,'reset')
@@ -1232,7 +1256,9 @@ if isempty(gnmap)||isequal(opt,'reset')
   % rails
   gnmap.append({ ...
    '60-E1', struct('hr1',11.5,'hr2',51,'hr3',172, ...
-      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail') 
+      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail', ...
+      'section','UIC60_Sections.mat#ra','cite','rail_IN10208.pdf#page=49') 
+   'SN',struct('PadType','Volume','hs',9,'lsem',220,'k_pad',180e6)
    'UIC60',struct('alias','60-E1')
     '50-E6',struct('hr1',10.2,'hr2',49,'hr3',153, ...
       'lar1',140,'lar2',15.5,'lar3',65,'ToolTip','Coarse DV Rail')  

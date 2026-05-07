@@ -170,10 +170,12 @@ dyn_post('ViewRestAll -light'); % display deformation animation
 
 
 %% Step meshJoint  : mesh section and joint
+% d_rail('TutoDvBeam-s{init,mesh}')
+% keywords{var{ms,mt},fcn{dyn_solve.Eig,t_dynavoie.meshslice}}
 
 projM('S2')=sprintf('railu(%s)',rail19('nmap.Trk21ref.Ref21'));
-% projM('S2')='railu(UIC60{}:sleeperM450PI:padSN)'
-% projM('S2')='railu(U60{padSN,sleeperM450PI}:ec41:w2{})'
+% projM('S2')='railu(UIC60{}:sleeperM450PI:padSN)' 
+% projM('S2')='railu(U60{padSN,sleeperM450PI}:ec41)'
 projM('CurExp')={'SliceCfg{S2}'}; % save current experiment
 %
 Range=dyn_solve('Range',projM('CurExp'));
@@ -225,7 +227,7 @@ mo1=d_rail('meshbeamMass{half0,cyc,lc.1}',RB);projM('CurModel')=mo1;
 projM('CurExp')={'RunCfg{fe_homo(dftDisp),fe_homo(dfpInitSelDef)}'};
 sdtm.range(struct('nmap',projM))
 
-% railu.MeshSlice('{SleeperM450pi,rail60-E1,padSpring,SubSpring}')
+% railu.MeshSlice('{rail60-E1,M450,SN,SubSpring}')
 % xxx gaetan profiles 
 if 1==2
  RS=struct( ...
