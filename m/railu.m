@@ -2,7 +2,7 @@ classdef railu
     
 % railu : name space for methods related to RAIL
 %
-% <a href="matlab:methods railu">methods railu</a> for methods
+% <a href="matlab:methods railu">methods railu</a> for methods <a href="matlab:railu.pcin">railu.pcin</a> for parameters
 %
 % For revision information type <a href="matlab:railu.cvs">railu.cvs</a>
 
@@ -78,8 +78,12 @@ function out=pcin(varargin)
          'Slice.ArmP.PadType';'Slice.ArmP.SleeperType'
    }
   'railu.MeshPad','beam mass track slice model',{'DoOpt'
-   'Slice.ArmP.PadType';'Slice.ArmP.lsem';'Slice.ArmP.hs';'Slice.ArmP.hs';
+   'Slice.ArmP.PadType';'Slice.ArmP.lsem';'Slice.ArmP.hs';'Slice.ArmP.hs';% 'Slice.ArmP.hs>hs'
    'Slice.ArmP.k_pad'
+   }
+  'railu.RailSection','properties for rail section',{'DoOpt'
+   'Slice.ArmP.RailType>RailType';'Slice.ArmP.hr3>hr3';'Slice.Gen.half>half'
+   'RailX(0:100:600#%g#"rail cuts [mm|<1=m]")'
    }
    };
  r1=sdtu.f.ppath;carg=1;
@@ -90,6 +94,16 @@ function out=pcin(varargin)
     DefBut=sdtm.rmfield(feval(dyn_ui('@genDefBut')),'PTree','Tab','Methods');
     sdtm.pcin(cinM,'append',DefBut);
  end
+ if ~isKey(cinM,'prero.dyn_mesh.paramSlice')
+  feval(dyn_mesh('@getParamEdit'),[],[],'Slice')
+ end
+ if ~isKey(cinM,'prero.dyn_mesh.paramTrack')
+  feval(dyn_mesh('@getParamEdit'),[],[],'Track')
+ end
+ preRO(end+(1:2),1:3)={'railu.MeshSlice','Slice parameters',cinM('prero.dyn_mesh.paramSlice')
+    'railu.MeshTrack','Track parameters',cinM('prero.dyn_mesh.paramTrack')
+     };
+
   % augment cinM/osM using preRO/preOs
   sdtm.pInitPre([nargout exist('preRO','var') exist('preOS','var')]);
 end
@@ -253,7 +267,7 @@ function mt=addVehicle(mt,mv,RO,RunOpt)
 
 end
 function   mv=WheelSection(RO);
-%% #WheelSection : wheel section mesh -2
+%% #WheelSection : wheel section mesh -1
  mv=[];
  if ischar(RO.VehType); 
   nmap=d_rail('nmap');
@@ -302,13 +316,14 @@ end
 
 
 
-function   m_rail=RailSection(RO);
+function   m_rail=RailSection(RO,RC);
 %{
-```DocString {module=rail} -2
+```DocString {module=rail} -1
 RailSection:  rail section mesh
 ```EXAMPLE
 railu.RailSection('60-E1')
 railu.RailSection('U30_Sections.mat#ra')
+railu.RailSection(m_rail) % cleanup
 ```keywords
 {var{mdl,pl},fcn{drmesh}}
 %}
@@ -320,7 +335,7 @@ end
 RA=struct;m_rail=[];
 if ~isempty(name); 
   if strcmpi(name,'_genUIC60')    
-%% #_genUIC60 manual generation of UIC60 by morphing
+%% #_genUIC60 manual generation of UIC60 by morphing -2
 % G. Guillet section
  RO=railu.getNmap('60-E1'); 
  mo2=fe_gmsh('read',d_rail('wd','UIC60_GAE.msh'));mo2.Elt=feutil('selelt eltnamebeam1',mo2);
@@ -365,7 +380,7 @@ if ~isempty(name);
  mo4.meta.ToolTip='UIC60 ';
  mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
 
- %% #UIC60_U85 with meshing using GMSH and Gaetan's cut
+ %% #UIC60_U85 with meshing using GMSH and Gaetan's cut -2
  mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
  mo4.Elt=feutil('removeelt eltname bar',mo4);
  mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
@@ -375,13 +390,22 @@ if ~isempty(name);
 
   return
   end
-  nmap=d_rail('nmap');RA=struct;
+  nmap=d_rail('nmap');
+  RB=struct;
+  DoOpt=sdtm.pcin('prero.railu.RailSection');
+  if any(name=='{'); 
+    %[RB,st,name]=cingui('paramedit -DoClean2',DoOpt,{RO,name}); Cam=lower(CAM); st='';
+    [name,RB]=sdtm.urnPar(name,DoOpt);
+  end
+
   sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
   if isKey(nmap,name);RA=followAlias(nmap,name);
   elseif isKey(sectionM,name);RA=followAlias(sectionM,name);
+  elseif isKey(sectionM,RO.RailName);name=RO.RailName;RA=followAlias(sectionM,name);
   end
+  RA=sdth.sfield('addmissing',RB,RA);
   if contains(name,'.mat#')||isfield(RA,'section')
-   % railu.RailSection('U30_Sections.mat#ra')
+  %% #RailSection.readMat railu.RailSection('U30_Sections.mat#ra')
    if isfield(RA,'section');st=RA.section;elseif ischar(name);st=name;end
    fname=st(1:find(st==35,1,'first')-1);tag=st(length(fname)+2:end);
    FileName=d_rail('wd',fname);if iscell(FileName);FileName=FileName{1};end
@@ -404,10 +428,11 @@ if ~isempty(name);
   end
 end
 if isfield(RO,'ArmType');RA=RO;end
-if isfield(RO,'Elt'); m_rail=RO;
+if isfield(RO,'Elt'); 
+    m_rail=RO; RO=RC; % actually extrude
 elseif isfield(m_rail,'Elt')
 elseif isfield(RA,'lar1')
-     % dynavoie coarse rail model
+     %% dynavoie coarse rail model
       m_rail=struct('Node',...
      [1   0 0 0      0 -RA.lar1/2 0      % 1   y+1575/2 ?
       2   0 0 0      0 -RA.lar1/2 RA.hr1  % 2
@@ -448,7 +473,7 @@ else;
   error('Not implemented')
 end
 
-%% remove cant
+%% #RailSection.remove_cant
 n1=sortrows(m_rail.Node,[6 7]); % bottom left
 i1=feutil('geolinetopo',m_rail,struct('starts',n1(1),'dir',[0 1 0],'cos',.99));
 n1=[n1(1,:);n1(n1(:,1)==i1{1}(end),:)];
@@ -465,7 +490,129 @@ m_rail.meta.OrigCant=abs(cant);
 n1=feutil('findnode z== epsl1e-4',m_rail,0);
 m_rail.meta.TopNodes=n1; 
 
+
+%%
+
+  % checks properties ranges :
+  if ~isfield(m_rail,'pl');m_rail.pl=[];end
+  if ~isempty(m_rail.pl)
+   if min(m_rail.pl(:,1))<301 || max(m_rail.pl(:,1))>400
+    sdtw('_nb','rail matid should be in the 301-400 range'); 
+   end
+   if min(m_rail.il(:,1))<301 || max(m_rail.il(:,1))>400
+    sdtw('_nb','rail proid should be in the 301-400 range'); 
+   end
+  end
+  if ~isfield(m_rail,'il');m_rail=p_solid('default;',m_rail);end
+  % Make sure it uses SI
+  if max(max(abs(m_rail.Node(:,5:7))))>10
+    m_rail.Node(:,5:7)=m_rail.Node(:,5:7)/1000;m_rail.unit='SI';
+  end
+
+  % position of m_rail
+  m_rail.Node(:,5)=m_rail.Node(:,5)-min(m_rail.Node(:,5)); % x0=0
+  if  max(abs(m_rail.Node(:,5)))==0;RC.Extrude=1;end
+  Geo=struct;if isfield(RO,'Geo');Geo=RO.Geo;end
+  if isfield(RA,'RailX'); if ischar(RA.RailX);RA.RailX=comstr(RA.RailX,-1);end
+  elseif ~isfield(Geo,'XtrudeRail')||isempty(Geo.XtrudeRail); return % early return of section
+  elseif RC.Extrude
+    %% #Gamma rail track extrusion should support curved line, section straight -3
+    % now position based on Or (rail contact point at 0 0) 
+    nb_slices=1; % here only one slice    
+    XtrudeRail=Geo.XtrudeRail;
+    r3=XtrudeRail.'*ones(1,nb_slices)+RO.sw/2+...
+        RO.sw*ones(length(XtrudeRail),1)*(0:nb_slices-1);
+    r3=unique([0 r3(:).' nb_slices*RO.sw]);
+    RA.RailX=r3; 
+  end
+  if isfield(RA,'RailX')&&~isempty(RA.RailX)
+    if mean(diff(RA.RailX))>1; RA.RailX=RA.RailX/1000; end % Force SI
+    m_rail=feutil('extrude 0 1 0 0',m_rail,RA.RailX); % extrudes section
+    if ~isempty(feutil('selelt eltnamehexa',m_rail));
+        RA.RailType='Volume';
+    end
+  end
+  m_rail.Elt=feutil('orient;',m_rail);
+  if isfield(Geo,'z_pad_up') % dynavoie 
+   m_rail.Node(:,7)=m_rail.Node(:,7)+Geo.z_pad_up-...
+     min(m_rail.Node(:,7)); % z0=top of the pad
+  end
+  if min(m_rail.Node(:,7))==max(m_rail.Node(:,7)) && min(m_rail.Node(:,6))==max(m_rail.Node(:,6)) % rail=beam
+     m_rail.Node(:,7)=m_rail.Node(:,7)+RA.hr3; % top of the rail at the good z
+  end
+
+
 end % RailSection
+
+function m_rail=RailPrr(RA,m_rail,ms);
+  % #RailPrr Add rigid links on the sides of the volume rail -2
+  if nargin==3
+   %% dynavoie the pad is on the sleeper
+   padxyz=feutil('getnode InElt{MatId 101 & selface & facing> 0 0 0 1e6}',ms);
+   padxyz(:,1:4)=[];
+  else 
+   % the pad is on the rail
+   padxyz=feutil('getnode InElt{ProId 101 & selface & facing> 0 0 0 -1e6}',m_rail);
+   padxyz(:,1:4)=[];
+   padxyz=[];
+  end
+done=1;
+  if min(m_rail.Node(:,7))==max(m_rail.Node(:,7)) && ...
+       min(m_rail.Node(:,6))==max(m_rail.Node(:,6)) % rail=beam : rigid link
+  elseif strncmpi(RA.RailType,'Vol',3) 
+    %% #prrLine_for_contact / rigid edges and rail guide for volume -3
+    [node,i1]=sortrows(round(m_rail.Node*1e6),[5 7 6]);
+    node(:,1)=m_rail.Node(i1,1);r2=unique(node(:,5));r3=unique(node(:,7));
+    elt=[]; 
+    for j1=1:length(r2)% x positions
+      i1=find(node(:,5)==r2(j1));
+      i2=i1(node(i1,6)==0&abs(node(i1,7)-r3(end))<1e-2);
+      if isempty(i2) % Need to add centerline
+        n2=r2; n2(1,3)=0;
+        [m_rail.Node,i2]=feutil('addnode',m_rail.Node,n2/1e6); 
+        el1=feutil('objectbeamline',m_rail.Node(i2,1));el1(2:end,3:5)=399;
+        m_rail.Elt=feutil('addelt',m_rail.Elt,el1);
+        done=0; break;
+      end
+      if j1==1||j1==length(r2);i1=node(i1); % Edges all face nodes
+      else;  % only top nodes
+        i1=feutil('findnode inelt{withnode} & x==',m_rail,node(i2,1),node(i2,5)/1e6);
+      end
+      i2=node(i2,1);i1=setdiff(i1,i2)*[1 1];i1(:,1)=i2;
+      elt=[elt;i1]; %#ok<AGROW> % connections to centerline 
+    end
+    if ~isempty(elt);elt(:,3)=123;m_rail=feutil('addelt',m_rail,'rigid',elt);end
+
+  else;
+    m_rail.Node(:,7)=m_rail.Node(:,7)-min(m_rail.Node(:,7))+max(padxyz(:,3));
+    if ~isfield(ms,'nmap');ms.nmap=vhandle.nmap;end
+    nameM=ms.nmap('Map:SetName');
+    nameM.append({'Mat:301','Rail';'Mat:101','Pad';'Mat:201','Sleeper'})
+
+  end
+
+  if ~done&& ~isempty(feutil('selelt proid399',m_rail))
+    %% #prrLine_for_contact_sections (centered on y=0 for now) -3
+    [node,i1]=sortrows(round(m_rail.Node*1e6),[5 7 6]);
+    node(:,1)=m_rail.Node(i1,1);r2=unique(node(:,5));r3=unique(node(:,7));
+    elt=[];
+    for j1=1:length(r2)% x positions
+      i1=find(node(:,5)==r2(j1));
+      i2=i1(node(i1,6)==0&node(i1,7)==r3(end));
+      if 1==2%j1==1||j1==length(r2);i1=node(i1);
+      else; 
+       i1=node(i1(abs(node(i1,6)-node(i2,6))<15e3&node(i1,7)-r3(end)>-3e3),:); 
+       i1=i1(:,1);      
+      end
+      i2=node(i2,1);i1=setdiff(i1,i2)*[1 1];i1(:,1)=i2;
+      elt=[elt;i1]; %#ok<AGROW>
+    end
+    elt(:,3)=123;
+    m_rail=feutil('addelt',m_rail,'rigid',elt);
+  end
+
+end
+
 
 function   [model,RO]=Mesh(varargin);
  %% #Mesh implement forwarding of sdtsys.stepmesh
@@ -838,6 +985,278 @@ RO=varargin{carg};carg=carg+1;
 end
 
 
+function   ms=MeshSlice(RO);
+%% #MeshSlice : rail section mesh -2
+% railu.MeshSlice('{UIC60{RailX0:50:600},M450{Slx-.6 -.105 .105 .6},SN,half0,cant.05}') %
+
+ RO=sdtu.ui.cleanEntry(RO);
+ if iscell(RO) 
+  %% dynavoie list
+  Range=dyn_solve('Range',struct('SliceCfg',{{'T',RO}}));
+  dyn_solve('RangeLoopReset',Range,struct('ifFail','error'));  
+  if sdtdef('isinteractive')
+   PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
+  end
+ else % rail mesh 
+  if isfield(RO,'nmap')&&isKey(RO.nmap,'CurSlice')
+   RT=RO; RO=RT.nmap('CurSlice');
+  else
+   DoOpt=sdtm.pcin('prero.railu.MeshSlice');R1=RO;
+   [~,RO]=sdtm.urnPar(RO,'{RailType%s,SleeperType%s,PadType%s}{}',struct('var',{DoOpt},'out','uo'));
+  end
+  RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
+  m_rail=railu.RailSection(RO);
+  m_rail=railu.MeshPad(RO,m_rail);
+  m_rail=railu.RailPrr(RO,m_rail); %% add top line
+  % xxx robust vhandle.uo.safeLenUnit(RO,'mm/1000');
+  if max(abs(m_rail.Node(:,7)))>1; m_rail.Node(:,5:7)=m_rail.Node(:,5:7)/1000;m_rail.unit='SI';end
+
+  mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO)); % combine rails
+  sdtm.store(RT.nmap,sprintf('mo2>%s',RO.store));
+ end
+
+end
+function   ms=MeshSliceCheck(ms,RC)
+  %% #MeshSliceCheck
+
+  if nargin<2||~isfield(RC,'Do');
+    RC.Do={'EltId','plrange','railtop'}
+  end
+  for j0=1:length(RC.Do)
+  switch lower(RC.Do{j0})
+      case 'eltid'
+   [u1,ms.Elt]=feutil('EltIdFix;',ms);
+      case 'plrange'
+   if min(ms.pl(:,1))<1 || max(ms.pl(:,1))>400
+    sdtw('_nb','slice whith rail matid should be in the 1-400 range'); 
+   end
+   if min(ms.il(:,1))<1 || max(ms.il(:,1))>400
+    sdtw('_nb','slice with rail proid should be in the 1-400 range'); 
+   end
+      case 'railtop'
+   % Nodes of top rail
+   r1=feutil('findnode pronameprrLine',ms);
+   if isempty(r1)% old attempt to use line
+    r1=fe_case(ms,'getdata','rail');
+    if isempty(r1);error('Missing DofSet,Rail');end
+    r1=unique(fix(r1.DOF));
+   end
+   RailSel=RC.projM('RailSel')
+   dbstack; keyboard; 
+   RailSel(j1*2-1,1:2)={RB.sname,feutil('addelt','mass1',r1)};
+ case 'doperiod'
+ %% #MeshSliceCheck.doPeriod
+   %% xxx was DoPeriod
+    if ~isfield(ms,'meta')||~isfield(ms.meta,'sw'); 
+      r2=ms.Node(:,5); ms.meta.sw=max(r2)-min(r2);
+    end
+  data=fe_case(ms,'stack_get','cyclic','Symmetry','get'); 
+  if isempty(data)||~isfield(data,'IntNodes')
+  % periodicity condition :
+  ms=fe_cyclic(sprintf('build -noslave -1 %g 0.0 0.0;',ms.meta.sw),ms); % builds periodicity
+  % interfaces node renumbering :
+  c1=fe_case(ms,'getdata','Symmetry');c1.IntNodes=sortrows(c1.IntNodes);  
+  i1=[c1.IntNodes(:,1);setdiff(ms.Node(:,1),c1.IntNodes(:));
+       c1.IntNodes(:,2)]; i1(:,2)=(1:length(i1))';
+  if ~isfield(RC,'NoRenum')
+   r2=fe_case(ms,'stack_get');
+   m2=feutil('renumber-noOri;',stack_rm(ms,'info','OrigNumbering'),i1); 
+   if size(r2,1)~=size(fe_case(ms,'stack_get'),1)
+       error('Renumbering issue');
+   else; ms=m2; 
+   end
+  end
+ R1=stack_get(ms,'','MeshParam','get');
+ [Case,name]=fe_case(ms,'getcase');
+ r1=stack_get(Case,'','HalfTrack','g');
+ r3=stack_get(Case,'','PmlDispMpc','g');
+ if ischar(r1)&&~isempty(r3); [st,un1,r2]=comstr('-dof',[-25 1],r1,lower(r1));
+    r1=feutil('getdof',feutil(['findnode' st],ms),r2/100);
+    r1(fe_c(r1,r3.DOF(r3.slave),'ind'))=[];% Don't fix slaves
+    ms=fe_case(ms,'FixDof','HalfTrack',r1);
+    i1=fe_c(r3.DOF,r1,'ind'); r1=r3.DOF(r3.slave); 
+    r3.c(:,i1)=[];r3.DOF(i1)=[];r3.slave=fe_c(r3.DOF,r1,'ind');
+    ms=fe_case(ms,'mpc','PmlDispMpc',r3);
+        
+ end
+
+  end % actually build
+
+      otherwise 
+          error(RC.Do{j0})
+  end
+  end % Loop on things to do
+   
+
+
+
+end
+function   mt=MeshTrack(RT);
+%% #MeshTrack : concatenate mesh slices as a track -2
+
+RO=RT.nmap('CurTrack');projM=RT.nmap;
+RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
+
+% sdtweb dyn_mesh GenTrack
+RB=struct('projM',projM); projM('RailSel')={};
+RB.Do={'doPeriod','plrange','eltid'};
+RB.bas=101; RB.NodeId0=100000;
+RB.XinfoCol={'x','SE','bas'};RB.Xinfo=[];
+mt=struct('Node',[],'Elt',[],'bas',[]);
+   if ~isfield(mt,'bas')||isempty(mt.bas)
+   elseif max(mt.bas(:,1))<101;error('Expecting BasId<100 for train');
+   end
+   % - free the 1-100 basid range for the vehicle model 
+   % - basid=100+index_slice for the slices : last row end of track with no s_
+   % the s(j)i(k) use the j+100 basid
+   % - NodeId of s(j) s(j)i(j) overlap by data.IntNodes 
+
+  for j1=2:size(RO.preTrack,1) % Deal with multiple slices
+   ev1=vhandle.tab.getValEvt(RO.preTrack,j1);RB.sname=ev1.SE;
+   ms=projM(ev1.SE);
+   ms=railu.MeshSliceCheck(ms,RB);   %RS=getParamInStack(ms);
+   data=fe_case(ms,'stack_get','cyclic','Symmetry','get');
+   mt=stack_rm(mt,'SE',ev1.SE);
+   i4=length(ev1.slNum); 
+   %if length(RO.nb_slices)>1&&j1<length(RO.nb_slices);i4=i4-RO.nsi; end
+   st1=sprintf('SEadd -trans %i %g 0 0 %i %i %i %s -bas %i',...
+    i4,ms.meta.sw,size(data.IntNodes,1), ... % Shift interface nodes (should be full not reduced)
+    RB.NodeId0,100000,RB.sname, ...
+    RB.bas);
+   RA=struct('Type','translated','opt',[i4 ms.meta.sw 0 0], ...
+       'offset',[0 0 0],'bas',RB.bas,'MatId0',(1000+j1-1),'ProId0',(1000+j1-1), ...
+       'NodeShift',size(data.IntNodes,1),'NodeId0',RB.NodeId0-1,'EltId0',1e5-1,'name',ev1.SE);
+   if ~isempty(RB.Xinfo) % Position ms horizontally
+    RA.bas(2:15)=[1 0  RB.Xinfo(end,1)-min(ms.Node(:,5)) 0 0 reshape(eye(3),1,9)];
+   else
+    RA.bas(2:15)=[1 0  -min(ms.Node(:,5)) 0 0 reshape(eye(3),1,9)];
+   end
+   ms.name=RA.name;
+
+   mt=fesuper(st1,mt,ms,RA); % add with translations and node range shifting
+   mt=feutil('setpro',mt,[1000+j1-1 fe_mat('p_super','SI',1) 1. 1. 1.]);
+
+   r1=mt.bas(sdtu.fe.NNode(mt.bas(:,1),RA.bas(1)-1+(1:i4)'),[4 1 1]);
+   r1(1:end-1,2)=fesuper(['s_' RB.sname]); 
+   r1(:,1)=r1(:,1)+min(ms.Node(:,5)); r1(end+1,1)=r1(end,1)+ms.meta.sw;
+   if j1==2; RB.Xinfo=r1; % First slice
+   else;
+       RB.Xinfo=[RB.Xinfo(1:end-1,:);r1]; 
+   end
+   RB.NodeId0=mt.Elt(end,3)-size(data.IntNodes,1)+1;
+   RB.bas=max(mt.bas(:,1))+1; % Leave space for an interface slice
+  end % j1 for multi-slice 
+  st1='mt>mt'; sdtm.store(RT.nmap,st1);
+
+end
+
+function RM=MeshSleeper(name,evt);
+ %% #MeshSleeper 
+ % mo1=railu.MeshSleeper('m450pi')
+ if isa(name,'vhandle.uo'); RS=name;
+     name=RS.SleeperName;
+ else; RS=struct; 
+ end
+ if strncmpi(name,'m450pi',4)
+ %  #MeshSleeper.M450pi    sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116') -3
+ RO=struct;
+ preMesh=struct('cuts', ... % mm
+  {{[0     0  ;...
+     290/2 0  ;...
+     220/2 190;...
+     0     190]...
+    [0     0  ;...
+     290/2 0  ;...
+     220/2 220;...
+     0     220]...
+    [0     0  ;... 
+     290/2 0  ;...
+     220/2 220-350/20;...
+     0     220-350/20]...  % pente 1/20      
+    [0     0  ;...
+     220/2 0  ;...3
+     180/2 220-850/20;...
+     0     220-850/20]...
+    [0     0  ;...
+     220/2 0  ;...
+     180/2 220-850/20;...
+     0     220-850/20]}}, ...
+     'y',...
+     [0 150 500 1000 1200]-1200);
+
+ for j1=1:length(preMesh.cuts)
+  node=[preMesh.cuts{j1}(:,1) repmat(preMesh.y(j1),length(preMesh.cuts{1}),1) preMesh.cuts{j1}(:,2)];
+  preMesh.cuts{j1}=node;
+ end
+ mo2=feutil('objecthexa',[0 0 0;0 0 1;0 1 0;1 0 0],1,1,preMesh.y);mo2.Node(:,5:7)=vertcat(preMesh.cuts{:});
+ mo2.Elt(2:end,[3 4 7 8])= mo2.Elt(2:end,[4 3 8 7]);
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  1 0 0',mo2));
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  0 1 0',mo2));
+ mo2.Elt=feutil('orient;',mo2);
+ mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
+ RO=railu.MatProDb(RO);
+ mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
+ RO.PrePl={'name','MatId';'Sleeper',201};
+ RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
+ mo2=feutil('setpro',mo2,RO);
+ mo2=feutil('setmat',mo2,RO);
+ % adjust mass
+ mo2.meta=struct('half',0,'mass',300,'cant',.05);
+ mo2.Node(:,7)=mo2.Node(:,7)-.3655; 'xxx zOff'
+ r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
+ if isa(RS,'vhandle.uo'); % no need to return RS
+     RS=sdth.sfield('addselected',RS,mo2.meta,{'half','cant'});
+ end
+ RM=mo2;
+ if nargout==0; feplot(mo2);end
+
+ end % type of sleeper
+ if max(abs(mo2.Node(:,7)))>1; mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';end
+ if isfield(evt,'rail')
+  %% #MeshSleeper.Rail append rail to sleeper -3
+  % reimplementation of sdtweb dyn_mesh Arm_Add_Rail 
+  Slice=evt.Slice;
+  if ~Slice.half;evt.LR=[-1 1];elseif Slice.half>0; evt.LR=1; else;evt.LR=-1;end
+  if isfield(Slice,'SlX')&&~isempty(Slice.SlX)
+   %% replicate sleepers as needed
+   for j1=1:length(Slice.SlX)
+    mo3=mo2;mo3.Node(:,5)=mo3.Node(:,5)+Slice.SlX(j1);
+    if j1==1; mo1=mo3;
+    else; mo1=feutil('addtest-noori;',mo1,mo3);
+    end
+   end
+   mo2=mo1;
+  end
+  for j1=1:length(evt.LR)   
+   m_rail=evt.rail; Slr=evt.LR(j1);
+   cant=-Slr*Slice.cant; rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
+   m_rail.Node(:,6:7)= m_rail.Node(:,6:7)*rot;
+   m_rail.Node(:,6)= m_rail.Node(:,6)+Slice.gaug/2*Slr;
+   mo2=feutil('addtest-noori;',mo2,m_rail);
+  end
+  RM=mo2; 
+  %feplot(mo2); fecom view4
+ end
+
+end
+function m_rail=MeshPad(evt,m_rail);
+ %% #MeshPad
+
+ switch lower(evt.PadType)
+ case 'sn'
+  % 
+  warning('need pad mesh cleaning SlX')
+  %padxyz=feutil('getnode InElt{selface & facing> 0 0 0 -1e6}',m_rail)
+  mo2=m_rail;mo2.Elt=feutil('selelt selface & innode{ z==}',m_rail,min(m_rail.Node(:,7)));
+  mo2=feutil(sprintf('extrude 1 0 0 -%g',evt.hs),mo2);
+  mo2.Elt=feutil('set groupall proid 101 101',mo2);
+  m_rail.Node=mo2.Node;m_rail.Elt=feutil('addelt',m_rail.Elt,mo2.Elt);
+
+  %dyn_mesh('pad',struct('PadType','volume','lsem',220,'hs',9,'ws'))
+ end
+
+end
+
 function RO=MatProDb(RO);
  %% #MatProDb initialized database 
  r2=d_rail('nmap');
@@ -1035,66 +1454,6 @@ if ~isfield(RO,'gap');RO.gap=d_rail('MeshGap');end
  
 end % end MeshList
 
-function RM=MeshSleeper(name,evt);
- %% #MeshSleeper 
- % mo1=railu.MeshSleeper('m450pi')
- if strncmpi(name,'m450pi',4)
- %  #MeshSleeper.M450pi   % sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116')
- RO=struct;
- preMesh=struct('cuts', ... % mm
-  {{[0     0  ;...
-     290/2 0  ;...
-     220/2 190;...
-     0     190]...
-    [0     0  ;...
-     290/2 0  ;...
-     220/2 220;...
-     0     220]...
-    [0     0  ;... 
-     290/2 0  ;...
-     220/2 220-350/20;...
-     0     220-350/20]...  % pente 1/20      
-    [0     0  ;...
-     220/2 0  ;...3
-     180/2 220-850/20;...
-     0     220-850/20]...
-    [0     0  ;...
-     220/2 0  ;...
-     180/2 220-850/20;...
-     0     220-850/20]}}, ...
-     'y',...
-     [0 150 500 1000 1200]-1200);
-
- for j1=1:length(preMesh.cuts)
-  node=[preMesh.cuts{j1}(:,1) repmat(preMesh.y(j1),length(preMesh.cuts{1}),1) preMesh.cuts{j1}(:,2)];
-  preMesh.cuts{j1}=node;
- end
- mo2=feutil('objecthexa',[0 0 0;0 0 1;0 1 0;1 0 0],1,1,preMesh.y);mo2.Node(:,5:7)=vertcat(preMesh.cuts{:});
- mo2.Elt(2:end,[3 4 7 8])= mo2.Elt(2:end,[4 3 8 7]);
- mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  1 0 0',mo2));
- mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  0 1 0',mo2));
- mo2.Elt=feutil('orient;',mo2);
- mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
- RO=railu.MatProDb(RO);
- mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
- RO.PrePl={'name','MatId';'Sleeper',201};
- RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
- mo2=feutil('setpro',mo2,RO);
- mo2=feutil('setmat',mo2,RO);
- % adjust mass
- mo2.meta=struct('half',0,'mass',300);
- r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
- 
- RM=mo2;
- if nargout==0; feplot(mo2);end
-
- end
-end
-function RM=MeshPad(name,evt);
- %% #MeshPad
- dbstack; keyboard;
-
-end
 
 function RM=nameToMeshRO(name,evt);
 %% #nameToMeshRO naming nomenclature to parameter 
@@ -1216,30 +1575,6 @@ function  [model,RO]=Case(varargin);
     model=fe_case(model,RO.preCase{j1,1:3});
   end
   end
- end
-
-end
-
-function   ms=MeshSlice(RO);
-%% #MeshSlice : rail section mesh -3
- RO=sdtu.ui.cleanEntry(RO);
- if iscell(RO) 
-  %% dynavoie list
-  Range=dyn_solve('Range',struct('SliceCfg',{{'T',RO}}));
-  dyn_solve('RangeLoopReset',Range,struct('ifFail','error'));  
-  if sdtdef('isinteractive')
-   PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
-  end
- else % rail mesh 
-  [~,R1]=sdtm.urnPar(RO,'{RailType%s,SleeperType%s,PadType%s}{Sub%s}');
-  mo1=railu.RailSection(R1);
-  mo2=railu.MeshSleeper(R1.SleeperType);
-  if max(abs(mo2.Node(:,7)))>1; mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';end
-
-  'xxx offset '
-  'gamma'
-  feplot(feutil('addtest',mo1,mo2))
-  error('Need extend implement slice meshing')
  end
 
 end
