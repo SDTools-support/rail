@@ -1024,16 +1024,18 @@ function   ms=MeshSliceCheck(ms,RC)
   end
   for j0=1:length(RC.Do)
   switch lower(RC.Do{j0})
-      case 'eltid'
+  case 'eltid'
+   % #MeshSliceCheck.EltId fix eltids
    [u1,ms.Elt]=feutil('EltIdFix;',ms);
-      case 'plrange'
+  case 'plrange'
+   % #MeshSliceCheck.PlRange xxx sdtweb drmesh.matdb
    if min(ms.pl(:,1))<1 || max(ms.pl(:,1))>400
     sdtw('_nb','slice whith rail matid should be in the 1-400 range'); 
    end
    if min(ms.il(:,1))<1 || max(ms.il(:,1))>400
     sdtw('_nb','slice with rail proid should be in the 1-400 range'); 
    end
-      case 'railtop'
+   case 'railtop'
    % Nodes of top rail
    r1=feutil('findnode pronameprrLine',ms);
    if isempty(r1)% old attempt to use line
@@ -1097,11 +1099,18 @@ function   mt=MeshTrack(RT);
 RO=RT.nmap('CurTrack');projM=RT.nmap;
 RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
 
+if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'}
+end
+
+for j0=1:length(RO.Do)
+switch lower(RO.Do{j0})
+case 'gentrack'  % generate track
 % sdtweb dyn_mesh GenTrack
 RB=struct('projM',projM); projM('RailSel')={};
 RB.Do={'doPeriod','plrange','eltid'};
 RB.bas=101; RB.NodeId0=100000;
 RB.XinfoCol={'x','SE','bas'};RB.Xinfo=[];
+RB.PreSleeper={'index','x'};
 mt=struct('Node',[],'Elt',[],'bas',[]);
    if ~isfield(mt,'bas')||isempty(mt.bas)
    elseif max(mt.bas(:,1))<101;error('Expecting BasId<100 for train');
@@ -1115,6 +1124,7 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    ev1=vhandle.tab.getValEvt(RO.preTrack,j1);RB.sname=ev1.SE;
    ms=projM(ev1.SE);
    ms=railu.MeshSliceCheck(ms,RB);   %RS=getParamInStack(ms);
+   RB.xmin=min(ms.Node(:,5));
    data=fe_case(ms,'stack_get','cyclic','Symmetry','get');
    mt=stack_rm(mt,'SE',ev1.SE);
    i4=length(ev1.slNum); 
@@ -1127,11 +1137,12 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
        'offset',[0 0 0],'bas',RB.bas,'MatId0',(1000+j1-1),'ProId0',(1000+j1-1), ...
        'NodeShift',size(data.IntNodes,1),'NodeId0',RB.NodeId0-1,'EltId0',1e5-1,'name',ev1.SE);
    if ~isempty(RB.Xinfo) % Position ms horizontally
-    RA.bas(2:15)=[1 0  RB.Xinfo(end,1)-min(ms.Node(:,5)) 0 0 reshape(eye(3),1,9)];
+    RA.bas(2:15)=[1 0  RB.Xinfo(end,1)-RB.xmin 0 0 reshape(eye(3),1,9)];
    else
-    RA.bas(2:15)=[1 0  -min(ms.Node(:,5)) 0 0 reshape(eye(3),1,9)];
+    RA.bas(2:15)=[1 0  -RB.xmin 0 0 reshape(eye(3),1,9)];
    end
-   ms.name=RA.name;
+   ms.name=RA.name; 
+   if ~isfield(mt,'nmap');mt.nmap=ms.nmap;end
 
    mt=fesuper(st1,mt,ms,RA); % add with translations and node range shifting
    mt=feutil('setpro',mt,[1000+j1-1 fe_mat('p_super','SI',1) 1. 1. 1.]);
@@ -1143,10 +1154,53 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    else;
        RB.Xinfo=[RB.Xinfo(1:end-1,:);r1]; 
    end
+   r3=ms.meta.SlX-RB.xmin+r1(1);
+   if isscalar(r3);r3=r3+(0:RA.opt(1)-1)*ms.meta.sw;end 
+   r3=r3(:);r3(:,2)=size(RB.PreSleeper,1)+(1:length(r3))-1;
+   RB.PreSleeper(end+r3(:,2)-r3(1,2)+1,1:2)=num2cell(r3);
+   if isequal(ev1.slNum,RO.slNum0) % Force origin 
+     RB.sGamma0=r1(1)-RB.xmin; 
+   end
+
    RB.NodeId0=mt.Elt(end,3)-size(data.IntNodes,1)+1;
    RB.bas=max(mt.bas(:,1))+1; % Leave space for an interface slice
   end % j1 for multi-slice 
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
+case 'presens'
+  %% #MeshTrack.presens
+  
+  r3=cell2mat(RB.PreSleeper(2:end,:));r3=[r3 round((r3-[RB.sGamma0 0])./[.6 1],2)];
+  %RB.preNode={'NodeId','lab'}
+  st1=cellfun(@(x)sprintf('S\\%+.0f([+-]*)',x),num2cell(r3(:,3)),'uni',0);
+  st1(:,2)=cellfun(@(x)sprintf(' %g $1',x),num2cell(r3(:,1)),'uni',0);
+  colM=sdtu.ivec('ColList',RO.preSens(1,:));
+  i1=colM('X');RB.iXYZ=colM({'X','Y','Z'});
+  ta=RO.preSens(2:end,:);
+  st2=[ta(:,i1) regexprep(ta(:,i1),st1(:,1),st1(:,2))];
+  for j1=1:size(st2,1)
+    try;r4=eval(st2{j1,2});catch;r4=0;end
+    ta{j1,i1}=r4;RB.marker=ta{j1,colM('M')};
+    pos=[ta{j1,RB.iXYZ}];
+    if strcmpi(RB.marker,'mgl'); 
+    elseif strcmpi(RB.marker,'mrl')
+     bas=ms.bas(ms.bas(:,1)==399,:);
+     pos=bas(4:6)'+reshape(bas(:,7:15),3,3)*pos(:);
+     ta(j1,RB.iXYZ)=num2cell(pos);
+    elseif strcmpi(RB.marker,'mrr')
+     bas=ms.bas(ms.bas(:,1)==398,:);
+     pos=bas(4:6)'+reshape(bas(:,7:15),3,3)*pos(:);
+     ta(j1,RB.iXYZ)=num2cell(pos);
+    end
+  end
+  ta(:,colM('NodeId'))=num2cell(-(1:size(ta,1))');
+  % place sensors 
+  RS=struct('tdof',{[colM.prop.name';ta]});
+  RS.tdof(:,colM('M'))=[];
+  mt=fe_case(mt,'SensDof','Out',RS);
+
+otherwise; error('%s',RO.Do{j0})
+end
+end % Do Loop
 
 end
 
@@ -1157,6 +1211,7 @@ function RM=MeshSleeper(name,evt);
      name=RS.SleeperName;
  else; RS=struct; 
  end
+ if nargin==1;evt=struct;end
  if strncmpi(name,'m450pi',4)
  %  #MeshSleeper.M450pi    sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116') -3
  RO=struct;
@@ -1202,7 +1257,7 @@ function RM=MeshSleeper(name,evt);
  mo2=feutil('setmat',mo2,RO);
  % adjust mass
  mo2.meta=struct('half',0,'mass',300,'cant',.05);
- mo2.Node(:,7)=mo2.Node(:,7)-.3655; 'xxx zOff'
+ mo2.Node(:,7)=mo2.Node(:,7)-.3655-2e-4; 'xxx zOff'
  r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
  if isa(RS,'vhandle.uo'); % no need to return RS
      RS=sdth.sfield('addselected',RS,mo2.meta,{'half','cant'});
@@ -1216,7 +1271,9 @@ function RM=MeshSleeper(name,evt);
   %% #MeshSleeper.Rail append rail to sleeper -3
   % reimplementation of sdtweb dyn_mesh Arm_Add_Rail 
   Slice=evt.Slice;
-  if ~Slice.half;evt.LR=[-1 1];elseif Slice.half>0; evt.LR=1; else;evt.LR=-1;end
+  if ~Slice.half;evt.LR=[1 -1]; % dynavoie has forward, zUp thus left is y>0
+  elseif Slice.half>0; evt.LR=1; else;evt.LR=-1;
+  end
   if isfield(Slice,'SlX')&&~isempty(Slice.SlX)
    %% replicate sleepers as needed
    for j1=1:length(Slice.SlX)
@@ -1225,17 +1282,24 @@ function RM=MeshSleeper(name,evt);
     else; mo1=feutil('addtest-noori;',mo1,mo3);
     end
    end
-   mo2=mo1;
+   mo2=mo1;mo2.meta.SlX=Slice.SlX; 
   end
+  nameM=mo2.nmap('Map:SetName');if ~isfield(mo2,'bas');mo2.bas=[];end
   for j1=1:length(evt.LR)   
-   m_rail=evt.rail; Slr=evt.LR(j1);
+   m_rail=evt.rail; Slr=evt.LR(j1); if Slr>0;st1='MrL';else;st1='MrR';end 
    cant=-Slr*Slice.cant; rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
-   m_rail.Node(:,6:7)= m_rail.Node(:,6:7)*rot;
-   m_rail.Node(:,6)= m_rail.Node(:,6)+Slice.gaug/2*Slr;
+   if ~isfield(Slice,'Or_tr'); Slice.Or_tr=[0 Slice.gaug/2 0];end
+   r3=[0 Slice.Or_tr(2)*Slr -abs(Slice.Or_tr(3))];
+   r2=eye(3);r2(2:3,2:3)=rot; rot=r2';
+   m_rail.Node(:,5:7)= (m_rail.Node(:,5:7)*rot')+r3;
    mo2=feutil('addtest-noori;',mo2,m_rail);
+   rot=rot*diag([1 -1 -1]);
+   bas=[400-j1 1 0    r3  rot(:)'];
+   nameM(sprintf('bas:%i',bas(1)))=st1;
+   mo2.bas(end+1,1:length(bas))=bas;
   end
   RM=mo2; 
-  %feplot(mo2); fecom view4
+  %feplot(mo2); fecom view4; fecom ShowBas
  end
 
 end
