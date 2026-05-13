@@ -493,16 +493,15 @@ m_rail.meta.TopNodes=n1;
 
 %%
 
-  % checks properties ranges :
-  if ~isfield(m_rail,'pl');m_rail.pl=[];end
-  if ~isempty(m_rail.pl)
-   if min(m_rail.pl(:,1))<301 || max(m_rail.pl(:,1))>400
-    sdtw('_nb','rail matid should be in the 301-400 range'); 
-   end
-   if min(m_rail.il(:,1))<301 || max(m_rail.il(:,1))>400
-    sdtw('_nb','rail proid should be in the 301-400 range'); 
-   end
+  % checks properties ranges :sdtweb drMatDb
+  mpid=feutil('mpid',m_rail); 
+  if isscalar(setdiff(unique(mpid(:,1)),0))
+   mpid(mpid(:,1)~=0,1)=301; % 
   end
+  if isscalar(setdiff(unique(mpid(:,2)),0))
+   mpid(mpid(:,2)~=0,2)=301; % sdtweb drMatDb
+  end
+  m_rail.Elt=feutil('mpid',m_rail,mpid);
   if ~isfield(m_rail,'il');m_rail=p_solid('default;',m_rail);end
   % Make sure it uses SI
   if max(max(abs(m_rail.Node(:,5:7))))>10
@@ -1012,6 +1011,17 @@ function   ms=MeshSlice(RO);
   if max(abs(m_rail.Node(:,7)))>1; m_rail.Node(:,5:7)=m_rail.Node(:,5:7)/1000;m_rail.unit='SI';end
 
   mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO)); % combine rails
+
+  prePl={'MatId','name';101 'Pad';201 'Sleeper';301,'Rail'};
+  if isfield(mo2,'pl')&&~isempty(mo2.pl)
+   prePl(find(ismember(vertcat(prePl{2:end,1}),mo2.pl(:,1)))+1,:)=[];
+  end
+
+  % fix property defaults
+  mo2=feutil('setmat',mo2,struct('PrePl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
+  prePl{1}='ProId';mo2=p_solid('default;',mo2);
+  mo2=feutil('setpro',mo2,struct('PreIl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
+
   sdtm.store(RT.nmap,sprintf('mo2>%s',RO.store));
  end
 
