@@ -2023,8 +2023,10 @@ nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
-    'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master
-    
+    'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master    
+    'Rail',p_solid('dbval 301 d3 -3')
+    'Pad',p_solid('dbval 101 d3 -3')
+    'Sleeper',p_solid('dbval 201 d3 -3')
 
     'RailA',[301 fe_mat('p_beam','SI',1) 1e-5 3.05e-5 3.05e-5 60/8000];
     % sdtu.f.open('@onedrive/*/sncf*/e*/21*/rail_IN10208.pdf#page=49')

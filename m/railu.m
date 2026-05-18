@@ -15,7 +15,7 @@ properties (GetAccess = public , SetAccess = public)
 end
 
 %{
-```DocString  {module=base,src=railu.md#railu.f} 
+```DocString  {module=base,src=dr_fun.tex#railu} 
  file handling methods 
 %}
 
@@ -401,7 +401,7 @@ if ~isempty(name);
   sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
   if isKey(nmap,name);RA=followAlias(nmap,name);
   elseif isKey(sectionM,name);RA=followAlias(sectionM,name);
-  elseif isKey(sectionM,RO.RailName);name=RO.RailName;RA=followAlias(sectionM,name);
+  elseif isstruct(RO)&&isKey(sectionM,RO.RailName);name=RO.RailName;RA=followAlias(sectionM,name);
   end
   RA=sdth.sfield('addmissing',RB,RA);
   if contains(name,'.mat#')||isfield(RA,'section')
@@ -418,6 +418,9 @@ if ~isempty(name);
    if ~isempty(i1)
      m_rail.Elt(i1(1)-1,1:6)=[Inf abs('quadb')];
      m_rail.Elt(i1,:)=[m_rail.Elt(i1,[1:8 10:end]) i1*0];
+   end
+   if ~isempty(feutil('findelt eltname quad',m_rail)) % if quad no rail
+    m_rail.Elt=feutil('removeElt eltnamebeam',m_rail);
    end
    m_rail=feutil('quad2lin',m_rail);m_rail.Node=feutil('getnodegroupall',m_rail);
    if ~isfield(m_rail,'name');m_rail.name=tag;end
@@ -474,7 +477,8 @@ else;
 end
 
 %% #RailSection.remove_cant
-n1=sortrows(m_rail.Node,[6 7]); % bottom left
+[~,i1]=sortrows(round(m_rail.Node*1e6),[6 7]); % bottom left
+n1=m_rail.Node(i1,:);
 i1=feutil('geolinetopo',m_rail,struct('starts',n1(1),'dir',[0 1 0],'cos',.99));
 n1=[n1(1,:);n1(n1(:,1)==i1{1}(end),:)];
 cant=atan2(diff(n1(:,7)),diff(n1(:,6)));rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
@@ -494,8 +498,8 @@ m_rail.meta.TopNodes=n1;
 %%
 
   % checks properties ranges :sdtweb drMatDb
-  mpid=feutil('mpid',m_rail); 
-  if isscalar(setdiff(unique(mpid(:,1)),0))
+  mpid=feutil('mpid',m_rail); i1=setdiff(unique(mpid(:,1)),0);
+  if isscalar(i1)
    mpid(mpid(:,1)~=0,1)=301; % 
   end
   if isscalar(setdiff(unique(mpid(:,2)),0))
@@ -514,7 +518,7 @@ m_rail.meta.TopNodes=n1;
   Geo=struct;if isfield(RO,'Geo');Geo=RO.Geo;end
   if isfield(RA,'RailX'); if ischar(RA.RailX);RA.RailX=comstr(RA.RailX,-1);end
   elseif ~isfield(Geo,'XtrudeRail')||isempty(Geo.XtrudeRail); return % early return of section
-  elseif RC.Extrude
+  elseif isfield(RC,'Extrude')&&RC.Extrude
     %% #Gamma rail track extrusion should support curved line, section straight -3
     % now position based on Or (rail contact point at 0 0) 
     nb_slices=1; % here only one slice    
@@ -549,6 +553,8 @@ function m_rail=RailPrr(RA,m_rail,ms);
    %% dynavoie the pad is on the sleeper
    padxyz=feutil('getnode InElt{MatId 101 & selface & facing> 0 0 0 1e6}',ms);
    padxyz(:,1:4)=[];
+   assignin('caller','padxyz',padxyz); % dyn_mesh compatibility
+
   else 
    % the pad is on the rail
    padxyz=feutil('getnode InElt{ProId 101 & selface & facing> 0 0 0 -1e6}',m_rail);
@@ -571,6 +577,7 @@ done=1;
         [m_rail.Node,i2]=feutil('addnode',m_rail.Node,n2/1e6); 
         el1=feutil('objectbeamline',m_rail.Node(i2,1));el1(2:end,3:5)=399;
         m_rail.Elt=feutil('addelt',m_rail.Elt,el1);
+        m_rail=feutil('setmat',m_rail,'d_rail(nmap.MatDb.prrLine)');
         done=0; break;
       end
       if j1==1||j1==length(r2);i1=node(i1); % Edges all face nodes
@@ -587,7 +594,7 @@ done=1;
     if ~isfield(ms,'nmap');ms.nmap=vhandle.nmap;end
     nameM=ms.nmap('Map:SetName');
     nameM.append({'Mat:301','Rail';'Mat:101','Pad';'Mat:201','Sleeper'})
-
+    done=0; % test d_rail('ScriptDv1'); 
   end
 
   if ~done&& ~isempty(feutil('selelt proid399',m_rail))
@@ -1012,21 +1019,18 @@ function   ms=MeshSlice(RO);
 
   mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO)); % combine rails
 
-  prePl={'MatId','name';101 'Pad';201 'Sleeper';301,'Rail'};
-  if isfield(mo2,'pl')&&~isempty(mo2.pl)
-   prePl(find(ismember(vertcat(prePl{2:end,1}),mo2.pl(:,1)))+1,:)=[];
+  RC=struct;RC.Do={'plrange','eltid','doPeriod','padcontact'};
+  if isfield(RO,'k_ballast')&&~isempty(RO.k_ballast)
+    RC.k_ballast=RO.k_ballast; RC.Do{end+1}='k_ballast';
   end
+  ms=railu.MeshSliceCheck(mo2,RC); 
 
-  % fix property defaults
-  mo2=feutil('setmat',mo2,struct('PrePl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
-  prePl{1}='ProId';mo2=p_solid('default;',mo2);
-  mo2=feutil('setpro',mo2,struct('PreIl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
 
-  sdtm.store(RT.nmap,sprintf('mo2>%s',RO.store));
+  sdtm.store(RT.nmap,sprintf('ms>%s',RO.store));
  end
 
 end
-function   ms=MeshSliceCheck(ms,RC)
+function   ms=MeshSliceCheck(ms,RC,RO)
   %% #MeshSliceCheck
 
   if nargin<2||~isfield(RC,'Do');
@@ -1035,29 +1039,57 @@ function   ms=MeshSliceCheck(ms,RC)
   for j0=1:length(RC.Do)
   switch lower(RC.Do{j0})
   case 'eltid'
-   % #MeshSliceCheck.EltId fix eltids
+  %% #MeshSliceCheck.EltId fix eltids -3
    [u1,ms.Elt]=feutil('EltIdFix;',ms);
   case 'plrange'
-   % #MeshSliceCheck.PlRange xxx sdtweb drmesh.matdb
+  %% #MeshSliceCheck.PlRange xxx sdtweb drmesh.matdb -3
+
+  prePl={'MatId','name';101 'Pad';201 'Sleeper';301,'Rail'};
+  if isfield(ms,'pl')&&~isempty(ms.pl)
+   prePl(find(ismember(vertcat(prePl{2:end,1}),ms.pl(:,1)))+1,:)=[];
+  end
+  if size(prePl,1)>1
+   % fix property defaults
+   ms=feutil('setmat',ms,struct('PrePl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
+   prePl{1}='ProId';ms=p_solid('default;',ms);
+   ms=feutil('setpro',ms,struct('PreIl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
+  end
+
    if min(ms.pl(:,1))<1 || max(ms.pl(:,1))>400
     sdtw('_nb','slice whith rail matid should be in the 1-400 range'); 
    end
    if min(ms.il(:,1))<1 || max(ms.il(:,1))>400
     sdtw('_nb','slice with rail proid should be in the 1-400 range'); 
    end
-   case 'railtop'
-   % Nodes of top rail
+   ms=feutil('setmat',ms,'d_rail(nmap.MatDb.prrLine)');
+  case 'padcontact'
+  %% #MeshSliceCheck.PadContact : pad/rail pad/block connections -3
+   ms=fe_caseg('ConnectionSurface -matchS 123 -maxdist .1;',ms,'pad/block',...
+       'inelt{matid 101 & selface & facing>.5 0 0 -1e5}','matid 201:299');
+   ms=fe_caseg('ConnectionSurface -matchS 123 -maxdist .1;',ms,'pad/rail',...
+       'inelt{matid 101 & selface & facing>.5 0 0 1e5}','matid 301:397');
+
+  case 'k_ballast'
+  %% #MeshSliceCheck.k_ballast : adjust undersleeper ballast stiffness -3
+   n2=feutil('getnode matid 201:299 & z==',ms,min(ms.Node(:,7)));
+   elt=n2(:,1);elt(:,3)=-123;  
+   elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
+   ms=feutil('addelt',ms,'celas',elt);
+  case 'railtop'
+  %% #MeshSliceCheck.RailTop Nodes of top rail -3
    r1=feutil('findnode pronameprrLine',ms);
    if isempty(r1)% old attempt to use line
     r1=fe_case(ms,'getdata','rail');
     if isempty(r1);error('Missing DofSet,Rail');end
     r1=unique(fix(r1.DOF));
    end
-   RailSel=RC.projM('RailSel')
-   dbstack; keyboard; 
-   RailSel(j1*2-1,1:2)={RB.sname,feutil('addelt','mass1',r1)};
+   if isfield(RC,'projM')
+    RailSel=RC.projM('RailSel');
+    RailSel(RC.jSlice*2-1,1:2)={RC.sname,feutil('addelt','mass1',r1)};
+    RC.projM('RailSel')=RailSel;
+   end
  case 'doperiod'
- %% #MeshSliceCheck.doPeriod
+ %% #MeshSliceCheck.doPeriod -3
    %% xxx was DoPeriod
     if ~isfield(ms,'meta')||~isfield(ms.meta,'sw'); 
       r2=ms.Node(:,5); ms.meta.sw=max(r2)-min(r2);
@@ -1106,8 +1138,11 @@ end
 function   mt=MeshTrack(RT);
 %% #MeshTrack : concatenate mesh slices as a track -2
 
-RO=RT.nmap('CurTrack');projM=RT.nmap;
-RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
+if isfield(RT,'nmap');RO=RT.nmap('CurTrack');projM=RT.nmap;
+ RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
+elseif isfield(RT,'mt');mt=RT.mt; SE=RT.SE; RO=RT;% dynavoie
+else; error('Not valid')
+end
 
 if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'}
 end
@@ -1117,7 +1152,7 @@ switch lower(RO.Do{j0})
 case 'gentrack'  % generate track
 % sdtweb dyn_mesh GenTrack
 RB=struct('projM',projM); projM('RailSel')={};
-RB.Do={'doPeriod','plrange','eltid'};
+RB.Do={'doPeriod','plrange','eltid','padcontact'};
 RB.bas=101; RB.NodeId0=100000;
 RB.XinfoCol={'x','SE','bas'};RB.Xinfo=[];
 RB.PreSleeper={'index','x'};
@@ -1182,32 +1217,71 @@ case 'presens'
   r3=cell2mat(RB.PreSleeper(2:end,:));r3=[r3 round((r3-[RB.sGamma0 0])./[.6 1],2)];
   %RB.preNode={'NodeId','lab'}
   st1=cellfun(@(x)sprintf('S\\%+.0f([+-]*)',x),num2cell(r3(:,3)),'uni',0);
-  st1(:,2)=cellfun(@(x)sprintf(' %g $1',x),num2cell(r3(:,1)),'uni',0);
+  st1(:,2)=cellfun(@(x)sprintf(' %g $1',x),num2cell(r3(:,1)),'uni',0);st1=flipud(st1);
   colM=sdtu.ivec('ColList',RO.preSens(1,:));
-  i1=colM('X');RB.iXYZ=colM({'X','Y','Z'});
+  i1=colM('X');RB.iXYZ=colM({'X','Y','Z'}); RB.iDir=colM('DirSpec');
   ta=RO.preSens(2:end,:);
   st2=[ta(:,i1) regexprep(ta(:,i1),st1(:,1),st1(:,2))];
   for j1=1:size(st2,1)
     try;r4=eval(st2{j1,2});catch;r4=0;end
     ta{j1,i1}=r4;RB.marker=ta{j1,colM('M')};
     pos=[ta{j1,RB.iXYZ}];
+    r3=comstr(ta{j1,RB.iDir}(4:end),-1);
     if strcmpi(RB.marker,'mgl'); 
     elseif strcmpi(RB.marker,'mrl')
      bas=ms.bas(ms.bas(:,1)==399,:);
      pos=bas(4:6)'+reshape(bas(:,7:15),3,3)*pos(:);
      ta(j1,RB.iXYZ)=num2cell(pos);
     elseif strcmpi(RB.marker,'mrr')
-     bas=ms.bas(ms.bas(:,1)==398,:);
-     pos=bas(4:6)'+reshape(bas(:,7:15),3,3)*pos(:);
+     bas=ms.bas(ms.bas(:,1)==398,:);rot=reshape(bas(:,7:15),3,3);
+     pos=bas(4:6)'+rot*pos(:);
      ta(j1,RB.iXYZ)=num2cell(pos);
+     r3=rot*r3(:);
     end
+    ta{j1,RB.iDir}=sprintf('dir %.4f %.4f %.4f',r3);
   end
   ta(:,colM('NodeId'))=num2cell(-(1:size(ta,1))');
   % place sensors 
   RS=struct('tdof',{[colM.prop.name';ta]});
   RS.tdof(:,colM('M'))=[];
   mt=fe_case(mt,'SensDof','Out',RS);
+ case 'prered'
+  %% #MeshTrack.preRed : prepare fe_coor
+  RunOpt=RO;RO=RO.RO;
+  cyc=fe_case(SE,'getdata',{'cyclic','Symmetry'});
+  r2=fe_case(SE,'getdata',{'DOFSet','rail'});
+  if ~isfield(SE,'DOF');SE.DOF=feutil('getdof',SE);end
+  r2.DOF=fe_c(SE.DOF,unique(fix(r2.DOF)),'dof');r2.def=eye(length(r2.DOF));
+  if ~isempty(fe_c(r2.DOF,.04,'ind')) % Beam rail
+    %r2.DOF=fe_c(r2.DOF,[.02;.03;.05],'dof');
+    i1=feutil('findelt eltname bar1',mt);
+    if ~isempty(i1);mt.Elt=feutil('set group bar1 name beam1',mt);
+    end
+  end
+  RunOpt.TopDof=fe_c(r2.DOF,cyc.IntNodes(:,2),'dof',2); 
+  RunOpt.TopNode=unique(fix(r2.DOF));
+  RunOpt.RailI=r2;
+  if ~isfield(RO,'Rayleigh')||isempty(RunOpt.Rayleigh)
+  RunOpt.Rayleigh=stack_get(SE,'info','Rayleigh','getdata');
+  end  
+ RunOpt.Assemble=sprintf('assemble -matdes %s -se NoT',sprintf('%i ',RO.MatDes));
+ RunOpt.Assemble=[RunOpt.Assemble  ...
+    '-cfield=1 Load -exitFcn"vout=dyn_solve(''''ReduceHetAssembly'''',model,Case,vout,out);"'];
 
+ r1=stack_get(SE,'info','Reduce','get');
+ if isfield(RO,'UseLoss');r1.UseLoss=RO.UseLoss;end
+ if isfield(r1,'multi'); RunOpt.multi=r1.multi; end
+ if isfield(r1,'Type'); sdtw('_nb','Expecting RedType instead of Type'); end;
+ if isfield(r1,'RedCfg'); sdtw('_nb','Expecting RedType instead of RedCfg'); end;
+ r1=sdth.sfield('AddMissing',r1,RunOpt);
+ if isfield(r1,'RedType');
+    r1=sdth.sfield('addmissing',d_dynavoie(sprintf('RedCfg%s',r1.RedType)),r1);
+ end
+ mt=r1; % reduction event  
+  
+  return
+
+    
 otherwise; error('%s',RO.Do{j0})
 end
 end % Do Loop
@@ -1258,6 +1332,8 @@ function RM=MeshSleeper(name,evt);
  mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  1 0 0',mo2));
  mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  0 1 0',mo2));
  mo2.Elt=feutil('orient;',mo2);
+ [n2,i2]=feutil('addnode',[],mo2.Node);mo2=feutil('renumber',mo2,n2(i2,1));
+ mo2=feutil('divide 2 2 2',mo2);
  mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
  RO=railu.MatProDb(RO);
  mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
@@ -1267,7 +1343,7 @@ function RM=MeshSleeper(name,evt);
  mo2=feutil('setmat',mo2,RO);
  % adjust mass
  mo2.meta=struct('half',0,'mass',300,'cant',.05);
- mo2.Node(:,7)=mo2.Node(:,7)-.3655-2e-4; 'xxx zOff'
+ mo2.Node(:,7)=mo2.Node(:,7)-.3655-2e-4-.021; 'xxx zOff'
  r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
  if isa(RS,'vhandle.uo'); % no need to return RS
      RS=sdth.sfield('addselected',RS,mo2.meta,{'half','cant'});
@@ -1304,7 +1380,7 @@ function RM=MeshSleeper(name,evt);
    m_rail.Node(:,5:7)= (m_rail.Node(:,5:7)*rot')+r3;
    mo2=feutil('addtest-noori;',mo2,m_rail);
    rot=rot*diag([1 -1 -1]);
-   bas=[400-j1 1 0    r3  rot(:)'];
+   bas=[400-j1 1 0    r3  rot(:)']; % left or right basis 
    nameM(sprintf('bas:%i',bas(1)))=st1;
    mo2.bas(end+1,1:length(bas))=bas;
   end
@@ -1318,12 +1394,19 @@ function m_rail=MeshPad(evt,m_rail);
 
  switch lower(evt.PadType)
  case 'sn'
-  % 
-  warning('need pad mesh cleaning SlX')
+  % Cleaning of part convered by pad (should adjust real position) 
+  %fprintf('need pad mesh cleaning SlX\n')
   %padxyz=feutil('getnode InElt{selface & facing> 0 0 0 -1e6}',m_rail)
   mo2=m_rail;mo2.Elt=feutil('selelt selface & innode{ z==}',m_rail,min(m_rail.Node(:,7)));
+  xs=evt.SlX(:)+evt.lsem*[-.5 .5];
+  n2=mo2.Node; x=n2(:,5); n2(x<xs(1)|x>xs(end),:)=[];
+  for j1=2:size(xs,1); x=n2(:,5); n2(x>xs(j1-1,2)&x<xs(j1,1),:)=[];end
+  mo2.Elt=feutil('selelt innode',mo2,n2(:,1));
+  %fecom('shownodemark',n2)
+  %feplot(mo2)
+
   mo2=feutil(sprintf('extrude 1 0 0 -%g',evt.hs),mo2);
-  mo2.Elt=feutil('set groupall proid 101 101',mo2);
+  mo2.Elt=feutil('set groupall proid 101 matid 101',mo2);
   m_rail.Node=mo2.Node;m_rail.Elt=feutil('addelt',m_rail.Elt,mo2.Elt);
 
   %dyn_mesh('pad',struct('PadType','volume','lsem',220,'hs',9,'ws'))
@@ -1661,13 +1744,24 @@ persistent gnmap
 if nargin==0; opt=[];end
 if isempty(gnmap)||isequal(opt,'reset')
   gnmap=vhandle.nmap; 
+  secM=vhandle.nmap( ...
+      {'MainMono',struct('RailName','60-E1','SleeperName','M450') 
+      'MainBi',struct('RailName','60-E1','SleeperName','B450') 
+      'Secondary',struct('RailName','50-E6','SleeperName','M240') 
+      'WoodenTrack',struct('RailName','50-E6','SleeperName','Wooden') 
+      'SlabTrack',struct('RailName','60-E1','SleeperName','None') 
+      'None',struct
+      });
+  gnmap('Map:Arm')=secM;gnmap('Map:Sections')=secM;
   % rails
-  gnmap.append({ ...
+  secM.append({ ...
    '60-E1', struct('hr1',11.5,'hr2',51,'hr3',172, ...
-      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail', ...
+      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail') 
+   '60E1v', struct('hr1',11.5,'hr2',51,'hr3',172, ...
+      'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Rail section', ...
       'section','UIC60_Sections.mat#ra','cite','rail_IN10208.pdf#page=49') 
    'SN',struct('PadType','Volume','hs',9,'lsem',220,'k_pad',180e6)
-   'UIC60',struct('alias','60-E1')
+   'UIC60',struct('alias','60E1v')
     '50-E6',struct('hr1',10.2,'hr2',49,'hr3',153, ...
       'lar1',140,'lar2',15.5,'lar3',65,'ToolTip','Coarse DV Rail')  
     '46-E2',struct('hr1',10.5,'hr2',47,'hr3',145, ...
@@ -1679,7 +1773,7 @@ if isempty(gnmap)||isequal(opt,'reset')
   % M41_RP_UIC60E1_mesh.bdf
   % OEBB_RP_UIC60E1_mesh.bdf 
   % OEBB_RP_UIC60E1_mesh_fine.bdf
-  gnmap.append({ ...
+  secM.append({ ...
   'M450',struct('SleeperType','Monoblock','hb',230,'hsb',115,'Ltr',2411,'lab',290,'lsem',220); 
   'B450',struct('SleeperType','Biblock','hb',240,'hsb',120,'Ltr',2411,'lab',290,'lsem',220,'lob',840,'nent',3);
   'M240',struct('SleeperType','Monoblock','hb',187,'hsb',93.5,'Ltr',2243,'lab',300,'lsem',170);
@@ -1687,14 +1781,6 @@ if isempty(gnmap)||isequal(opt,'reset')
       'lsem',240,'Mv201E',12000000000,'Mv201nu',0.45,'Mv201rho',800,'Mv201eta',0.01);
       })
 
-  gnmap('Map:Arm')=vhandle.nmap( ...
-      {'MainMono',struct('RailName','60-E1','SleeperName','M450') 
-      'MainBi',struct('RailName','60-E1','SleeperName','B450') 
-      'Secondary',struct('RailName','50-E6','SleeperName','M240') 
-      'WoodenTrack',struct('RailName','50-E6','SleeperName','Wooden') 
-      'SlabTrack',struct('RailName','60-E1','SleeperName','None') 
-      'None',struct
-      });
   % r1=d_cntc('nmap.Map:Oprop.prrEulSurf')
 
   propM=vhandle.nmap;gnmap('Map:OProp')=propM;
