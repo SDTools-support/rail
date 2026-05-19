@@ -505,6 +505,8 @@ m_rail.meta.TopNodes=n1;
   if isscalar(setdiff(unique(mpid(:,2)),0))
    mpid(mpid(:,2)~=0,2)=301; % sdtweb drMatDb
   end
+  mpid(~ismember(mpid(:,1),300:399),1)=301;
+  mpid(~ismember(mpid(:,2),300:399),2)=301;
   m_rail.Elt=feutil('mpid',m_rail,mpid);
   if ~isfield(m_rail,'il');m_rail=p_solid('default;',m_rail);end
   % Make sure it uses SI
@@ -541,7 +543,7 @@ m_rail.meta.TopNodes=n1;
      min(m_rail.Node(:,7)); % z0=top of the pad
   end
   if min(m_rail.Node(:,7))==max(m_rail.Node(:,7)) && min(m_rail.Node(:,6))==max(m_rail.Node(:,6)) % rail=beam
-     m_rail.Node(:,7)=m_rail.Node(:,7)+RA.hr3; % top of the rail at the good z
+     m_rail.Node(:,7)=m_rail.Node(:,7)+RO.hr3; % top of the rail at the good z
   end
 
 
