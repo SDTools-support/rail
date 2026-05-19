@@ -1253,12 +1253,17 @@ case 'presens'
   cyc=fe_case(SE,'getdata',{'cyclic','Symmetry'});
   r2=fe_case(SE,'getdata',{'DOFSet','rail'});
   if ~isfield(SE,'DOF');SE.DOF=feutil('getdof',SE);end
-  r2.DOF=fe_c(SE.DOF,unique(fix(r2.DOF)),'dof');r2.def=eye(length(r2.DOF));
+  if ~isempty(r2)
+   r2.DOF=fe_c(SE.DOF,unique(fix(r2.DOF)),'dof');
+  else; n2=feutil('findnode matid 398 399',SE);
+    r2=struct('def',[],'DOF',feutil('getdof',n2,(1:6)'/100));
+  end
+  r2.def=eye(length(r2.DOF));
   if ~isempty(fe_c(r2.DOF,.04,'ind')) % Beam rail
-    %r2.DOF=fe_c(r2.DOF,[.02;.03;.05],'dof');
-    i1=feutil('findelt eltname bar1',mt);
-    if ~isempty(i1);mt.Elt=feutil('set group bar1 name beam1',mt);
-    end
+     %r2.DOF=fe_c(r2.DOF,[.02;.03;.05],'dof');
+     i1=feutil('findelt eltname bar1',mt);
+     if ~isempty(i1);mt.Elt=feutil('set group bar1 name beam1',mt);
+     end
   end
   RunOpt.TopDof=fe_c(r2.DOF,cyc.IntNodes(:,2),'dof',2); 
   RunOpt.TopNode=unique(fix(r2.DOF));
@@ -1267,11 +1272,13 @@ case 'presens'
   RunOpt.Rayleigh=stack_get(SE,'info','Rayleigh','getdata');
   end  
  RunOpt.Assemble=sprintf('assemble -matdes %s -se NoT',sprintf('%i ',RO.MatDes));
- RunOpt.Assemble=[RunOpt.Assemble  ...
+ if ~isempty(stack_get(SE,'pro','withMap','getdata'))
+  sdtw('_ewt','document')
+  RunOpt.Assemble=[RunOpt.Assemble  ...
     '-cfield=1 Load -exitFcn"vout=dyn_solve(''''ReduceHetAssembly'''',model,Case,vout,out);"'];
-
+ end
  r1=stack_get(SE,'info','Reduce','get');
- if isfield(RO,'UseLoss');r1.UseLoss=RO.UseLoss;end
+ r1=sdth.sfield('AddSelected',r1,RO,{'RedType','Rayleigh','UseLoss'});
  if isfield(r1,'multi'); RunOpt.multi=r1.multi; end
  if isfield(r1,'Type'); sdtw('_nb','Expecting RedType instead of Type'); end;
  if isfield(r1,'RedCfg'); sdtw('_nb','Expecting RedType instead of RedCfg'); end;
@@ -1279,7 +1286,12 @@ case 'presens'
  if isfield(r1,'RedType');
     r1=sdth.sfield('addmissing',d_dynavoie(sprintf('RedCfg%s',r1.RedType)),r1);
  end
- mt=r1; % reduction event  
+ if ~isfield(r1,'RedFcn')&&~isfield(r1,'RedType');
+  fprintf('No reduction for ''%s''\n',SE.name);mt=[];
+ else
+  mt=r1; % reduction event  
+ end
+
   
   return
 

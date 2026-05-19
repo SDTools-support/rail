@@ -31,7 +31,7 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% Step mesh  : simple meshing example
 % keywords{var{PA.ms>var.ms,PA.mt>var.mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
-
+% d_rail('tutoDvBeam -s{init,mesh}')
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
 
 % Define Slice parameters
