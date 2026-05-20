@@ -1994,8 +1994,8 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Bolt',[5 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Bolt
     'Screw',[11 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Vis
 
-    'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
-    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 7800e-30];
+    'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
+    'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
    
     'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Rail Yield 800 MPa
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa

@@ -1216,13 +1216,25 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
 case 'presens'
   %% #MeshTrack.presens
   
-  r3=cell2mat(RB.PreSleeper(2:end,:));r3=[r3 round((r3-[RB.sGamma0 0])./[.6 1],2)];
-  %RB.preNode={'NodeId','lab'}
+  if ~iscell(RO.preSens{1,2})
+   RO.preSens={'Out',RO.preSens};
+  end
+  for j2=1:size(RO.preSens,1)
+  r3=cell2mat(RB.PreSleeper(2:end,:));
+  r3=[r3 round((r3-[RB.sGamma0 0])./[.6 1],2) round((r3(:,1)-RB.sGamma0)./.6,0)];
+  % {x,iSleeper,numSleeper2,iSleeper,numSleeper};
+  % create sleper tag to position conversion
   st1=cellfun(@(x)sprintf('S\\%+.0f([+-]*)',x),num2cell(r3(:,3)),'uni',0);
-  st1(:,2)=cellfun(@(x)sprintf(' %g $1',x),num2cell(r3(:,1)),'uni',0);st1=flipud(st1);
-  colM=sdtu.ivec('ColList',RO.preSens(1,:));
+  st1(:,2)=cellfun(@(x)sprintf(' %g $1',x),num2cell(r3(:,1)),'uni',0);
+  i3=find(r3(:,5)==0); 
+  if length(i3)>1 % s0+ and s0- distinction : nodeposition at 0 
+    st1(i3,2)={sprintf(' %g $1',mean(r3(i3,1)))}; 
+  end
+  st1=flipud(st1);
+  %RB.preNode={'NodeId','lab'}
+  colM=sdtu.ivec('ColList',RO.preSens{j2,2}(1,:));
   i1=colM('X');RB.iXYZ=colM({'X','Y','Z'}); RB.iDir=colM('DirSpec');
-  ta=RO.preSens(2:end,:);
+  ta=RO.preSens{j2,2}(2:end,:);
   st2=[ta(:,i1) regexprep(ta(:,i1),st1(:,1),st1(:,2))];
   for j1=1:size(st2,1)
     try;r4=eval(st2{j1,2});catch;r4=0;end
@@ -1246,7 +1258,8 @@ case 'presens'
   % place sensors 
   RS=struct('tdof',{[colM.prop.name';ta]});
   RS.tdof(:,colM('M'))=[];
-  mt=fe_case(mt,'SensDof','Out',RS);
+  mt=fe_case(mt,'SensDof',RO.preSens{j2,1},RS);
+  end
  case 'prered'
   %% #MeshTrack.preRed : prepare fe_coor
   RunOpt=RO;RO=RO.RO;
@@ -1284,7 +1297,8 @@ case 'presens'
  if isfield(r1,'RedCfg'); sdtw('_nb','Expecting RedType instead of RedCfg'); end;
  r1=sdth.sfield('AddMissing',r1,RunOpt);
  if isfield(r1,'RedType');
-    r1=sdth.sfield('addmissing',d_dynavoie(sprintf('RedCfg%s',r1.RedType)),r1);
+    st1=sprintf('RedCfg%s',r1.RedType);
+    r1=sdth.sfield('addmissing',d_dynavoie(st1),r1);
  end
  if ~isfield(r1,'RedFcn')&&~isfield(r1,'RedType');
   fprintf('No reduction for ''%s''\n',SE.name);mt=[];
