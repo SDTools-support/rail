@@ -381,12 +381,27 @@ if ~isempty(name);
  mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
 
  %% #UIC60_U85 with meshing using GMSH and Gaetan's cut -2
- mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
- mo4.Elt=feutil('removeelt eltname bar',mo4);
+ %mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
+ mo4=fe_gmsh('read',d_rail('wd','UIC60_U85.msh'));
+ mo4.Elt=feutil('removeelt eltname b',mo4);
+ mo4.Elt=feutil('removeelt eltname mass',mo4);
+ [mo4.Node,mo4.Elt]=feutil('optimmodel',mo4);
  mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
- mo4=feutil('addtest -noori;',mo4,feutil('symsel 35  0 1 0',mo4));
+ mo4.meta.name='UIC60_U85';
+ mo4=feutil('addtest -noori;',mo4,feutil('symsel 8  0 -1 0',mo4));
+ mo4.Elt=feutil('setsel matid 310 proid 310',mo4,'proid>200');
+ mo4.Elt=feutil('setsel matid 301 proid 301',mo4,'proid<200');
+ mo4=feutil('joinall',mo4);mo4.Elt=feutilb('SeparatebyProp',mo4);
 
- feplot(mo4);
+ f2=d_rail('wd','UIC60_Sections.mat');r1=load(f2{1});
+ mo1=mo4;mo1.Elt=feutil('selelt matid 301',mo1);
+ [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra')=sdtm.rmfield(mo1,'Stack');
+ mo1=mo4;
+ [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra+e')=sdtm.rmfield(mo1,'Stack');
+ 
+ %sdtm.save(f2{2},'-struct','r1');
+
+ feplot(mo4);fecom showfipro
 
   return
   end
@@ -1008,8 +1023,11 @@ function   ms=MeshSlice(RO);
    PA=dyn_ui('paramvh'); cf=feplot(PA.ms);fecom(cf,'showfimat');
   end
  else % rail mesh 
-  if isfield(RO,'nmap')&&isKey(RO.nmap,'CurSlice')
-   RT=RO; RO=RT.nmap('CurSlice');
+  if isfield(RO,'nmap')&&isKey(RO.nmap,'CurSlice');
+   error('Obsolete railu.MeshSlice')
+   RT=RO; RC=RT.nmap('CurSlice');
+  elseif isfield(RO,'nmap')&&isKey(RO.nmap,'railu.MeshSlice');
+   RT=RO; evt=RT.nmap('railu.MeshSlice');RO=evt.CurSlice;
   else
    DoOpt=sdtm.pcin('prero.railu.MeshSlice');R1=RO;
    [~,RO]=sdtm.urnPar(RO,'{RailType%s,SleeperType%s,PadType%s}{}',struct('var',{DoOpt},'out','uo'));
@@ -1028,8 +1046,7 @@ function   ms=MeshSlice(RO);
     RC.k_ballast=RO.k_ballast; RC.Do{end+1}='k_ballast';
   end
   ms=railu.MeshSliceCheck(mo2,RC); 
-
-
+  sdtu.ui.stdFeplot(evt,ms,[]);
   sdtm.store(RT.nmap,sprintf('ms>%s',RO.store));
  end
 
@@ -1144,14 +1161,13 @@ end
 function   mt=MeshTrack(RT);
 %% #MeshTrack : concatenate mesh slices as a track -2
 
-if isfield(RT,'nmap');RO=RT.nmap('CurTrack');projM=RT.nmap;
+if isfield(RT,'nmap');RO=RT.nmap('railu.MeshTrack');projM=RT.nmap;
  RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
 elseif isfield(RT,'mt');mt=RT.mt; SE=RT.SE; RO=RT;% dynavoie
 else; error('Not valid')
 end
 
-if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'}
-end
+if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'};end
 
 for j0=1:length(RO.Do)
 switch lower(RO.Do{j0})
@@ -1325,7 +1341,7 @@ case 'presens'
 otherwise; error('%s',RO.Do{j0})
 end
 end % Do Loop
-
+sdtu.ui.stdFeplot(RO,mt,[])
 end
 
 function RM=MeshSleeper(name,evt);
