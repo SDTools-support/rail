@@ -609,8 +609,10 @@ done=1;
       i2=i1(node(i1,6)==0&node(i1,7)==r3(end));
       if 1==2%j1==1||j1==length(r2);i1=node(i1);
       else; 
-       i1=node(i1(abs(node(i1,6)-node(i2,6))<15e3&node(i1,7)-r3(end)>-3e3),:); 
-       i1=i1(:,1);      
+       [~,i3]=sort(abs(node(i1,5:7)-node(i2,5:7))*[0 1 .1]');
+       %z=node(i1(i3(1:4)),:);fecom('shownodemark',z(:,1));z
+       %i3=node(i1(abs(node(i1,6)-node(i2,6))<15e3&node(i1,7)-r3(end)>-3e3),:); 
+       i1=node(i1(i3),:);i1=i1(1:find(i1(:,7)~=i1(1,7),1,'first'),1);   
       end
       i2=node(i2,1);i1=setdiff(i1,i2)*[1 1];i1(:,1)=i2;
       elt=[elt;i1]; %#ok<AGROW>
@@ -1079,7 +1081,7 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    ms=feutil('addelt',ms,'celas',elt);
   case 'railtop'
   %% #MeshSliceCheck.RailTop Nodes of top rail -3
-   r1=feutil('findnode pronameprrLine',ms);
+   r1=feutil('findnode matid 398:399',ms);
    if isempty(r1)% old attempt to use line
     r1=fe_case(ms,'getdata','rail');
     if isempty(r1);error('Missing DofSet,Rail');end
@@ -1087,7 +1089,9 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    end
    if isfield(RC,'projM')
     RailSel=RC.projM('RailSel');
-    RailSel(RC.jSlice*2-1,1:2)={RC.sname,feutil('addelt','mass1',r1)};
+    el1=feutil('selElt inNode',ms,r1);
+    if isempty(el1);el1=feutil('addelt','mass1',r1);end
+    RailSel(end+1,1:2)={RC.sname,el1}; %#ok<AGROW>
     RC.projM('RailSel')=RailSel;
    end
  case 'doperiod'
@@ -1154,7 +1158,7 @@ switch lower(RO.Do{j0})
 case 'gentrack'  % generate track
 % sdtweb dyn_mesh GenTrack
 RB=struct('projM',projM); projM('RailSel')={};
-RB.Do={'doPeriod','plrange','eltid','padcontact'};
+RB.Do={'doPeriod','plrange','eltid','padcontact','railtop'};
 RB.bas=101; RB.NodeId0=100000;
 RB.XinfoCol={'x','SE','bas'};RB.Xinfo=[];
 RB.PreSleeper={'index','x'};
@@ -1212,6 +1216,14 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    RB.NodeId0=mt.Elt(end,3)-size(data.IntNodes,1)+1;
    RB.bas=max(mt.bas(:,1))+1; % Leave space for an interface slice
   end % j1 for multi-slice 
+
+  preSel=sdtu.ivec.uniqueC(projM('RailSel'),'rows','stable');
+  sel=fesuper('SeBuildSel',mt,preSel);
+  sel.mdl=feutil('joinall',sel.mdl);
+  mt.Node=sel.mdl.Node;mt.Elt=feutil('addelt',sel.mdl.Elt,mt.Elt);
+  mt=feutil('setpro',mt,'d_rail(nmap.ProDb.prrLine)');
+  mt=feutil('setmat',mt,'dyn_mesh(matdb{399,prrLine})');
+
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
 case 'presens'
   %% #MeshTrack.presens
