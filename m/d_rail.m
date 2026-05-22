@@ -29,7 +29,7 @@ ofact('mklserv_utils -silent');
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
-%% Step mesh  : simple meshing example
+%% Step meshDvRailSleeper  : simple meshing example
 % keywords{var{PA.ms>var.ms,PA.mt>var.mt,SliceCfg,TrackCfg},fcn{dyn_mesh.Slice,dyn_solve.RangeLoop}}
 % d_rail('tutoDvBeam -s{init,mesh}')
 sdtu.logger.status('CmdDisp','on'); % Turn logViewer on
@@ -1996,6 +1996,7 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
 
     'prwLine',[499 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
     'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
+    'railCR',[398 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
    
     'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Rail Yield 800 MPa
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa
@@ -2021,7 +2022,8 @@ nmap('MatDb')=r2;  % see also sdtweb('dvMat')
 
 % Element properties
 li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
-    'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
+    'railCR',[398 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
+     'prrEulSurf',[398 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact slave
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master    
     'Rail',p_solid('dbval 301 d3 -3')

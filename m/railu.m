@@ -329,7 +329,8 @@ railu.RailSection(m_rail) % cleanup
 %}
 %%
 name='';
-if isfield(RO,'RailType');name=RO.RailType;
+if isfield(RO,'RailName');name=RO.RailName;
+elseif isfield(RO,'RailType');name=RO.RailType;
 elseif ischar(RO);name=RO;
 end
 RA=struct;m_rail=[];
@@ -382,7 +383,8 @@ if ~isempty(name);
 
  %% #UIC60_U85 with meshing using GMSH and Gaetan's cut -2
  %mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
- mo4=fe_gmsh('read',d_rail('wd','UIC60_U85.msh'));
+ %mo4=fe_gmsh('read',d_rail('wd','UIC60_U85.msh'));
+ mo4=fe_gmsh('read',d_rail('wd','UIC60_U85v2.msh'));
  mo4.Elt=feutil('removeelt eltname b',mo4);
  mo4.Elt=feutil('removeelt eltname mass',mo4);
  [mo4.Node,mo4.Elt]=feutil('optimmodel',mo4);
@@ -392,12 +394,14 @@ if ~isempty(name);
  mo4.Elt=feutil('setsel matid 310 proid 310',mo4,'proid>200');
  mo4.Elt=feutil('setsel matid 301 proid 301',mo4,'proid<200');
  mo4=feutil('joinall',mo4);mo4.Elt=feutilb('SeparatebyProp',mo4);
+ [n2,i2]=feutil('addnode',[],mo4.Node);mo4=feutil('renumber',mo4,n2(i2,1));
+ mo4.Node(abs(mo4.Node(:,6))<1e-5,6)=0;
 
  f2=d_rail('wd','UIC60_Sections.mat');r1=load(f2{1});
  mo1=mo4;mo1.Elt=feutil('selelt matid 301',mo1);
- [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra')=sdtm.rmfield(mo1,'Stack');
+ [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra2')=sdtm.rmfield(mo1,'Stack');
  mo1=mo4;
- [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra+e')=sdtm.rmfield(mo1,'Stack');
+ [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra2+e')=sdtm.rmfield(mo1,'Stack');
  
  %sdtm.save(f2{2},'-struct','r1');
 
@@ -412,10 +416,11 @@ if ~isempty(name);
     %[RB,st,name]=cingui('paramedit -DoClean2',DoOpt,{RO,name}); Cam=lower(CAM); st='';
     [name,RB]=sdtm.urnPar(name,DoOpt);
   end
-
+  sdtu.logger.doing(dbstack,name);
   sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
+  %% find actual details in a map
   if isKey(nmap,name);RA=followAlias(nmap,name);
-  elseif isKey(sectionM,name);RA=followAlias(sectionM,name);
+  elseif isKey(sectionM,name);RA=followAlias(sectionM,name);RA.RailName=name;
   elseif isstruct(RO)&&isKey(sectionM,RO.RailName);name=RO.RailName;RA=followAlias(sectionM,name);
   end
   RA=sdth.sfield('addmissing',RB,RA);
@@ -578,7 +583,7 @@ function m_rail=RailPrr(RA,m_rail,ms);
    padxyz(:,1:4)=[];
    padxyz=[];
   end
-done=1;
+done=1;sdtu.logger.doing(dbstack,'');
   if min(m_rail.Node(:,7))==max(m_rail.Node(:,7)) && ...
        min(m_rail.Node(:,6))==max(m_rail.Node(:,6)) % rail=beam : rigid link
   elseif strncmpi(RA.RailType,'Vol',3) 
@@ -588,8 +593,11 @@ done=1;
     elt=[]; 
     for j1=1:length(r2)% x positions
       i1=find(node(:,5)==r2(j1));
-      i2=i1(node(i1,6)==0&abs(node(i1,7)-r3(end))<1e-2);
-      if isempty(i2) % Need to add centerline
+      [~,i2]=sortrows(abs(node(i1,5:7))*[0;.1;1],'ascend');i1=i1(i2);
+      %fecom('shownodemark',node(i1(i2(1:4))))
+      i2=i1(node(i1,6)==0&abs(node(i1,7)-r3(end))<1e-2*1e6);
+      if isempty(i2) 
+        %% Need to add centerline (rigids will be added next);
         n2=r2; n2(1,3)=0;
         [m_rail.Node,i2]=feutil('addnode',m_rail.Node,n2/1e6); 
         el1=feutil('objectbeamline',m_rail.Node(i2,1));el1(2:end,3:5)=399;
@@ -597,14 +605,22 @@ done=1;
         m_rail=feutil('setmat',m_rail,'d_rail(nmap.MatDb.prrLine)');
         done=0; break;
       end
-      if j1==1||j1==length(r2);i1=node(i1); % Edges all face nodes
+      if 1==2%j1==1||j1==length(r2);i1=node(i1); % Edges all face nodes
       else;  % only top nodes
-        i1=feutil('findnode inelt{withnode} & x==',m_rail,node(i2,1),node(i2,5)/1e6);
+        if isscalar(unique(node(i1,7))); i1=i1(1:4); % need 4 points
+        else;i1=i1(1:3); % 3 points in a triangle
+        end
+        i1=node(i1,1);i2=i1(1);i1=i1(2:end);
       end
-      i2=node(i2,1);i1=setdiff(i1,i2)*[1 1];i1(:,1)=i2;
+      i1=setdiff(i1,i2)*[1 1];i1(:,1)=i2;
       elt=[elt;i1]; %#ok<AGROW> % connections to centerline 
     end
-    if ~isempty(elt);elt(:,3)=123;m_rail=feutil('addelt',m_rail,'rigid',elt);end
+    if ~isempty(elt);
+        el1=feutil('objectbeamline',unique(elt(:,1),'stable'));el1(2:end,3:5)=399;
+        m_rail.Elt=feutil('addelt',m_rail.Elt,el1);
+        elt(:,3)=123;m_rail=feutil('addelt',m_rail,'rigid',elt);
+        m_rail=feutil('setmat',m_rail,'d_rail(nmap.MatDb.prrLine)');
+    end
 
   else;
     m_rail.Node(:,7)=m_rail.Node(:,7)-min(m_rail.Node(:,7))+max(padxyz(:,3));
@@ -638,12 +654,13 @@ done=1;
 
 end
 
+ %% #MeshCmd : mesh related methods
 
 function   [model,RO]=Mesh(varargin);
- %% #Mesh implement forwarding of sdtsys.stepmesh
+ %% #Mesh implement forwarding of sdtsys.stepmesh -2
  CAM=regexprep(varargin{1},'^Mesh\s*','','ignorecase');Cam=lower(CAM);carg=2;
  if comstr(Cam,'beammass')
- %% #Mesh.BeamMass (was Pinault) -2
+ %% #Mesh.BeamMass (was Pinault) -3
  % initial revision was PJE/dynavoie/dv16.m
 
  DoOpt=sdtm.pcin('prero.railu.Mesh.BeamMass');
@@ -845,11 +862,11 @@ model.Elt(feutil('findelt eltname beam1',model),7)=1; % vz for vertical orient
 model.unit='SI';
 
 elseif comstr(Cam,'{')
- %% #MeshFromNomenclature d_rail('Mesh{U30{5,Gc,tc-350_400}:Ec41{Air}:W2{XaZa}}')
+ %% #MeshFromNomenclature d_rail('Mesh{U30{5,Gc,tc-350_400}:Ec41{Air}:W2{XaZa}}') -3
  RM=railu.nameToMeshRO(CAM(2:end-1));
  model=railu.MeshList(RM); % meshlist
 elseif comstr(Cam,'trackli');
- %% #MeshTrackLi MeshRailDb : database of track configurations (includes before/after)
+ %% #MeshTrackLi MeshRailDb : database of track configurations (includes before/after) -3
  
  if carg<=nargin;RM=varargin{carg};carg=carg+1;
  else; RM=struct; 
@@ -882,7 +899,7 @@ end
  % end
 li(cellfun(@(x)isequal(x,15),li(:,4)),4)={RM.Lc};
 
-%% #MeshDb.add_sleeper before and after -4
+%% #MeshDb.add_sleeper before and after -3
 Ns=2*RM.Ns; % Correspond of the real number of sleeper 
             % Permit to input also odd number at the beginning
 if ~isfield(RM,'Lc');RM.Lc=15;end
@@ -951,7 +968,7 @@ if length(RM.Lc)==2
  li(setdiff(find(r1<min(RM.top)),1),4)={RM.Lc(1)};
  li(find(r1(2:end)>max(RM.top))+2,4)={RM.Lc(1)};
 end
-%% #Mesh.TGrad : creation of gradient if not given in KC -4
+%% #Mesh.TGrad : creation of gradient if not given in KC -3
 if isfield(RM,'TGrad') % Selection of gradient types
  switch lower(RM.TGrad); 
  case 'ga';
@@ -1001,10 +1018,6 @@ if ~isfield(RM,'KC')
  RM.KC=struct('X',{{[],{'K';'C'}}},'Y',[K,C]);% define sleeper gradient
 end
 model=struct('KC',RM.KC,'rail',{li}); % sdtm.toString(RM.KC)
- elseif comstr(Cam,'joint')
-%% #Mesh.Joint : meshing of rail joint from parts
-RO=varargin{carg};carg=carg+1;
- error('Need implement')
  else; error('Need implement ''%s''',CAM)
  end
 end
@@ -1033,13 +1046,17 @@ function   ms=MeshSlice(RO);
    [~,RO]=sdtm.urnPar(RO,'{RailType%s,SleeperType%s,PadType%s}{}',struct('var',{DoOpt},'out','uo'));
   end
   RO=vhandle.uo.safeLenUnit(RO,'mm/1000');
-  m_rail=railu.RailSection(RO);
-  m_rail=railu.MeshPad(RO,m_rail);
+  RT.MdlMap=vhandle.nmap;nameM=RT.MdlMap('Map:SetName');
+  append(nameM,{'GID:399','Rail';'GID:101','Pad'})
+  m_rail=railu.RailSection(RO);  m_rail.Node(:,4)=399;
+  m_rail=railu.MeshPad(RO,m_rail); m_rail.Node(m_rail.Node(:,4)==0,4)=101;
   m_rail=railu.RailPrr(RO,m_rail); %% add top line
+  m_rail.Node(m_rail.Node(:,4)==0,4)=399;
+
   % xxx robust vhandle.uo.safeLenUnit(RO,'mm/1000');
   if max(abs(m_rail.Node(:,7)))>1; m_rail.Node(:,5:7)=m_rail.Node(:,5:7)/1000;m_rail.unit='SI';end
 
-  mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO)); % combine rails
+  mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO,'MdlMap',RT.MdlMap)); % combine rails
 
   RC=struct;RC.Do={'plrange','eltid','doPeriod','padcontact'};
   if isfield(RO,'k_ballast')&&~isempty(RO.k_ballast)
@@ -1052,7 +1069,7 @@ function   ms=MeshSlice(RO);
 
 end
 function   ms=MeshSliceCheck(ms,RC,RO)
-  %% #MeshSliceCheck
+  %% #MeshSliceCheck : loop on slice checks -2
 
   if nargin<2||~isfield(RC,'Do');
     RC.Do={'EltId','plrange','railtop'}
@@ -1093,9 +1110,14 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   case 'k_ballast'
   %% #MeshSliceCheck.k_ballast : adjust undersleeper ballast stiffness -3
    n2=feutil('getnode matid 201:299 & z==',ms,min(ms.Node(:,7)));
-   elt=n2(:,1);elt(:,3)=-123;  
-   elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
-   ms=feutil('addelt',ms,'celas',elt);
+   elt=n2(:,1);elt(:,3:4)=290; elt(:,9)=0; % global
+   ms=feutil('addelt',ms,'cbush',elt);
+   il=[290 fe_mat('p_spring',ms.unit,2)  ...
+     RC.k_ballast/size(n2,1)*length(ms.meta.SlX)*[100 100 1 0 0 0]];
+   ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
+   ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
+
+   %elt(:,3)=-123;  elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
   case 'railtop'
   %% #MeshSliceCheck.RailTop Nodes of top rail -3
    r1=feutil('findnode matid 398:399',ms);
@@ -1242,7 +1264,7 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
 
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
 case 'presens'
-  %% #MeshTrack.presens
+  %% #MeshTrack.presens : prepare sensors -3
   
   if ~iscell(RO.preSens{1,2})
    RO.preSens={'Out',RO.preSens};
@@ -1289,8 +1311,28 @@ case 'presens'
   mt=fe_case(mt,'SensDof',RO.preSens{j2,1},RS);
   end
  case 'prered'
-  %% #MeshTrack.preRed : prepare fe_coor
-  RunOpt=RO;RO=RO.RO;
+  %% #MeshTrack.preRed : prepare fe_coor -3
+  RR=RO;RO=RO.RO; % RR options for reduction
+
+ st2={'Tl','Tr'};
+ for j2=1:length(st2) % Extract the left and right shapes 
+ if isfield(RR,st2{j2})
+   SE1=stack_get(mt,'SE', ...
+     RR.(st2{j2})(1:find(RR.(st2{j2})=='.',1,'first')-1),'g');
+   st1=RR.(st2{j2})(find(RR.(st2{j2})=='.',1,'first')+1:end);
+   cyc=fe_case(SE1,'getdata','Symmetry');
+   if strcmpi(st1,'tr')
+    d1=fe_def('subdef',SE1.TR,size(SE1.TR.def,2)+(-SE1.TR.info(3)+1:0));
+    d1=fe_def('subdof',d1,cyc.IntNodes(:,2));d1.IntNodes=cyc.IntNodes(:,2);
+    %cf=feplot(S1,d1);
+   elseif strcmpi(st1,'tl')
+    d1=fe_def('subdef',SE1.TR,1:SE1.TR.info(1));
+    d1=fe_def('subdof',d1,cyc.IntNodes(:,1));d1.IntNodes=cyc.IntNodes(:,1);
+   end
+   RR.(st2{j2})=d1; 
+ end
+ end
+  
   cyc=fe_case(SE,'getdata',{'cyclic','Symmetry'});
   r2=fe_case(SE,'getdata',{'DOFSet','rail'});
   if ~isfield(SE,'DOF');SE.DOF=feutil('getdof',SE);end
@@ -1306,24 +1348,24 @@ case 'presens'
      if ~isempty(i1);mt.Elt=feutil('set group bar1 name beam1',mt);
      end
   end
-  RunOpt.TopDof=fe_c(r2.DOF,cyc.IntNodes(:,2),'dof',2); 
-  RunOpt.TopNode=unique(fix(r2.DOF));
-  RunOpt.RailI=r2;
-  if ~isfield(RO,'Rayleigh')||isempty(RunOpt.Rayleigh)
-  RunOpt.Rayleigh=stack_get(SE,'info','Rayleigh','getdata');
+  RR.TopDof=fe_c(r2.DOF,cyc.IntNodes(:,2),'dof',2); 
+  RR.TopNode=unique(fix(r2.DOF));
+  RR.RailI=r2;
+  if ~isfield(RO,'Rayleigh')||isempty(RR.Rayleigh)
+  RR.Rayleigh=stack_get(SE,'info','Rayleigh','getdata');
   end  
- RunOpt.Assemble=sprintf('assemble -matdes %s -se NoT',sprintf('%i ',RO.MatDes));
+ RR.Assemble=sprintf('assemble -matdes %s -se NoT',sprintf('%i ',RO.MatDes));
  if ~isempty(stack_get(SE,'pro','withMap','getdata'))
   sdtw('_ewt','document')
-  RunOpt.Assemble=[RunOpt.Assemble  ...
+  RR.Assemble=[RR.Assemble  ...
     '-cfield=1 Load -exitFcn"vout=dyn_solve(''''ReduceHetAssembly'''',model,Case,vout,out);"'];
  end
  r1=stack_get(SE,'info','Reduce','get');
  r1=sdth.sfield('AddSelected',r1,RO,{'RedType','Rayleigh','UseLoss'});
- if isfield(r1,'multi'); RunOpt.multi=r1.multi; end
+ if isfield(r1,'multi'); RR.multi=r1.multi; end
  if isfield(r1,'Type'); sdtw('_nb','Expecting RedType instead of Type'); end;
  if isfield(r1,'RedCfg'); sdtw('_nb','Expecting RedType instead of RedCfg'); end;
- r1=sdth.sfield('AddMissing',r1,RunOpt);
+ r1=sdth.sfield('AddMissing',r1,RR);
  if isfield(r1,'RedType');
     st1=sprintf('RedCfg%s',r1.RedType);
     r1=sdth.sfield('addmissing',d_dynavoie(st1),r1);
@@ -1345,7 +1387,7 @@ sdtu.ui.stdFeplot(RO,mt,[])
 end
 
 function RM=MeshSleeper(name,evt);
- %% #MeshSleeper 
+ %% #MeshSleeper -2
  % mo1=railu.MeshSleeper('m450pi')
  if isa(name,'vhandle.uo'); RS=name;
      name=RS.SleeperName;
@@ -1391,7 +1433,7 @@ function RM=MeshSleeper(name,evt);
  [n2,i2]=feutil('addnode',[],mo2.Node);mo2=feutil('renumber',mo2,n2(i2,1));
  mo2=feutil('divide 2 2 2',mo2);
  mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
- RO=railu.MatProDb(RO);
+ mo2.nmap=evt.MdlMap; RO=railu.MatProDb(RO);
  mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
  RO.PrePl={'name','MatId';'Sleeper',201};
  RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
@@ -1419,7 +1461,7 @@ function RM=MeshSleeper(name,evt);
   if isfield(Slice,'SlX')&&~isempty(Slice.SlX)
    %% replicate sleepers as needed
    for j1=1:length(Slice.SlX)
-    mo3=mo2;mo3.Node(:,5)=mo3.Node(:,5)+Slice.SlX(j1);
+    mo3=mo2;mo3.Node(:,5)=mo3.Node(:,5)+Slice.SlX(j1);mo3.Node(:,4)=200+j1;
     if j1==1; mo1=mo3;
     else; mo1=feutil('addtest-noori;',mo1,mo3);
     end
@@ -1427,6 +1469,7 @@ function RM=MeshSleeper(name,evt);
    mo2=mo1;mo2.meta.SlX=Slice.SlX; 
   end
   nameM=mo2.nmap('Map:SetName');if ~isfield(mo2,'bas');mo2.bas=[];end
+  evt.prePl={'name','MatId','pl'};
   for j1=1:length(evt.LR)   
    m_rail=evt.rail; Slr=evt.LR(j1); if Slr>0;st1='MrL';else;st1='MrR';end 
    cant=-Slr*Slice.cant; rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
@@ -1434,19 +1477,27 @@ function RM=MeshSleeper(name,evt);
    r3=[0 Slice.Or_tr(2)*Slr -abs(Slice.Or_tr(3))];
    r2=eye(3);r2(2:3,2:3)=rot; rot=r2';
    m_rail.Node(:,5:7)= (m_rail.Node(:,5:7)*rot')+r3;
+   if j1==1; nameM('GID:399')=['prr' st1(end)];
+       evt.prePl(j1+1,1:3)={['railC' st1(end)],399,m_rail.pl};
+   elseif j1==2;m_rail.Node(m_rail.Node(:,4)==399,4)=398; 
+       nameM('GID:398')=['Rail' st1(end)];
+       m_rail.Elt=feutil('setsel matid 398 proid 398',m_rail,'matid399');
+       evt.prePl(j1+1,1:3)={['railC' st1(end)],398,m_rail.pl};
+   end
    mo2=feutil('addtest-noori;',mo2,m_rail);
    rot=rot*diag([1 -1 -1]);
    bas=[400-j1 1 0    r3  rot(:)']; % left or right basis 
    nameM(sprintf('bas:%i',bas(1)))=st1;
    mo2.bas(end+1,1:length(bas))=bas;
   end
+  mo2=feutil('setmat',mo2,struct('PrePl',{evt.prePl}));
   RM=mo2; 
   %feplot(mo2); fecom view4; fecom ShowBas
  end
 
 end
 function m_rail=MeshPad(evt,m_rail);
- %% #MeshPad
+ %% #MeshPad : integrate pad -2
 
  switch lower(evt.PadType)
  case 'sn'
@@ -1471,7 +1522,7 @@ function m_rail=MeshPad(evt,m_rail);
 end
 
 function RO=MatProDb(RO);
- %% #MatProDb initialized database 
+ %% #MatProDb initialized database  -2
  r2=d_rail('nmap');
  if isfield(RO,'nmap')&&isa(RO.nmap,'vhandle.nmap');RO.projM=RO.nmap; 
  elseif ~isfield(RO,'projM');RO.projM=r2;
@@ -1669,7 +1720,7 @@ end % end MeshList
 
 
 function RM=nameToMeshRO(name,evt);
-%% #nameToMeshRO naming nomenclature to parameter 
+%% #nameToMeshRO naming nomenclature to parameter  (DynaVoie legacy) -2
 %  'U30{5,Gc,tc-700_300,PadFuSN{io4}}:no:W2{XaZa}'
 if name(1)=='{';name(1)=[];name(end)='';end
 if nargin==1;evt=struct;end
@@ -1772,6 +1823,10 @@ function  [model,RO]=Case(varargin);
     end
     mt=feutil('setmat',mt,'dyn_mesh(matdb{399,prrLine})');
     mt=feutil('setpro',mt,'d_rail(nmap.ProDb.prrLine)');
+    if any(mt.Node(:,4)==398)
+     mt=feutil('setpro',mt,'d_rail(nmap.ProDb.railCR)');
+     mt=feutil('setmat',mt,'d_rail(nmap.MatDb.railCR)');
+    end
   end
   model=mt;
   case 'vehicle' 
@@ -1815,7 +1870,7 @@ if isempty(gnmap)||isequal(opt,'reset')
       'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Coarse DV Rail') 
    '60E1v', struct('hr1',11.5,'hr2',51,'hr3',172, ...
       'lar1',150,'lar2',16.5,'lar3',72,'ToolTip','Rail section', ...
-      'section','UIC60_Sections.mat#ra','cite','rail_IN10208.pdf#page=49') 
+      'section','UIC60_Sections.mat#ra2','cite','rail_IN10208.pdf#page=49') 
    'SN',struct('PadType','Volume','hs',9,'lsem',220,'k_pad',180e6)
    'UIC60',struct('alias','60E1v')
     '50-E6',struct('hr1',10.2,'hr2',49,'hr3',153, ...
