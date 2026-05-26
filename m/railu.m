@@ -1193,7 +1193,8 @@ if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'};end
 
 for j0=1:length(RO.Do)
 switch lower(RO.Do{j0})
-case 'gentrack'  % generate track
+case 'gentrack'  
+%% #MeshTrack.GenTrack generate track
 % sdtweb dyn_mesh GenTrack
 RB=struct('projM',projM); projM('RailSel')={};
 RB.Do={'doPeriod','plrange','eltid','padcontact','railtop'};
@@ -1261,12 +1262,17 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
   mt.Node=sel.mdl.Node;mt.Elt=feutil('addelt',sel.mdl.Elt,mt.Elt);
   mt=feutil('setpro',mt,'d_rail(nmap.ProDb.prrLine)');
   mt=feutil('setmat',mt,'dyn_mesh(matdb{399,prrLine})');
-
+  if any(mt.Node(:,4)==398)
+     mt=feutil('setpro',mt,'d_rail(nmap.ProDb.railCR)');
+     mt=feutil('setmat',mt,'d_rail(nmap.MatDb.railCR)');
+  end
+  RB.SEl=fesuper('s_',mt);RB.SEb=vertcat(RB.SEl{:,3});
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
 case 'presens'
   %% #MeshTrack.presens : prepare sensors -3
   
-  if ~iscell(RO.preSens{1,2})
+  if ~isfield(RO,'preSens'); continue;
+  elseif ~iscell(RO.preSens{1,2})
    RO.preSens={'Out',RO.preSens};
   end
   for j2=1:size(RO.preSens,1)
@@ -1303,6 +1309,12 @@ case 'presens'
      r3=rot*r3(:);
     end
     ta{j1,RB.iDir}=sprintf('dir %.4f %.4f %.4f',r3);
+    if isfield(RB,'Xinfo')
+      RB.curSE=RB.SEl(RB.SEb==RB.Xinfo(find(RB.Xinfo(:,1)>pos(1),1,'first')-1,3),:);
+      ms=stack_get(mt,'SE',RB.curSE{1},'g');
+      ta{j1,colM('N1NEND')}=RB.curSE{2};
+      ta{j1,colM('SE')}=RB.curSE{1}; % NodeId=SE.Node(:,1)-max(SE.Node(:,1))+NEND
+    end
   end
   ta(:,colM('NodeId'))=num2cell(-(1:size(ta,1))');
   % place sensors 
@@ -1378,8 +1390,10 @@ case 'presens'
 
   
   return
-
-    
+case 'reduce'
+  %% #MeshTrack.reduce perform reduction and store
+  RR=projM('dyn_solve.reduce');RR.projM=projM;
+  mt=dyn_solve('reduce',mt,RR);
 otherwise; error('%s',RO.Do{j0})
 end
 end % Do Loop

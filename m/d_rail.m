@@ -201,9 +201,92 @@ if sdtweb('_TutoNeed','figgen')
  %% d_visco('TutoCompPly -s{admin} -reset ')
  d_rail('heveaCpFig')
 end
+%% EndTuto
+
+elseif comstr(Cam,'jic')
+%% #TutoJIC: glued isolating joint example
+
+%% Step init : initialize interface
+% keywords{var{projM,osM},fcn{}}
+dyn_ui('SetWD','@tempdir/TutoJIC'); % change the working directory if necessary
+ofact('mklserv_utils -silent');
+PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');RT=struct('nmap',projM); 
+projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
+
+cbM=RT.nmap('Map:Cb');
+cbM('viewSensTrain')=['cf=feplot(2);' ...
+    'sdth.urn(''Tab(Cases,Train){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')'];
+cbM('viewSensHammer')=['cf=feplot(2);' ...
+    'sdth.urn(''Tab(Cases,Ham){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;textdof'')'];
+cbM('viewSensTop')=['cf=feplot(2);' ...
+    'sdth.urn(''Tab(Cases,Top){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view3;textdof'')'];
+%sdtm.urnCb(RT.nmap,'Map:Cb.viewSensTop');
+
+%% step MeshSlice : generate generic slice s1 and joint slice meshes
+
+Do1=sdtm.pcin('prero.railu.MeshSlice');
+RM=cingui('paramedit -DoClean2',Do1,{struct('half',0,'RailX',-900:50:900, ...
+    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60','SleeperType','M450','PadType','SN','store','joint', ...
+    'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',2,'os',{{'@fecom','view2'}});
+railu.MeshSlice(RT);projM=RT.nmap; %
+RM2=cingui('paramedit -DoClean2',Do1,{struct('half',0,'RailX',-300:50:300, ...
+    'SlX',0,'RailName','UIC60','SleeperType','M450','PadType','SN','store','s1', ...
+    'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',2,'os',{{'@fecom','view2'}});
+railu.MeshSlice(RT);s1=RT.nmap('s1');%
+% ms=s1;d1=fe_eig(ms,[5 100 1e3]);feplot(ms,d1)
+
+%% step RedShort : reduce a short track with both section types
+
+% preMeshTrack
+RM3=struct('cf',2,'cfos',{{'@fecom', ...
+    ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
+RM3.preTrack={'slNum','SE'
+    1:5,'s1';6,'joint';7:10,'s1'};
+RM3.slNum0=6;% Position the sleeper origin
+RM3.Do={'GenTrack','presens','reduce'};
+DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
+% preRed
+RR=struct('preRed',{{'SE','Red' 
+    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2})')
+    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 10 1e-6,peig 5})', ...
+      'Tl','s1.Tr','Tr','s1.Tl') 
+    }});
+RT.nmap('dyn_solve.reduce')=RR;
+mt=railu.MeshTrack(RT);cf=feplot(2,';'); % GenTrack,PreSens,Reduce
+
+%PA=dyn_ui('paramvh');  PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
+PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
+
+%% step preTest : assemble pretest configuration
+
+RM4=struct('cf',2,'cfos',{{'@fecom', ...
+    ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
+RM4.preTrack={'slNum','SE'
+    1:5,'s1';6,'joint';7:45,'s1'};RM4.slNum0=6;
+RM4.preSens={
+      'Train',t_gae24('ExpSensorTabTrain');
+      'Ham',t_gae24('ExpSensorTabHammer');
+      'Top',t_gae24('ExpLoadTab')};
+RM4.Do={'GenTrack','reduce','presens'};
+DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
+mt=railu.MeshTrack(RT);
+disp(cbM)
+
+PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
+
+
+%% step Impact : compute impact responses 
 
 
 %% EndTuto
+
 elseif comstr(Cam,'dv2')
 %% #TutoDvSpringMass: beam mass model d_rail('ScriptDv2'); 
 
