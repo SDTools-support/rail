@@ -589,6 +589,9 @@ done=1;sdtu.logger.doing(dbstack,'');
   elseif strncmpi(RA.RailType,'Vol',3) 
     %% #prrLine_for_contact / rigid edges and rail guide for volume -3
     [node,i1]=sortrows(round(m_rail.Node*1e6),[5 7 6]);
+    if any(node(:,7)>0) % Expecting straight rail (in Mr)
+     node(:,7)=node(:,7)-max(node(:,7));
+    end
     node(:,1)=m_rail.Node(i1,1);r2=unique(node(:,5));r3=unique(node(:,7));
     elt=[]; 
     for j1=1:length(r2)% x positions
@@ -1114,6 +1117,7 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    ms=feutil('addelt',ms,'cbush',elt);
    il=[290 fe_mat('p_spring',ms.unit,2)  ...
      RC.k_ballast/size(n2,1)*length(ms.meta.SlX)*[100 100 1 0 0 0]];
+   il(15)=.1; % default loss
    ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
    ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
 
@@ -1142,17 +1146,19 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   data=fe_case(ms,'stack_get','cyclic','Symmetry','get'); 
   if isempty(data)||~isfield(data,'IntNodes')
   % periodicity condition :
-  ms=fe_cyclic(sprintf('build -noslave -1 %g 0.0 0.0;',ms.meta.sw),ms); % builds periodicity
+  mo1=fe_cyclic(sprintf('build -noslave -1 %g 0.0 0.0;',ms.meta.sw), ...
+     fe_case(ms,'reset')); % builds periodicity
   % interfaces node renumbering :
-  c1=fe_case(ms,'getdata','Symmetry');c1.IntNodes=sortrows(c1.IntNodes);  
+  c1=fe_case(mo1,'getdata','Symmetry');c1.IntNodes=sortrows(c1.IntNodes);  
   i1=[c1.IntNodes(:,1);setdiff(ms.Node(:,1),c1.IntNodes(:));
        c1.IntNodes(:,2)]; i1(:,2)=(1:length(i1))';
+  ms=fe_case(ms,'stack_set','cyclic','Symmetry',c1);
   if ~isfield(RC,'NoRenum')
    r2=fe_case(ms,'stack_get');
-   m2=feutil('renumber-noOri;',stack_rm(ms,'info','OrigNumbering'),i1); 
+   mo2=feutil('renumber-noOri;',stack_rm(ms,'info','OrigNumbering'),i1); 
    if size(r2,1)~=size(fe_case(ms,'stack_get'),1)
        error('Renumbering issue');
-   else; ms=m2; 
+   else; ms=mo2; 
    end
   end
  R1=stack_get(ms,'','MeshParam','get');
@@ -1266,7 +1272,7 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
      mt=feutil('setpro',mt,'d_rail(nmap.ProDb.railCR)');
      mt=feutil('setmat',mt,'d_rail(nmap.MatDb.railCR)');
   end
-  RB.SEl=fesuper('s_',mt);RB.SEb=vertcat(RB.SEl{:,3});
+  RB.SEl=feutil('selelt eltnameSE',mt);RB.SEl(1,:)=[];
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
 case 'presens'
   %% #MeshTrack.presens : prepare sensors -3
@@ -1310,10 +1316,9 @@ case 'presens'
     end
     ta{j1,RB.iDir}=sprintf('dir %.4f %.4f %.4f',r3);
     if isfield(RB,'Xinfo')
-      RB.curSE=RB.SEl(RB.SEb==RB.Xinfo(find(RB.Xinfo(:,1)>pos(1),1,'first')-1,3),:);
-      ms=stack_get(mt,'SE',RB.curSE{1},'g');
-      ta{j1,colM('N1NEND')}=RB.curSE{2};
-      ta{j1,colM('SE')}=RB.curSE{1}; % NodeId=SE.Node(:,1)-max(SE.Node(:,1))+NEND
+      RB.curSE=RB.SEl(RB.SEl(:,4)==RB.Xinfo(find(RB.Xinfo(:,1)>pos(1),1,'first')-1,3),:);
+      % ms=stack_get(mt,'SE',fesuper('s_',RB.curSE(1)),'g');
+      ta{j1,colM('SE')}=RB.curSE; % NodeId=SE.Node(:,1)-max(SE.Node(:,1))+NEND
     end
   end
   ta(:,colM('NodeId'))=num2cell(-(1:size(ta,1))');
@@ -1397,6 +1402,8 @@ case 'reduce'
 otherwise; error('%s',RO.Do{j0})
 end
 end % Do Loop
+if isfield(RO,'Name'); mt.name=RO.Name;end
+
 sdtu.ui.stdFeplot(RO,mt,[])
 end
 

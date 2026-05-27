@@ -223,6 +223,11 @@ cbM('viewSensHammer')=['cf=feplot(2);' ...
 cbM('viewSensTop')=['cf=feplot(2);' ...
     'sdth.urn(''Tab(Cases,Top){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
     'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view3;textdof'')'];
+cbM('viewNodeLineR')= ...
+ 'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*real(Y)" scale semilogx'')';
+cbM('viewNodeLineA')= ...
+ 'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*abs(Y)" scale semilogx'')';
+
 %sdtm.urnCb(RT.nmap,'Map:Cb.viewSensTop');
 
 %% step MeshSlice : generate generic slice s1 and joint slice meshes
@@ -242,6 +247,7 @@ railu.MeshSlice(RT);s1=RT.nmap('s1');%
 
 %% step RedShort : reduce a short track with both section types
 
+if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
 % preMeshTrack
 RM3=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
@@ -265,21 +271,30 @@ PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
 
 %% step preTest : assemble pretest configuration
 
+if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
 RM4=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
 RM4.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:45,'s1'};RM4.slNum0=6;
 RM4.preSens={
-      'Train',t_gae24('ExpSensorTabTrain');
-      'Ham',t_gae24('ExpSensorTabHammer');
-      'Top',t_gae24('ExpLoadTab')};
+    ...%  'Train',t_gae24('ExpSensorTabTrain');
+      'Out',t_gae24('ExpSensorTabHammer');
+      'In',t_gae24('ExpLoadTab')};
 RM4.Do={'GenTrack','reduce','presens'};
 DoOpt=sdtm.pcin('prero.railu.MeshTrack');
 RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
 mt=railu.MeshTrack(RT);
 disp(cbM)
 
-PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
+
+PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
+projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', ...
+    'cf',2,'name','Fz>Az{f,pos,io}','time',{{'a'}});
+PA.mt=mt; dyn_solve('eig')
+eval(cbM('viewNodeLineR'))
+
+%s1=fe_case(mt,'Sens','In');d1=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
+%s1=fe_case(mt,'Sens','Out');d2=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
 
 
 %% step Impact : compute impact responses 
@@ -2081,16 +2096,17 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'prrLine',[399 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
     'railCR',[398 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
    
-    'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Rail Yield 800 MPa
-    'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829] % Roue Yield 800 MPa
+    'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829  0 .004] % Rail Yield 800 MPa
+    'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
-    'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 ] % rail pad, damping 0.1 kN/(m/s)
-    'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3]
+    'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
+    'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
+      1000  0 0 0 0 .05]
 
-    'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500] % sleeper  E nu rho
-    'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500] % Rigid sleeper
+    'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500 0 .02] % sleeper  E nu rho
+    'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500 0 .02] % Rigid sleeper
 
-    'Ballast',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000] 
+    'Ballast',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 0 .1] 
     };
 
 RT.nmap('MatCur')='m_hyper(urnSimoA{1,1,0,30,3,f5 20,g .33 .33,rho2.33n,unSI,isop100})';
