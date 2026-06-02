@@ -2262,12 +2262,6 @@ elseif comstr(Cam,'pcin');
  % augment cinM/osM using preRO/preOs
  sdtm.pInitPre([nargout exist('preRO','var') exist('preOs','var')]);
 
-  % if carg>nargin; cinM=railu.pcin;
-  %   elseif isa(varargin{carg},'vhandle.nmap');cinM=varargin{carg};carg=carg+1;
-  %   end
-  %   if length(Cam)==4; out=cinM;
-  %   else;out=railu.pcin(cinM,CAM(5:end));
-  %   end
 elseif comstr(Cam,'idx')
  %% #idx manual indexing operations  d_rail('idxverb')
  if sdtm.Contains(Cam,'verb'); st1={'{verb}'};else;st1={};end
