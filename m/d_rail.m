@@ -2250,12 +2250,17 @@ elseif comstr(Cam,'tuto');
  if nargout==0; clear out; end
 elseif comstr(Cam,'pcin');
  %% #pcind -2
- li={'key','ToolTip','DoOpt';
+ preRO={'key','ToolTip','DoOpt';
   'd_rail.Mesh.xxx','beam mass track slice model',[ ...
    'ncell(15#%g#"number of sleepers")' ...
    ]  };
-  sdtm.pcin(['prero',comstr(CAM,5)],li);
-  if nargout>0; out=sdtm.pcin;else; sdtm.pedit('{disp}',li);end
+ preOs={'key','ToolTip','os'
+     'fe_homo.viewNodeLines','node lines', ...
+      {'@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+        '@ColorMap',{'ColorMapBand parula(4)'}}
+      }; 
+ % augment cinM/osM using preRO/preOs
+ sdtm.pInitPre([nargout exist('preRO','var') exist('preOs','var')]);
 
   % if carg>nargin; cinM=railu.pcin;
   %   elseif isa(varargin{carg},'vhandle.nmap');cinM=varargin{carg};carg=carg+1;
