@@ -213,21 +213,6 @@ ofact('mklserv_utils -silent');
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');RT=struct('nmap',projM); 
 projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
-cbM=RT.nmap('Map:Cb');
-cbM('viewSensTrain')=['cf=feplot(2);' ...
-    'sdth.urn(''Tab(Cases,Train){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
-    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')'];
-cbM('viewSensHammer')=['cf=feplot(2);' ...
-    'sdth.urn(''Tab(Cases,Ham){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
-    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;textdof'')'];
-cbM('viewSensTop')=['cf=feplot(2);' ...
-    'sdth.urn(''Tab(Cases,Top){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
-    'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view3;textdof'')'];
-cbM('viewNodeLineR')= ...
- 'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*real(Y)" scale semilogx'')';
-cbM('viewNodeLineA')= ...
- 'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*abs(Y)" scale semilogx'')';
-
 %sdtm.urnCb(RT.nmap,'Map:Cb.viewSensTop');
 
 %% step MeshSlice : generate generic slice s1 and joint slice meshes
@@ -411,6 +396,206 @@ elseif comstr(Cam,'solve');[CAM,Cam]=comstr(CAM,6);
 
 elseif comstr(Cam,'load');[CAM,Cam]=comstr(CAM,5);
 %% #Load 
+
+if comstr(Cam,'jic')
+ %% LoadJIC
+
+li={'S1a','coarse 12 point sleeper S+1', ...
+    struct('wd','27_05/*T1*')
+ 'S2a','coarse 12 point sleeper S+2', ... 
+  struct('wd','27_05/*_T2*')
+ 'S1b','sleeper S+1', ...
+  struct('wd','28_05/*_S1')
+ 'S2b','sleeper S+2', ...
+  struct('wd','28_05/*_S2')
+ 'S32b','sleeper S+32', ...
+  struct('wd','28_05/*_S32')
+ 'Attaches','line of attaches', ...
+  struct('wd','28_05/*_Attaches')
+ 'vZhf','metal vertical', ...
+  struct('wd','28_05/*metal*vertical')
+ 'vYhf','metal lateral', ...
+  struct('wd','28_05/*metal*lateral')
+ 'vZmf','plastique vertical', ...
+  struct('wd','28_05/*_plast*vertical')
+ 'vYmf','plastique lateral', ...
+  struct('wd','28_05/*_plast*lateral')
+ 'vZlf','masse vertical', ...
+  struct('wd','28_05/*_Masse*vertical')
+ 'trainA','train passages accel', ...
+  struct('wd','*acc*/2026*/')
+ 'trainM','train passages mic', ...
+  struct('wd','*mic*/2026*/')
+ };
+
+RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
+    sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*')});
+if carg<=nargin
+ %% possibly specific 
+ li=li(strcmpi(li(:,1),varargin{carg}),:);carg=carg+1;
+end
+for jpar=1:size(li,1)
+ %% loop on files 
+ RC=li{jpar,3};RC.name=li{jpar,1};
+ [RC.wd,RC.wdsrc]=fileparts(RC.wd);
+ wd=sdtu.f.safe(struct('FileName',fullfile(RO.wda,RC.wd,RC.wdsrc),'dir',1,'safe',1));
+ if isempty(wd); wd=sdtu.f.safe(fullfile(RO.wda,RC.wdsrc));end
+ FileName=fullfile(fileparts(wd),[RC.name '.mat']);
+ flog=fullfile(wd,['./Read' RC.name '.txt']);
+f2=fullfile(RO.wda,[RC.name '.mat']); if exist(f2,'file');FileName=f2;end
+wire=load(fullfile(RO.wda,'wires.mat'));
+wire=sdth.sfield('mergei;',struct,wire,{RC.name});
+try; if isfield(wire,RC.name);RC.In=wire.(RC.name);end;end
+
+if contains(Cam,'reset')&&isempty(wd)
+    fprintf('Missing %s\n',sdtm.toString(RC));
+elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
+ %% actually load
+ if nargin==1; continue; end % Do not load full list (init phase)
+  r1=sdtm.load(FileName);
+  RO.preLab={'TestLab','tlab';
+  'Ame 1 Y','P1aY'; 'Ame 1 Z','P1aZ';
+ 'Ame 2 Y','P2ay';'Ame 2 Z','P2az';'Patin 1 Y','P2py';'Patin 1 Z','P2pz';
+ 'Ame 3 Y','P32ay';'Ame 3 Z','P32az';'Patin 2 Y','P32py';'Patin 2 Z','P32pz';
+ 'Ame 4 Z','P4az';'Ame 5 Z','P32az';'Piste 1 Z','soil0az';'Piste 2 Z','soil0bz';
+'Traverse 1 Z','S0ez';
+'Traverse 2 Z','S1ez';
+'Traverse 3 Z','S1iz';
+'Traverse 4 Z','S1cz';
+'Traverse 5 Z','S2ez';
+'Traverse 6 Z','S2cz';
+'Traverse 7 Z','S2ez';
+'Traverse 8 Z','S3ez'
+'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
+ };
+ RO.preGroup={'(P1|P2)','P32','S\d'};
+ if strncmpi(r1.Time,'vz',2)
+   wire=load(fullfile(RO.wda,'wires.mat'),'In51');r1.wire=wire.In51;
+ end
+
+ st2=intersect(fieldnames(r1),{'Time','Test','COH'});
+ for j2=1:length(st2)
+  %% rename specific labels using preLab
+  [i1,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(:,1));
+  r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);
+  r1.(st2{j2}).X{2}(:,2)=strrep(r1.(st2{j2}).X{2}(:,2),'m/s','m/s2');
+  % Attempt to follow order
+  if isfield(r1,'Test')||length(r1.Time.X)==3
+   [ia,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(2:end-1,2));[~,i2]=sort(i2);
+   r1.(st2{j2}).Y=r1.(st2{j2}).Y(:,i2,:); 
+   r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
+  end
+ end
+ Time=r1.Time;
+ if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
+  Time.info(:,5)={size(Time.X{1},1)};
+  Time.Y=reshape(permute(Time.Y,[1 3 2]),[],size(Time.Y,2));
+  r1.Time=[];Time.X(3)=[];Time.Xlab(3)=[]; Time.meta.Fs=1/diff(Time.X{1}(1:2))
+ end
+ if length(Time.X)==2
+     % SigEvt    
+     eval(iigui({'Time'},'SetInBaseC')) 
+     %Time=r1.Time;
+     RO.ns=size(Time.Y,2);
+     if ~isfield(Time,'Range')
+     ua=struct('ColumnName',{{'Time','vel','WSet','istart','istop','toff','wd'}}, ...
+         'table',[rem(datenum(Time.info(1:RO.ns:end,3)),1)*24]*[1 0 0  0 0], ...
+         'name',Time.name,'setSort',sdtm.enum('uisetSort','filter sort') );
+     i1=vertcat(Time.info{:,5});i1=i1(1:size(Time.Y,2):end,end);
+     colM=sdtu.ivec('ColList',ua.ColumnName);ua.param.colM=colM;
+     ua.table(:,colM('toff'))=cell2mat(Time.info(1:RO.ns:end,4));
+     Ntrig=size(Time.info,1)/size(Time.Y,2); 
+     if diff(Time.X{1}(1:2))>=1e4; Time.X{1}=Time.X{1}/diff(Time.X{1}(1:2))^2
+         'fixed reading error'
+     end
+
+     ua.table(:,colM('istart'))=cumsum([1;i1(1:end-1)])';
+     ua.table(:,colM('istop'))=cumsum(i1)';
+     ta=vhandle.tab(ua);
+     Time.Range=ta;Time=rmfield(Time,'info');
+     end
+     
+     Time=feval(process_r('@SigEvt'),Time);
+     eval(iigui({'Time'},'SetInBaseC')) 
+ end
+
+ c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
+ eval(iigui({'c2','osM'},'SetInBaseC'))
+
+ if ~isfield(r1,'Test')
+  iicom(c2,'curveinit','Time',Time);
+  return
+ end
+ r2=fe_range('buildgrid',struct('in',(1:size(r1.Test.Y,3))'+.03,'out',(1:size(r1.Test.Y,2))'+.99));
+ r1.Test.dof=r2.val;
+
+  if size(r1.Test.Y,3)==12
+   mo1=t_gae24('ExpSensorLoadSleeper');cf=feplot(mo1);
+   C2=fe_def('subchcurve',r1.Test,{'Out','#S'});
+
+   iicom(ci,'curveinit',{'curve','Test',C2})
+   cf.sel='innode 1:12';
+   %d1=id_rm(r1.Test);
+   %cf.def=d1;
+   fecom(';showFicEvalZ;undefline')
+
+
+  else%if size(r1.Test.Y,3)==12
+       x=[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1 1.25 1.5 1.75 2 2.25 2.5 2.75 3 3.25 3.5 3.75 4 4.5 5 5.5  ...
+6.5 7.5 8.5 9.5 11.5 13.5 15.5 17.5 19.5 21.5 23.5 24.5 25.5 26.5 27.5 28 28.5 29 29.25 29.5  ...
+29.75 30 30.25 30.5 30.75 31 31.25 31.5]'*.6;
+  mo1=struct('Node',[(1:length(x))' x*[0 0 0    1 0 0]],'Elt', ...
+      feutil('objectbeamline',1:52));
+  r1.Test.X{3}=x;r1.Test.Xlab{3}={'Pos','m',[]};
+  r1.COH.X{3}=x;r1.COH.Xlab{3}={'Pos','m',[]};
+  C2=r1.Test;  
+  cf=feplot(mo1);
+  iicom(ci,'curveinit',{'curve','Test',C2})
+ 
+
+  end
+  stack_set(ci,'curve','COH',r1.COH)
+  RO.Time=r1.Time;out=RO;
+elseif iscell(wd)&&~isscalar(wd)
+ %% #LoadJICtrain read train passages
+ wd=sdtu.f.safe(fullfile(RO.wda,fileparts(RC.wd)));
+ if iscell(wd);cd(wd{1});else; cd(wd);end
+ if iscell(flog)
+  [a,flog]=fileparts(flog{1});flog=fullfile(fileparts(a),[flog '.txt']);
+ end
+ if exist(flog,'file');delete(flog);end;diary(flog);
+ imctermite=ufread('@imctermite');
+ if contains(RC.wd,'mic');RC.oType='evtseq';else; RC.oType='rep';end
+ Time=imctermite('./2026*/D*01*/*.raw',RC);
+ Time.meta.ToolTip=li{jpar,2}; 
+
+ eval(iigui({'Time','RC'},'SetInBaseC'))
+ sdtm.store(['../' RC.name '.mat'],'Time')
+ diary('off');sdtu.logger.link('open',flog)
+ if strcmpi(RC.oType,'evtseq');return;end
+
+
+else
+ %% #ExpTloadRaw : load raw to .mat  t_gae24('exptload','s1b') -3
+ wd0=pwd;cd(wd)
+ if exist(flog,'file');delete(flog);end;diary(flog);
+ imctermite=ufread('@imctermite');
+ Time=imctermite('./D*01*/*.raw',RC);
+ Time.meta.ToolTip=li{jpar,2}; 
+ Time.name=RC.name; Time.Y=single(Time.Y);
+ %sparse(sum(reshape(~isfinite(Time.Y),size(Time.Y,1),[]),1))
+ for j2=1:size(Time.info,1);Time.info{j2,3}=datestr(Time.info{j2,3},'HH:MM:SS'); end
+
+ eval(iigui({'Time','RC'},'SetInBaseC'))
+ %repBlock=t_gae24('@repBlock'); Time=repBlock(Time,.9);
+ sdtm.store(['../' RC.name '.mat'],'Time')
+ diary('off');sdtu.logger.link('open',flog)
+end
+end % loop on JIC list
+
+%%
+else; error('Load%s',CAM)
+end
 
 elseif comstr(Cam,'case');[CAM,Cam]=comstr(CAM,5);
 %% #Case : DOE commands to define case (boundary cond, ...)
@@ -2258,7 +2443,46 @@ elseif comstr(Cam,'pcin');
      'fe_homo.viewNodeLines','node lines', ...
       {'@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
         '@ColorMap',{'ColorMapBand parula(4)'}}
-      }; 
+   'd_rail.JicSpecA','initialize spectrogram',{ ...
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inTime -NewNameSpec'')'
+    }
+   'd_rail.Jic.wire.HamAcc','show config',{
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn',['sdth.urn(''Tab(Cases,HamAcc){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+     'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')';
+     ]
+    }
+   'd_rail.Jic.wire.s1a','show config',{
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn',['cf.sel=''Matid106:108'';sdth.urn(''Tab(Cases,s1a){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+     'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')';
+     ]
+    }
+   'd_rail.Jic.viewXa','x view close to JIC',{
+     '@EndFcn','fecom(''view4'');'};
+   'd_rail.Jic.viewZa','Z view close to JIC',{
+     '@EndFcn','cf=feplot;iimouse(''view'',cf.ga,[ 4.688 -0.09371 282.9 4.688 -0.09371 141.4 0.00 1.00 0.00 2.14]);';
+    }
+ }; 
+
+% cbM=RT.nmap('Map:Cb');
+% cbM('viewSensTrain')=['cf=feplot(2);' ...
+%     'sdth.urn(''Tab(Cases,Train){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+%     ''];
+% cbM('viewSensHammer')=['cf=feplot(2);' ...
+%     'sdth.urn(''Tab(Cases,Ham){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+%     'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;textdof'')'];
+% cbM('viewSensTop')=['cf=feplot(2);' ...
+%     'sdth.urn(''Tab(Cases,Top){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+%     'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view3;textdof'')'];
+% cbM('viewNodeLineR')= ...
+%  'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*real(Y)" scale semilogx'')';
+% cbM('viewNodeLineA')= ...
+%  'fe_homo(''viewNodeLines ci3 YFcn"@(Y)(1./max(abs(Y),[],2)).*abs(Y)" scale semilogx'')';
+
+
+
  % augment cinM/osM using preRO/preOs
  sdtm.pInitPre([nargout exist('preRO','var') exist('preOs','var')]);
 

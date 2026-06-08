@@ -418,6 +418,12 @@ if ~isempty(name);
   end
   sdtu.logger.doing(dbstack,name);
   sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
+  if isempty(sectionM)
+     sectionM
+     who
+     nmap
+     error('Expecting sectionM')
+  end
   %% find actual details in a map
   if isKey(nmap,name);RA=followAlias(nmap,name);
   elseif isKey(sectionM,name);RA=followAlias(sectionM,name);RA.RailName=name;
@@ -1272,16 +1278,17 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
      mt=feutil('setpro',mt,'d_rail(nmap.ProDb.railCR)');
      mt=feutil('setmat',mt,'d_rail(nmap.MatDb.railCR)');
   end
+  % Set MatId to BasId to ease selection
+  i1=feutil('findelt eltname SE',mt);mt.Elt(i1,7)=mt.Elt(i1,4);
+
   RB.SEl=feutil('selelt eltnameSE',mt);RB.SEl(1,:)=[];
   st1='mt>mt'; sdtm.store(RT.nmap,st1);
 case 'presens'
   %% #MeshTrack.presens : prepare sensors -3
   
-  if ~isfield(RO,'preSens'); continue;
-  elseif ~iscell(RO.preSens{1,2})
-   RO.preSens={'Out',RO.preSens};
-  end
+  if ~isfield(RO,'preSens'); continue;  end
   for j2=1:size(RO.preSens,1)
+  %% possibly mutiple in/out 
   r3=cell2mat(RB.PreSleeper(2:end,:));
   r3=[r3 round((r3-[RB.sGamma0 0])./[.6 1],2) round((r3(:,1)-RB.sGamma0)./.6,0)];
   % {x,iSleeper,numSleeper2,iSleeper,numSleeper};
@@ -1294,12 +1301,22 @@ case 'presens'
   end
   st1=flipud(st1);
   %RB.preNode={'NodeId','lab'}
-  colM=sdtu.ivec('ColList',RO.preSens{j2,2}(1,:));
+
+  wire=RO.preSens{j2,2};
+  if ~isstruct(wire); 
+      wire=struct('Node',[],'Elt',[],'tdof',[]);wire.tdof=RO.preSens{j2,2};
+  end
+  colM=sdtu.ivec('ColList',wire.tdof(1,:));
+  wire.name=RO.preSens{j2,1};
+
   i1=colM('X');RB.iXYZ=colM({'X','Y','Z'}); RB.iDir=colM('DirSpec');
-  ta=RO.preSens{j2,2}(2:end,:);
+  ta=wire.tdof(2:end,:);
   st2=[ta(:,i1) regexprep(ta(:,i1),st1(:,1),st1(:,2))];
-  for j1=1:size(st2,1)
-    try;r4=eval(st2{j1,2});catch;r4=0;end
+  RB.dir=zeros(size(st2,1),3);
+  for j1=1:size(st2,1) % loop on positions (transform S+i)
+    try;r4=eval(st2{j1,2});
+    catch;r4=0;warning('%s failed',st2{j1,2});
+    end
     ta{j1,i1}=r4;RB.marker=ta{j1,colM('M')};
     pos=[ta{j1,RB.iXYZ}];
     r3=comstr(ta{j1,RB.iDir}(4:end),-1);
@@ -1314,18 +1331,42 @@ case 'presens'
      ta(j1,RB.iXYZ)=num2cell(pos);
      r3=rot*r3(:);
     end
-    ta{j1,RB.iDir}=sprintf('dir %.4f %.4f %.4f',r3);
-    if isfield(RB,'Xinfo')
+    if isempty(r3)&&strncmpi(ta{j1,2},'mic',3);ta{j1,RB.iDir}='p';
+    else
+     RB.dir(j1,:)=r3;
+     ta{j1,RB.iDir}=sprintf('dir %.4f %.4f %.4f',r3);
+    end
+    if isfield(RB,'Xinfo') % Find the associated SE
       RB.curSE=RB.SEl(RB.SEl(:,4)==RB.Xinfo(find(RB.Xinfo(:,1)>pos(1),1,'first')-1,3),:);
       % ms=stack_get(mt,'SE',fesuper('s_',RB.curSE(1)),'g');
       ta{j1,colM('SE')}=RB.curSE; % NodeId=SE.Node(:,1)-max(SE.Node(:,1))+NEND
+      %  [ta(1:j1,1:3) cellfun(@(x)fesuper('s_',x(1)),ta(1:j1,9),'uni',0) cellfun(@(x)x(4),ta(1:j1,9),'uni',0)]
     end
   end
-  ta(:,colM('NodeId'))=num2cell(-(1:size(ta,1))');
+  [xyz,i3,i4]=unique(cell2mat(ta(:,colM({'X','Y','Z'}))),'rows','stable');
+  if ~isfield(wire,'Node')||isempty(wire.Node)
+   wire.Node=[i3*[1 0 0 0] xyz];
+  end
+  i5=colM('SensId');
+  for j3=1:size(ta,1)
+   ta(j3,i5)={i4(j3)+sdtm.indNearest(abs(RB.dir(j3,:)),1)/100};
+  end
+  tdof=cell2mat(ta(:,i5));
+  if length(unique(round(tdof*100)))~=size(ta,1)
+      sdtw('_nb','Repeated DOF in %s\n%s',wire.name,sdtm.toString(fe_c(tdof)'))
+  end
+  if ~isfield(wire,'Elt')||isempty(wire.Elt);wire.Elt='autoMass';end
   % place sensors 
-  RS=struct('tdof',{[colM.prop.name';ta]});
-  RS.tdof(:,colM('M'))=[];
-  mt=fe_case(mt,'SensDof',RO.preSens{j2,1},RS);
+  wire.tdof=[colM.prop.name';ta];
+  wire.tdof(:,colM('M'))=[];
+  try 
+   wire.name=RO.preSens{j2,1};
+   mt=fe_case(mt,'SensDof',RO.preSens{j2,1},wire);
+   sdtu.logger.doing('SensDof,%s done',wire.name)
+  catch e
+   fprintf('%s sensof failed with %s',wire.name,e.message)
+   disp(ta)
+  end
   end
  case 'prered'
   %% #MeshTrack.preRed : prepare fe_coor -3
