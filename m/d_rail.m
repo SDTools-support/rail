@@ -400,32 +400,34 @@ elseif comstr(Cam,'load');[CAM,Cam]=comstr(CAM,5);
 if comstr(Cam,'jic')
  %% LoadJIC
 
-li={'S1a','coarse 12 point sleeper S+1', ...
-    struct('wd','27_05/*T1*')
+li={'Name','ToolTip','meta'
+  'S1a','coarse 12 point sleeper S+1', ...
+    struct('wd','27_05/*T1*','In','s1a','Out','HamAcc')
  'S2a','coarse 12 point sleeper S+2', ... 
-  struct('wd','27_05/*_T2*')
+  struct('wd','27_05/*_T2*','In','s2a','Out','HamAcc')
  'S1b','sleeper S+1', ...
-  struct('wd','28_05/*_S1')
+  struct('wd','28_05/*_S1','In','s1b','Out','HamAcc', ...
+  'rep',[6*ones(1,9) 5 6*ones(1,6) 5 6 6 6])
  'S2b','sleeper S+2', ...
-  struct('wd','28_05/*_S2')
+  struct('wd','28_05/*_S2','In','s2b','Out','HamAcc')
  'S32b','sleeper S+32', ...
-  struct('wd','28_05/*_S32')
+  struct('wd','28_05/*_S32','In','s32b','Out','HamAcc')
  'Attaches','line of attaches', ...
-  struct('wd','28_05/*_Attaches')
+  struct('wd','28_05/*_Attaches','In','sX','Out','HamAcc')
  'vZhf','metal vertical', ...
-  struct('wd','28_05/*metal*vertical')
+  struct('wd','28_05/*metal*vertical','In','vZ52','Out','HamAcc','rep',[5*ones(1,52)])
  'vYhf','metal lateral', ...
-  struct('wd','28_05/*metal*lateral')
+  struct('wd','28_05/*metal*lateral','In','vY52','Out','HamAcc','rep',[5*ones(1,52)])
  'vZmf','plastique vertical', ...
-  struct('wd','28_05/*_plast*vertical')
+  struct('wd','28_05/*_plast*vertical','In','vZ13','Out','HamAcc','rep',[5*ones(1,12) 10])
  'vYmf','plastique lateral', ...
-  struct('wd','28_05/*_plast*lateral')
+  struct('wd','28_05/*_plast*lateral','In','vY13','Out','HamAcc','rep',5*ones(1,13))
  'vZlf','masse vertical', ...
-  struct('wd','28_05/*_Masse*vertical')
+  struct('wd','28_05/*_Masse*vertical','In','vZ52','Out','HamAcc','rep',5*ones(1,52))
  'trainA','train passages accel', ...
-  struct('wd','*acc*/2026*/')
+  struct('wd','*acc*/2026*/','In','','Out','TrainAcc')
  'trainM','train passages mic', ...
-  struct('wd','*mic*/2026*/')
+  struct('wd','*mic*/2026*/','In','','Out','TrainAcc')
  };
 
 RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
@@ -436,6 +438,7 @@ if carg<=nargin
 end
 for jpar=1:size(li,1)
  %% loop on files 
+ if strcmpi(li{jpar,1},'name');continue;end
  RC=li{jpar,3};RC.name=li{jpar,1};
  [RC.wd,RC.wdsrc]=fileparts(RC.wd);
  wd=sdtu.f.safe(struct('FileName',fullfile(RO.wda,RC.wd,RC.wdsrc),'dir',1,'safe',1));
@@ -444,8 +447,15 @@ for jpar=1:size(li,1)
  flog=fullfile(wd,['./Read' RC.name '.txt']);
 f2=fullfile(RO.wda,[RC.name '.mat']); if exist(f2,'file');FileName=f2;end
 wire=load(fullfile(RO.wda,'wires.mat'));
-wire=sdth.sfield('mergei;',struct,wire,{RC.name});
-try; if isfield(wire,RC.name);RC.In=wire.(RC.name);end;end
+if ~isfield(RC,'In');RC.In=RC.name;end
+if isfield(RC,'Out')&&~isempty(RC.Out)
+ wire=sdth.sfield('mergei;',struct,wire,{RC.Out,RC.In});
+ try; if isfield(wire,RC.Out);st=RC.Out;RC.Out=wire.(RC.Out);RC.Out.name=st;end;end
+else
+ wire=sdth.sfield('mergei;',struct,wire,{RC.In});
+end
+
+try; if isfield(wire,RC.In);st=RC.In;RC.In=wire.(RC.In);RC.In.name=st;end;end
 
 if contains(Cam,'reset')&&isempty(wd)
     fprintf('Missing %s\n',sdtm.toString(RC));
@@ -486,17 +496,17 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
    r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
   end
  end
- Time=r1.Time;
+ Time=r1.Time;RO.ns=size(Time.Y,2);
  if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
   Time.info(:,5)={size(Time.X{1},1)};
   Time.Y=reshape(permute(Time.Y,[1 3 2]),[],size(Time.Y,2));
-  r1.Time=[];Time.X(3)=[];Time.Xlab(3)=[]; Time.meta.Fs=1/diff(Time.X{1}(1:2))
+  r1.Time=[];Time.X(3)=[];Time.Xlab(3)=[]; Time.meta.Fs=1/diff(Time.X{1}(1:2));
  end
  if length(Time.X)==2
      % SigEvt    
      eval(iigui({'Time'},'SetInBaseC')) 
      %Time=r1.Time;
-     RO.ns=size(Time.Y,2);
+     
      if ~isfield(Time,'Range')
      ua=struct('ColumnName',{{'Time','vel','WSet','istart','istop','toff','wd'}}, ...
          'table',[rem(datenum(Time.info(1:RO.ns:end,3)),1)*24]*[1 0 0  0 0], ...
@@ -505,8 +515,8 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
      colM=sdtu.ivec('ColList',ua.ColumnName);ua.param.colM=colM;
      ua.table(:,colM('toff'))=cell2mat(Time.info(1:RO.ns:end,4));
      Ntrig=size(Time.info,1)/size(Time.Y,2); 
-     if diff(Time.X{1}(1:2))>=1e4; Time.X{1}=Time.X{1}/diff(Time.X{1}(1:2))^2
-         'fixed reading error'
+     if diff(Time.X{1}(1:2))>=1e4; 
+         Time.X{1}=Time.X{1}/diff(Time.X{1}(1:2))^2; warning('fixed dt reading error');
      end
 
      ua.table(:,colM('istart'))=cumsum([1;i1(1:end-1)])';
@@ -514,48 +524,45 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
      ta=vhandle.tab(ua);
      Time.Range=ta;Time=rmfield(Time,'info');
      end
-     
      Time=feval(process_r('@SigEvt'),Time);
+     ta=Time.Source.Range;ta.table(1,end+1:size(ta.ColumnName,2))=0;
+     ta.param.FileName={'@Time'};
+     t=ta(:,1);
+     if max(t)<24
+      ta.table(:,1)=ta.table(:,1)+1; % File time is 1hour earlier (first train 5.29)
+      ta.param.Time=struct('LabFcn', ...
+         'sprintf(''%i(%s)'',Range.val(1,7),datestr(val/24,''HH-MM-SS''))', ...
+         'ShortFmt',1);
+     else
+      %ta.table(:,1)=ta.table(:,1)+1/24; % File time is 1hour earlier (first train 5.29)
+      ta.param.Time=struct('LabFcn', ...
+         'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''HH-MM-SS''))', ...
+         'ShortFmt',1);
+     end
+     if isfield(RC.In,'tdof')
+      %% #xxx fill impacts
+      if ~isfield(RC,'rep');error('Need rep field');end
+       eval(iigui({'Time','RC'},'SetInBaseC')) 
+       repBlock=t_gae24('@repBlock');Time=repBlock(Time,RC);
+       t_gae24('expCoh',Time,RC);
+     end
      eval(iigui({'Time'},'SetInBaseC')) 
  end
 
  c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
- eval(iigui({'c2','osM'},'SetInBaseC'))
+ eval(iigui({'c2','osM','RC'},'SetInBaseC'))
 
- if ~isfield(r1,'Test')
+ if isfield(RC,'In')&&isfield(RC.In,'Node');
+    wire=RC.In;
+    if isfinite(wire.Elt(1));wire.Elt=feutil('addelt','quad4',wire.Elt);end
+    cf=feplot(wire); cf.sel='-Test';
+    if ~isempty(RC.Out);fe_case(cf.mdl,'SensDof','Out',RC.Out);end
+ elseif ~isfield(r1,'Test')
   iicom(c2,'curveinit','Time',Time);
-  return
  end
- r2=fe_range('buildgrid',struct('in',(1:size(r1.Test.Y,3))'+.03,'out',(1:size(r1.Test.Y,2))'+.99));
- r1.Test.dof=r2.val;
-
-  if size(r1.Test.Y,3)==12
-   mo1=t_gae24('ExpSensorLoadSleeper');cf=feplot(mo1);
-   C2=fe_def('subchcurve',r1.Test,{'Out','#S'});
-
-   iicom(ci,'curveinit',{'curve','Test',C2})
-   cf.sel='innode 1:12';
-   %d1=id_rm(r1.Test);
-   %cf.def=d1;
-   fecom(';showFicEvalZ;undefline')
+  return
 
 
-  else%if size(r1.Test.Y,3)==12
-       x=[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1 1.25 1.5 1.75 2 2.25 2.5 2.75 3 3.25 3.5 3.75 4 4.5 5 5.5  ...
-6.5 7.5 8.5 9.5 11.5 13.5 15.5 17.5 19.5 21.5 23.5 24.5 25.5 26.5 27.5 28 28.5 29 29.25 29.5  ...
-29.75 30 30.25 30.5 30.75 31 31.25 31.5]'*.6;
-  mo1=struct('Node',[(1:length(x))' x*[0 0 0    1 0 0]],'Elt', ...
-      feutil('objectbeamline',1:52));
-  r1.Test.X{3}=x;r1.Test.Xlab{3}={'Pos','m',[]};
-  r1.COH.X{3}=x;r1.COH.Xlab{3}={'Pos','m',[]};
-  C2=r1.Test;  
-  cf=feplot(mo1);
-  iicom(ci,'curveinit',{'curve','Test',C2})
- 
-
-  end
-  stack_set(ci,'curve','COH',r1.COH)
-  RO.Time=r1.Time;out=RO;
 elseif iscell(wd)&&~isscalar(wd)
  %% #LoadJICtrain read train passages
  wd=sdtu.f.safe(fullfile(RO.wda,fileparts(RC.wd)));
