@@ -217,14 +217,15 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% step MeshSlice : generate generic slice s1 and joint slice meshes
 
-Do1=sdtm.pcin('prero.railu.MeshSlice');
-RM=cingui('paramedit -DoClean2',Do1,{struct('half',0,'RailX',-900:50:900, ...
-    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60','SleeperType','M450','PadType','SN','store','joint', ...
+RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
+    {struct('half',0,'RailX',-900:50:900, ...
+    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60','SleeperName','COSTU31NAG', ...
+    'PadType','SN','store','joint', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);projM=RT.nmap; %
 RM2=cingui('paramedit -DoClean2',Do1,{struct('half',0,'RailX',-300:50:300, ...
-    'SlX',0,'RailName','UIC60','SleeperType','M450','PadType','SN','store','s1', ...
+    'SlX',0,'RailName','UIC60','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);s1=RT.nmap('s1');%
@@ -398,9 +399,9 @@ elseif comstr(Cam,'load');[CAM,Cam]=comstr(CAM,5);
 %% #Load 
 
 if comstr(Cam,'jic')
- %% LoadJIC
+ %% #LoadJIC : isolating joint experiment
 
-li={'Name','ToolTip','meta'
+RO.li={'Name','ToolTip','meta'
   'S1a','coarse 12 point sleeper S+1', ...
     struct('wd','27_05/*T1*','In','s1a','Out','HamAcc')
  'S2a','coarse 12 point sleeper S+2', ... 
@@ -429,6 +430,37 @@ li={'Name','ToolTip','meta'
  'trainM','train passages mic', ...
   struct('wd','*mic*/2026*/','In','','Out','TrainAcc')
  };
+ RO.preLab={'TestLab','tlab';
+  'Ame 1 Y','P1a:y'; 'Ame 1 Z','P1a:z';
+ 'Ame 2 Y','P2a:y';'Ame 2 Z','P2a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
+ 'Ame 3 Y','P32a:y';'Ame 3 Z','P32a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
+ 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';
+'Traverse 1 Z','S0e:z';
+'Traverse 2 Z','S1e:z';
+'Traverse 3 Z','S1i:z';
+'Traverse 4 Z','S1c:z';
+'Traverse 5 Z','S2e:z';
+'Traverse 6 Z','S2c:z';
+'Traverse 7 Z','S2i:z';
+'Traverse 8 Z','S3e:z'
+'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
+ };
+ RO.preLab2={'TestLab','tlab';
+  'Ame 1 Y','P-4a:y'; 'Ame 1 Z','P-4a:z';
+ 'Ame 2 Y','P-1a:y';'Ame 2 Z','P-1a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
+ 'Ame 3 Y','P1a:y';'Ame 3 Z','P1a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
+ 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';'Piste 1 Z','soil0a:z';'Piste 2 Z','soil0b:z';
+'Traverse 1 Z','S0e:z';
+'Traverse 2 Z','S1e:z';
+'Traverse 3 Z','S1i:z';
+'Traverse 4 Z','S1c:z';
+'Traverse 5 Z','S2e:z';
+'Traverse 6 Z','S2c:z';
+'Traverse 7 Z','S2i:z';
+'Traverse 8 Z','S3e:z'
+'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
+ };
+if strcmpi(Cam,'jicback'); out=RO;return;end
 
 RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
     sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*')});
@@ -463,21 +495,6 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  %% actually load
  if nargin==1; continue; end % Do not load full list (init phase)
   r1=sdtm.load(FileName);
-  RO.preLab={'TestLab','tlab';
-  'Ame 1 Y','P1aY'; 'Ame 1 Z','P1aZ';
- 'Ame 2 Y','P2ay';'Ame 2 Z','P2az';'Patin 1 Y','P2py';'Patin 1 Z','P2pz';
- 'Ame 3 Y','P32ay';'Ame 3 Z','P32az';'Patin 2 Y','P32py';'Patin 2 Z','P32pz';
- 'Ame 4 Z','P4az';'Ame 5 Z','P32az';'Piste 1 Z','soil0az';'Piste 2 Z','soil0bz';
-'Traverse 1 Z','S0ez';
-'Traverse 2 Z','S1ez';
-'Traverse 3 Z','S1iz';
-'Traverse 4 Z','S1cz';
-'Traverse 5 Z','S2ez';
-'Traverse 6 Z','S2cz';
-'Traverse 7 Z','S2ez';
-'Traverse 8 Z','S3ez'
-'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
- };
  RO.preGroup={'(P1|P2)','P32','S\d'};
  if strncmpi(r1.Time,'vz',2)
    wire=load(fullfile(RO.wda,'wires.mat'),'In51');r1.wire=wire.In51;
@@ -2456,13 +2473,13 @@ elseif comstr(Cam,'pcin');
     }
    'd_rail.Jic.wire.HamAcc','show config',{
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
-     '@EndFcn',['sdth.urn(''Tab(Cases,HamAcc){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+     '@EndFcn',['sdth.urn(''Tab{Cases,HamAcc}{Proview,on,deflen,.3,text,TestLab}'',cf);' ...
      'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')';
      ]
     }
    'd_rail.Jic.wire.s1a','show config',{
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
-     '@EndFcn',['cf.sel=''Matid106:108'';sdth.urn(''Tab(Cases,s1a){Proview,on,deflen,.3,text,TestLab}'',cf);' ...
+     '@EndFcn',['cf.sel=''Matid106:108'';sdth.urn(''Tab{Cases,s1a}{Proview,on,deflen,.3,text,TestLab}'',cf);' ...
      'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')';
      ]
     }

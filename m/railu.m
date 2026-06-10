@@ -1456,8 +1456,75 @@ function RM=MeshSleeper(name,evt);
  else; RS=struct; 
  end
  if nargin==1;evt=struct;end
- if strncmpi(name,'m450pi',4)
- %  #MeshSleeper.M450pi    sdtu.f.open('@onedrive/*/sncf*/e*/21*/Sleeper_IN00213.pdf#page=116') -3
+
+ if strncmpi(name,'setpro',8)
+  %% #MeshSleeper.setpro standard set of properties 
+  mo2=evt;
+  mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
+  RO.PrePl={'name','MatId';'Sleeper',201};
+  RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
+  RO=railu.MatProDb(RO);
+  mo2=feutil('setpro',mo2,RO);
+  mo2=feutil('setmat',mo2,RO);
+  % adjust mass
+  if ~isfield(mo2,'meta');mo2.meta=struct;end
+  mo2.meta=sdth.sfield('addmissing',mo2.meta,struct('half',0,'mass',300,'cant',.05));
+  %mo2.Node(:,7)=mo2.Node(:,7)-.3655-2e-4-.021; 'xxx zOff'
+  r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
+  if isfield(mo2.meta,'zOff') % adjust position 0 is on the rail
+   mo2.Node(:,7)=mo2.Node(:,7)+mo2.meta.zOff;
+  end
+
+  RM=mo2;
+  return
+
+ elseif strncmpi(name,'COSTU31NAG',8)
+ % #MeshSleeper.COSTU31NAG  sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/Sleeper_IN00213.pdf#page=56')
+ n1=[%{'x','y','z';
+  % upper line
+  -0.055,0,0.15;
+  -0.055,0.437/2,0.15;
+  -0.055,.300,0.155;
+  -0.168/2,0.500,.165;
+  -0.168/2,0.300+0.265,0.182;
+  -0.168/2,1.525/2-0.12-0.01,0.17-0.006+0.021;
+  -0.168/2,1.525/2-0.12,0.17-0.006;
+  -0.168/2,1.525/2,0.17;
+  -0.168/2,1.525/2+0.12,0.17+0.006;
+  -0.168/2,1.525/2+0.12+0.01,0.17+0.006+0.021;
+  -0.168/2,2.5/2-.31,0.2;
+  -0.168/2,2.5/2,0.1895;
+ ];
+  % lower line
+ n2=[ -0.23/2,0,0;
+  -0.23/2,0.437/2,0;
+  -0.23/2,.300,0;
+  -0.23/2-0.022,0.500,0;
+  -0.29/2,0.300+0.265,0;
+  -0.29/2,1.525/2-0.12-0.01,0;
+  -0.29/2,1.525/2-0.12,0;
+  -0.29/2,1.525/2,0;
+  -0.29/2,1.525/2+0.12,0;
+  -0.29/2,1.525/2+0.12+0.01,0;
+  -0.29/2,2.5/2-.31,0;
+  -0.29/2,2.5/2,0;
+  ];
+ mo1=feutil('objecthexa',[0 0 0;eye(3)],1,size(n1,1)-1,1); 
+ y=linspace(0,1,size(n1,1))';
+ n3=[y*[0 1 0]+[1 0 1];y*[0 1 0]+[0 0 1]; % Upper
+     y*[0 1 0]+[1 0 0];y*[0 1 0]+[0 0 0]]; % lower
+ n3b=[n1;n1.*[0 1 1];n2;n2.*[0 1 0]];
+ Morph = scatteredInterpolant(n3(:,1),n3(:,2),n3(:,3),n3b,'linear','linear');
+ mo2=mo1;mo2.Node(:,5:7)=Morph(mo2.Node(:,5:7));%feplot(mo2)
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 1  1 0 0',mo2));
+ mo2=feutil('addtest -noori;',mo2,feutil('symsel 1  0 1 0',mo2));
+ mo2.Elt=feutil('orient;',mo2);
+ [n2,i2]=feutil('addnode',[],mo2.Node);mo2=feutil('renumber',mo2,n2(i2,1));
+ mo2.unit='SI'; mo2.meta=struct('mass',235,'zOff',-.3512); 
+ mo2=railu.MeshSleeper('setpro',mo2);
+ 
+ elseif strncmpi(name,'m450pi',4)
+ %  #MeshSleeper.M450pi    sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/Sleeper_IN00213.pdf#page=116') -3
  RO=struct;
  preMesh=struct('cuts', ... % mm
   {{[0     0  ;...
@@ -1492,25 +1559,19 @@ function RM=MeshSleeper(name,evt);
  mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  1 0 0',mo2));
  mo2=feutil('addtest -noori;',mo2,feutil('symsel 17  0 1 0',mo2));
  mo2.Elt=feutil('orient;',mo2);
- [n2,i2]=feutil('addnode',[],mo2.Node);mo2=feutil('renumber',mo2,n2(i2,1));
  mo2=feutil('divide 2 2 2',mo2);
  mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';
+
  mo2.nmap=evt.MdlMap; RO=railu.MatProDb(RO);
- mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
- RO.PrePl={'name','MatId';'Sleeper',201};
- RO.PreIl={'name','il';'Sleeper',p_solid('dbval 201 d3 -3')};
- mo2=feutil('setpro',mo2,RO);
- mo2=feutil('setmat',mo2,RO);
- % adjust mass
- mo2.meta=struct('half',0,'mass',300,'cant',.05);
- mo2.Node(:,7)=mo2.Node(:,7)-.3655-2e-4-.021; 'xxx zOff'
- r2=feutilb('geomrbmass',mo2); mo2.pl(1,5)=mo2.pl(1,5)/r2.mass*mo2.meta.mass;
+ mo2.meta=struct('half',0,'mass',300,'cant',.05,'zOff',-.3655-2e-4-.021);
+ mo2=railu.MeshSleeper('setpro',mo2);
  if isa(RS,'vhandle.uo'); % no need to return RS
      RS=sdth.sfield('addselected',RS,mo2.meta,{'half','cant'});
  end
  RM=mo2;
  if nargout==0; feplot(mo2);end
-
+ %%
+ else; error('Not a known sleeper')
  end % type of sleeper
  if max(abs(mo2.Node(:,7)))>1; mo2.Node(:,5:7)=mo2.Node(:,5:7)/1000;mo2.unit='SI';end
  if isfield(evt,'rail')
@@ -1521,7 +1582,7 @@ function RM=MeshSleeper(name,evt);
   elseif Slice.half>0; evt.LR=1; else;evt.LR=-1;
   end
   if isfield(Slice,'SlX')&&~isempty(Slice.SlX)
-   %% replicate sleepers as needed
+   %% #MeshSleeper.replicate sleepers as needed
    for j1=1:length(Slice.SlX)
     mo3=mo2;mo3.Node(:,5)=mo3.Node(:,5)+Slice.SlX(j1);mo3.Node(:,4)=200+j1;
     if j1==1; mo1=mo3;
@@ -1532,6 +1593,7 @@ function RM=MeshSleeper(name,evt);
   end
   nameM=mo2.nmap('Map:SetName');if ~isfield(mo2,'bas');mo2.bas=[];end
   evt.prePl={'name','MatId','pl'};
+  if isfield(mo2.meta,'cant');Slice.cant=mo2.meta.cant;end  % cant is a sleeper property
   for j1=1:length(evt.LR)   
    m_rail=evt.rail; Slr=evt.LR(j1); if Slr>0;st1='MrL';else;st1='MrR';end 
    cant=-Slr*Slice.cant; rot=[cos(cant) -sin(cant);sin(cant) cos(cant)];
