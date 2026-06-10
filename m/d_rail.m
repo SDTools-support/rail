@@ -219,13 +219,13 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
     {struct('half',0,'RailX',-900:50:900, ...
-    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60','SleeperName','COSTU31NAG', ...
+    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
     'PadType','SN','store','joint', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);projM=RT.nmap; %
 RM2=cingui('paramedit -DoClean2',Do1,{struct('half',0,'RailX',-300:50:300, ...
-    'SlX',0,'RailName','UIC60','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
+    'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);s1=RT.nmap('s1');%
@@ -2335,6 +2335,8 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'prwLine',[499 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place holder beam
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master    
     'Rail',p_solid('dbval 301 d3 -3')
+    'Fish',p_solid('dbval 310 d3 -3')
+    'Glue',p_solid('dbval 310 d3 -3')
     'Pad',p_solid('dbval 101 d3 -3')
     'Sleeper',p_solid('dbval 201 d3 -3')
 
@@ -2484,7 +2486,7 @@ elseif comstr(Cam,'pcin');
      ]
     }
    'd_rail.Jic.viewXa','x view close to JIC',{
-     '@EndFcn','fecom(''view4'');'};
+     '@EndFcn','fecom(''viewn-x'');'};
    'd_rail.Jic.viewZa','Z view close to JIC',{
      '@EndFcn','cf=feplot;iimouse(''view'',cf.ga,[ 4.688 -0.09371 282.9 4.688 -0.09371 141.4 0.00 1.00 0.00 2.14]);';
     }

@@ -383,27 +383,44 @@ if ~isempty(name);
 
  %% #UIC60_U85 with meshing using GMSH and Gaetan's cut -2
  %mo4=abaqus('read',d_rail('wd','UIC60_U85.inp'));
- %mo4=fe_gmsh('read',d_rail('wd','UIC60_U85.msh'));
  mo4=fe_gmsh('read',d_rail('wd','UIC60_U85v2.msh'));
+ % MeshSleeper.U85  sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/rail_IN10208.pdf#page=48')
+ %  sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/U85_VV*tif')
+ mo4.meta.Holes='{h76.25, xrail 0 60 230 400 xxx,xfish0 65 235 405 530 700 870 935, drail23,dfish28}';
+ mo4.name='UIC60_U85';
+ mo4.Elt=feutil('setsel matid 310 proid 310',mo4,'proid>200');
+ mo4.Elt=feutil('setsel matid 301 proid 301',mo4,'proid<200');
+ RO.isel=8;RO.f2='UIC60_sections.mat';
+ if 1==2
+  % #MeshSleeper.U91  sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/U91_VV*tif') -2
+  f1=d_rail('wd','UIC60_U91_conge.msh');mo4=fe_gmsh('read',f1{1});
+  mo4.meta.Holes='{h76.25, xfish 0 65 235 405 530 700 870 935,dfish22}';
+  mo4.name='UIC60_U91';mo4.meta.fishMass=32; 
+  mo4.meta.src='U91_VV*.tif';
+  mo4.Elt=feutil('setsel matid 301 proid 301',mo4,'proid 101 115 125 135 145 155 165 175 185');
+  mo4.Elt=feutil('setsel matid 310 proid 310',mo4,'proid 195 205 215');
+  mo4.Elt=feutil('setsel matid 320 proid 320',mo4,'proid 225 235');
+  RO.isel=3;RO.f2=d_rail('wd','UIC60_sections.mat');
+ end
  mo4.Elt=feutil('removeelt eltname b',mo4);
  mo4.Elt=feutil('removeelt eltname mass',mo4);
  [mo4.Node,mo4.Elt]=feutil('optimmodel',mo4);
- mo4.meta.Holes='{h76.25, x 60 230 400,d23}';
- mo4.meta.name='UIC60_U85';
- mo4=feutil('addtest -noori;',mo4,feutil('symsel 8  0 -1 0',mo4));
- mo4.Elt=feutil('setsel matid 310 proid 310',mo4,'proid>200');
- mo4.Elt=feutil('setsel matid 301 proid 301',mo4,'proid<200');
- mo4=feutil('joinall',mo4);mo4.Elt=feutilb('SeparatebyProp',mo4);
+ mo4=feutil('addtest -noori;',mo4,feutil(sprintf('symsel %i  0 -1 0',RO.isel),mo4));
+ mo4.Elt=feutilb('SeparatebyProp -join -max 3e3',mo4);
  [n2,i2]=feutil('addnode',[],mo4.Node);mo4=feutil('renumber',mo4,n2(i2,1));
  mo4.Node(abs(mo4.Node(:,6))<1e-5,6)=0;
+ feplot(mo4);fecom('showfipro')
 
- f2=d_rail('wd','UIC60_Sections.mat');r1=load(f2{1});
+
+ % save to section 
+ r1=load(RO.f2{1});
  mo1=mo4;mo1.Elt=feutil('selelt matid 301',mo1);
- [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra2')=sdtm.rmfield(mo1,'Stack');
- mo1=mo4;
- [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);r1.sections('ra2+e')=sdtm.rmfield(mo1,'Stack');
+ [mo1.Node,mo1.Elt]=feutil('optimModel',mo1);mo1.name=[mo4.name 'ra'];
+ r1.sections(mo1.name)=sdtm.rmfield(mo1,'Stack');
+ mo1=mo4;[mo1.Node,mo1.Elt]=feutil('optimModel',mo1);mo1.name=[mo4.name 'ra+e'];
+ r1.sections(mo1.name)=sdtm.rmfield(mo1,'Stack');
  
- %sdtm.save(f2{2},'-struct','r1');
+ %sdtm.save(RO.f2{1},'-struct','r1');
 
  feplot(mo4);fecom showfipro
 
@@ -431,7 +448,7 @@ if ~isempty(name);
   end
   RA=sdth.sfield('addmissing',RB,RA);
   if contains(name,'.mat#')||isfield(RA,'section')
-  %% #RailSection.readMat railu.RailSection('U30_Sections.mat#ra')
+  %% #RailSection.readMat railu.RailSection('U30_Sections.mat#ra') -2
    if isfield(RA,'section');st=RA.section;elseif ischar(name);st=name;end
    fname=st(1:find(st==35,1,'first')-1);tag=st(length(fname)+2:end);
    FileName=d_rail('wd',fname);if iscell(FileName);FileName=FileName{1};end
@@ -513,8 +530,9 @@ if abs(cant)>1e-4 % Reorient the mesh
 end
 r2=n1(:,6:7)*rot;
 m_rail.Node(:,6:7)=m_rail.Node(:,6:7)+[-mean(r2(:,1)) -max(m_rail.Node(:,7))];
-m_rail.meta=struct('GaugPoint',[NaN NaN],'lar1',diff(r2(:,1)), ...
-    'OrigCant',abs(cant),'hr3',-min(m_rail.Node(:,7)));
+if ~isfield(m_rail,'meta');m_rail.meta=struct;end
+m_rail.meta=sdth.sfield('addmissing',m_rail.meta,struct('GaugPoint',[NaN NaN],'lar1',diff(r2(:,1)), ...
+    'OrigCant',abs(cant),'hr3',-min(m_rail.Node(:,7))));
 m_rail.meta.OrigCant=abs(cant); 
 % Node with mass element on the middle-top of the rail section  
 n1=feutil('findnode z== epsl1e-4',m_rail,0);
@@ -547,7 +565,7 @@ m_rail.meta.TopNodes=n1;
   if isfield(RA,'RailX'); if ischar(RA.RailX);RA.RailX=comstr(RA.RailX,-1);end
   elseif ~isfield(Geo,'XtrudeRail')||isempty(Geo.XtrudeRail); return % early return of section
   elseif isfield(RC,'Extrude')&&RC.Extrude
-    %% #Gamma rail track extrusion should support curved line, section straight -3
+    %% #Gamma_rail track extrusion should support curved line, section straight -3
     % now position based on Or (rail contact point at 0 0) 
     nb_slices=1; % here only one slice    
     XtrudeRail=Geo.XtrudeRail;
@@ -559,6 +577,15 @@ m_rail.meta.TopNodes=n1;
   if isfield(RA,'RailX')&&~isempty(RA.RailX)
     if mean(diff(RA.RailX))>1; RA.RailX=RA.RailX/1000; end % Force SI
     m_rail=feutil('extrude 0 1 0 0',m_rail,RA.RailX); % extrudes section
+    if isfield(m_rail.meta,'Holes')
+     [~,r2]=sdtm.urnPar(m_rail.meta.Holes,'{}{h%ug,xfish%ug,dfish%ug}');
+     if isfield(r2,'xfish')&&~isempty(r2.xfish)
+      r2.xfish=r2.xfish-r2.xfish(end)/2;
+      if max(r2.xfish)>100; r2.xfish=r2.xfish/1000;end % SI
+      m_rail.Elt=feutil('removeElt matid 310:320 & innode{x< | x>}',m_rail,r2.xfish(1),r2.xfish(end));
+      % xxx missing morphing holes to exact position 
+     end
+    end
     if ~isempty(feutil('selelt eltnamehexa',m_rail));
         RA.RailType='Volume';
     end
@@ -1066,7 +1093,7 @@ function   ms=MeshSlice(RO);
   if max(abs(m_rail.Node(:,7)))>1; m_rail.Node(:,5:7)=m_rail.Node(:,5:7)/1000;m_rail.unit='SI';end
 
   mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO,'MdlMap',RT.MdlMap)); % combine rails
-
+  mo2.Elt=feutil('separateByProp -max 1e5 -join',mo2);
   RC=struct;RC.Do={'plrange','eltid','doPeriod','padcontact'};
   if isfield(RO,'k_ballast')&&~isempty(RO.k_ballast)
     RC.k_ballast=RO.k_ballast; RC.Do{end+1}='k_ballast';
@@ -1206,7 +1233,7 @@ if ~isfield(RO,'Do'); RO.Do={'GenTrack','presens'};end
 for j0=1:length(RO.Do)
 switch lower(RO.Do{j0})
 case 'gentrack'  
-%% #MeshTrack.GenTrack generate track
+%% #MeshTrack.GenTrack generate track -3
 % sdtweb dyn_mesh GenTrack
 RB=struct('projM',projM); projM('RailSel')={};
 RB.Do={'doPeriod','plrange','eltid','padcontact','railtop'};
@@ -1437,7 +1464,7 @@ case 'presens'
   
   return
 case 'reduce'
-  %% #MeshTrack.reduce perform reduction and store
+  %% #MeshTrack.reduce perform reduction and store -3
   RR=projM('dyn_solve.reduce');RR.projM=projM;
   mt=dyn_solve('reduce',mt,RR);
 otherwise; error('%s',RO.Do{j0})
@@ -1458,7 +1485,7 @@ function RM=MeshSleeper(name,evt);
  if nargin==1;evt=struct;end
 
  if strncmpi(name,'setpro',8)
-  %% #MeshSleeper.setpro standard set of properties 
+  %% #MeshSleeper.setpro standard set of properties -3
   mo2=evt;
   mo2.Elt=feutil('setgroupall matid 201 proid 201',mo2);
   RO.PrePl={'name','MatId';'Sleeper',201};
@@ -1479,7 +1506,8 @@ function RM=MeshSleeper(name,evt);
   return
 
  elseif strncmpi(name,'COSTU31NAG',8)
- % #MeshSleeper.COSTU31NAG  sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/Sleeper_IN00213.pdf#page=56')
+ % #MeshSleeper.COSTU31NAG -3
+ % sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/Sleeper_IN00213.pdf#page=56')
  n1=[%{'x','y','z';
   % upper line
   -0.055,0,0.15;
@@ -1582,7 +1610,7 @@ function RM=MeshSleeper(name,evt);
   elseif Slice.half>0; evt.LR=1; else;evt.LR=-1;
   end
   if isfield(Slice,'SlX')&&~isempty(Slice.SlX)
-   %% #MeshSleeper.replicate sleepers as needed
+   %% #MeshSleeper.replicate sleepers as needed -3
    for j1=1:length(Slice.SlX)
     mo3=mo2;mo3.Node(:,5)=mo3.Node(:,5)+Slice.SlX(j1);mo3.Node(:,4)=200+j1;
     if j1==1; mo1=mo3;
@@ -1914,8 +1942,7 @@ function  [model,RO]=Case(varargin);
  ms=model;
  RP=stack_get(ms,'info','MeshParam','g');RP=sdth.sfield('addmissing',RP,RC);
  mt=feutil(sprintf('repeatsel %i .6 0 0',RC.nb_slices),ms);
- mt=feutil('joinall',mt);
- mt.Elt=feutilb('SeparatebyProp',mt.Elt);
+ mt.Elt=feutil('SeparatebyProp  -join -max 3e3',mt.Elt);
 
  if isKey(RO.projM,'NeedFix'); RO.fix=RO.projM('NeedFix');
     %mt=fe_case(model,RO.fix{:});
