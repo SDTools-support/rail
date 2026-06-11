@@ -466,7 +466,9 @@ RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
     sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*')});
 if carg<=nargin
  %% possibly specific 
- li=li(strcmpi(li(:,1),varargin{carg}),:);carg=carg+1;
+ tag=varargin{carg};carg=carg+1;
+ li=RO.li(strcmpi(RO.li(:,1),regexprep(tag,'_freq','')),:);
+ if size(li,1)==1;li{1}=tag;end
 end
 for jpar=1:size(li,1)
  %% loop on files 
@@ -496,16 +498,17 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  if nargin==1; continue; end % Do not load full list (init phase)
   r1=sdtm.load(FileName);
  RO.preGroup={'(P1|P2)','P32','S\d'};
- if strncmpi(r1.Time,'vz',2)
+ if isfield(r1,'Time')&&strncmpi(r1.Time,'vz',2)
    wire=load(fullfile(RO.wda,'wires.mat'),'In51');r1.wire=wire.In51;
  end
 
  st2=intersect(fieldnames(r1),{'Time','Test','COH'});
  for j2=1:length(st2)
   %% rename specific labels using preLab
-  [i1,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(:,1));
-  r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);
-  r1.(st2{j2}).X{2}(:,2)=strrep(r1.(st2{j2}).X{2}(:,2),'m/s','m/s2');
+  X=r1.(st2{j2}).X{2}(:,1);if any(strncmpi(X,'Piste',5));RO.preLab=RO.preLab2;end
+  [i1,i2]=ismember(X,RO.preLab(:,1));
+  if all(i2);r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);end % safe tlab
+  r1.(st2{j2}).X{2}(:,2)=regexprep(r1.(st2{j2}).X{2}(:,2),'m/s$','m/s2');
   % Attempt to follow order
   if isfield(r1,'Test')||length(r1.Time.X)==3
    [ia,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(2:end-1,2));[~,i2]=sort(i2);
@@ -513,6 +516,9 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
    r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
   end
  end
+ if ~isfield(r1,'Time')
+ else
+ %% uniform time as a SigEvt
  Time=r1.Time;RO.ns=size(Time.Y,2);
  if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
   Time.info(:,5)={size(Time.X{1},1)};
@@ -556,6 +562,8 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
          'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''HH-MM-SS''))', ...
          'ShortFmt',1);
      end
+     eval(iigui({'Time'},'SetInBaseC')) 
+ end
      if isfield(RC.In,'tdof')
       %% #xxx fill impacts
       if ~isfield(RC,'rep');error('Need rep field');end
@@ -563,7 +571,6 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
        repBlock=t_gae24('@repBlock');Time=repBlock(Time,RC);
        t_gae24('expCoh',Time,RC);
      end
-     eval(iigui({'Time'},'SetInBaseC')) 
  end
 
  c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
@@ -574,6 +581,10 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
     if isfinite(wire.Elt(1));wire.Elt=feutil('addelt','quad4',wire.Elt);end
     cf=feplot(wire); cf.sel='-Test';
     if ~isempty(RC.Out);fe_case(cf.mdl,'SensDof','Out',RC.Out);end
+ end
+ if isfield(r1,'Test')
+    iicom(c2,'curveinit','Test',r1.Test);
+    c2.Stack{'curve','COH'}=r1.COH;
  elseif ~isfield(r1,'Test')
   iicom(c2,'curveinit','Time',Time);
  end
@@ -616,8 +627,33 @@ else
  diary('off');sdtu.logger.link('open',flog)
 end
 end % loop on JIC list
+elseif comstr(Cam,'stc')
+%% #LoadSTC
+ li=varargin{carg};carg=carg+1;
+ ta=struct('ColumnName',{{'Time','istart','istop'}},'table',zeros(length(li),3));
+ C2=struct('X',{{[],[]}},'Xlab',{{{'Time','s',[]},'Out'}}, ...
+      'Y',{cell(length(li),1)},'meta',struct); j0=0; 
+ for j1=1:length(li)
+  C1=readtable(li{j1},'DecimalSeparator','.');
+  t=rem(datenum(C1{:,'date'}),1);
+  C2.Y{j1}=C1{:,2:end};
+  if j1==1
+   C2.meta.fs=1/(diff(t([1 end]))/(length(t)-1)*24*3600);
+   C2.X{1}=[0 1/C2.meta.fs]';
+   st=setdiff(fieldnames(C1),{'Properties','Row','Variables'},'stable');
+   C2.X{2}=st(2:end);
+  end
+  ta.table(j1,1)=datenum(C1{1,'date'});
+ end
+ ta.param.Time=struct('LabFcn', ...
+         'sprintf(''%i(%s)'',jPar,datestr(val/24,''HH-MM-SS''))', ...
+         'ShortFmt',1);
+ ta.param.FileName={'@Time'};
+ [~,i1]=sort(ta.table(:,1)); ta.table=ta.table(i1,:);C2.Y=C2.Y(i1);
+ C2.Range=ta; C2.Ylab=2;
+ assignin('base','C2',C2)
+ C3=curvemodel.SigEvt('init',C2);iicom('curveinit','Time',C3)
 
-%%
 else; error('Load%s',CAM)
 end
 
