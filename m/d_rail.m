@@ -403,7 +403,7 @@ if comstr(Cam,'jic')
 
 RO.li={'Name','ToolTip','meta'
   'S1a','coarse 12 point sleeper S+1', ...
-    struct('wd','27_05/*T1*','In','s1a','Out','HamAcc')
+    struct('wd','27_05/*T1*','In','s1a','Out','HamAcc','rep',10*ones(1,12))
  'S2a','coarse 12 point sleeper S+2', ... 
   struct('wd','27_05/*_T2*','In','s2a','Out','HamAcc')
  'S1b','sleeper S+1', ...
@@ -416,7 +416,7 @@ RO.li={'Name','ToolTip','meta'
  'Attaches','line of attaches', ...
   struct('wd','28_05/*_Attaches','In','sX','Out','HamAcc')
  'vZhf','metal vertical', ...
-  struct('wd','28_05/*metal*vertical','In','vZ52','Out','HamAcc','rep',[5*ones(1,52)])
+  struct('wd','28_05/*metal*vertical','In','vZ52','Out','HamAcc','rep',[5*ones(1,10) 4 5*ones(1,41)])
  'vYhf','metal lateral', ...
   struct('wd','28_05/*metal*lateral','In','vY52','Out','HamAcc','rep',[5*ones(1,52)])
  'vZmf','plastique vertical', ...
@@ -480,16 +480,12 @@ for jpar=1:size(li,1)
  FileName=fullfile(fileparts(wd),[RC.name '.mat']);
  flog=fullfile(wd,['./Read' RC.name '.txt']);
 f2=fullfile(RO.wda,[RC.name '.mat']); if exist(f2,'file');FileName=f2;end
-wire=load(fullfile(RO.wda,'wires.mat'));
+load(fullfile(RO.wda,'wires.mat'),'mt');
 if ~isfield(RC,'In');RC.In=RC.name;end
 if isfield(RC,'Out')&&~isempty(RC.Out)
- wire=sdth.sfield('mergei;',struct,wire,{RC.Out,RC.In});
- try; if isfield(wire,RC.Out);st=RC.Out;RC.Out=wire.(RC.Out);RC.Out.name=st;end;end
-else
- wire=sdth.sfield('mergei;',struct,wire,{RC.In});
+ wire=sdth.urn(RC.Out,mt);if ~isempty(wire);wire.name=RC.Out; RC.Out=wire; end
 end
-
-try; if isfield(wire,RC.In);st=RC.In;RC.In=wire.(RC.In);RC.In.name=st;end;end
+wire=sdth.urn(RC.In,mt); if ~isempty(wire);wire.name=RC.In; RC.In=wire; end
 
 if contains(Cam,'reset')&&isempty(wd)
     fprintf('Missing %s\n',sdtm.toString(RC));
@@ -520,57 +516,60 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  else
  %% uniform time as a SigEvt
  Time=r1.Time;RO.ns=size(Time.Y,2);
- if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
-  Time.info(:,5)={size(Time.X{1},1)};
-  Time.Y=reshape(permute(Time.Y,[1 3 2]),[],size(Time.Y,2));
-  r1.Time=[];Time.X(3)=[];Time.Xlab(3)=[]; Time.meta.Fs=1/diff(Time.X{1}(1:2));
- end
+ if ~isfield(Time,'Range'); error('Should be SigEvt');end
+ % if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
+ %  Time.info(:,5)={size(Time.X{1},1)};
+ %  Time.Y=reshape(permute(Time.Y,[1 3 2]),[],size(Time.Y,2));
+ %  r1.Time=[];Time.X(3)=[];Time.Xlab(3)=[]; Time.meta.Fs=1/diff(Time.X{1}(1:2));
+ % end
  if length(Time.X)==2
-     % SigEvt    
      eval(iigui({'Time'},'SetInBaseC')) 
      %Time=r1.Time;
-     
+
      if ~isfield(Time,'Range')
-     ua=struct('ColumnName',{{'Time','vel','WSet','istart','istop','toff','wd'}}, ...
+         error('Remove')
+         ua=struct('ColumnName',{{'Time','vel','WSet','istart','istop','toff','wd'}}, ...
          'table',[rem(datenum(Time.info(1:RO.ns:end,3)),1)*24]*[1 0 0  0 0], ...
          'name',Time.name,'setSort',sdtm.enum('uisetSort','filter sort') );
-     i1=vertcat(Time.info{:,5});i1=i1(1:size(Time.Y,2):end,end);
-     colM=sdtu.ivec('ColList',ua.ColumnName);ua.param.colM=colM;
-     ua.table(:,colM('toff'))=cell2mat(Time.info(1:RO.ns:end,4));
-     Ntrig=size(Time.info,1)/size(Time.Y,2); 
-     if diff(Time.X{1}(1:2))>=1e4; 
+      i1=vertcat(Time.info{:,5});i1=i1(1:size(Time.Y,2):end,end);
+      colM=sdtu.ivec('ColList',ua.ColumnName);ua.param.colM=colM;
+      ua.table(:,colM('toff'))=cell2mat(Time.info(1:RO.ns:end,4));
+      Ntrig=size(Time.info,1)/size(Time.Y,2); 
+      if diff(Time.X{1}(1:2))>=1e4; 
          Time.X{1}=Time.X{1}/diff(Time.X{1}(1:2))^2; warning('fixed dt reading error');
+      end
+      ua.table(:,colM('istart'))=cumsum([1;i1(1:end-1)])';
+      ua.table(:,colM('istop'))=cumsum(i1)';
+      ta=vhandle.tab(ua);
+      Time.Range=ta;Time=rmfield(Time,'info');
      end
-
-     ua.table(:,colM('istart'))=cumsum([1;i1(1:end-1)])';
-     ua.table(:,colM('istop'))=cumsum(i1)';
-     ta=vhandle.tab(ua);
-     Time.Range=ta;Time=rmfield(Time,'info');
-     end
-     Time=feval(process_r('@SigEvt'),Time);
-     ta=Time.Source.Range;ta.table(1,end+1:size(ta.ColumnName,2))=0;
-     ta.param.FileName={'@Time'};
-     t=ta(:,1);
+     ta=Time.Range; t=ta.table(:,1);
      if max(t)<24
-      ta.table(:,1)=ta.table(:,1)+1; % File time is 1hour earlier (first train 5.29)
-      ta.param.Time=struct('LabFcn', ...
-         'sprintf(''%i(%s)'',Range.val(1,7),datestr(val/24,''HH-MM-SS''))', ...
-         'ShortFmt',1);
+         ta.table(:,1)=ta.table(:,1)+1; % File time is 1hour earlier (first train 5.29)
+         ta.param.Time=struct('LabFcn', ...
+             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val/24,''HH-MM-SS''))', ...
+             'ShortFmt',1);
      else
-      %ta.table(:,1)=ta.table(:,1)+1/24; % File time is 1hour earlier (first train 5.29)
-      ta.param.Time=struct('LabFcn', ...
-         'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''HH-MM-SS''))', ...
-         'ShortFmt',1);
+         ta.param.Time=struct('LabFcn', ...
+             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''HH-MM-SS''))', ...
+             'ShortFmt',1);
+         ta.param.FileName={'@Time'};
      end
+     if ~isa(Time,'curvemodel')
+      Time.Range=ta; Time.X{1}=[0 1/Time.meta.fs]';
+      Time=feval(process_r('@SigEvt'),Time);
+     end 
      eval(iigui({'Time'},'SetInBaseC')) 
  end
-     if isfield(RC.In,'tdof')
-      %% #xxx fill impacts
+ if Time.Source.X{1}(2)>1e3;Time.Source.X{1}=[0;1./Time.Source.X{1}(2)];end
+ if isfield(RC.In,'tdof')
+      %% #checkImpacts using .rep field -2
       if ~isfield(RC,'rep');error('Need rep field');end
        eval(iigui({'Time','RC'},'SetInBaseC')) 
        repBlock=t_gae24('@repBlock');Time=repBlock(Time,RC);
        t_gae24('expCoh',Time,RC);
-     end
+ end
+
  end
 
  c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
@@ -592,7 +591,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
 
 
 elseif iscell(wd)&&~isscalar(wd)
- %% #LoadJICtrain read train passages
+ %% #LoadJICtrain read train passages -2
  wd=sdtu.f.safe(fullfile(RO.wda,fileparts(RC.wd)));
  if iscell(wd);cd(wd{1});else; cd(wd);end
  if iscell(flog)
@@ -619,7 +618,7 @@ else
  Time.meta.ToolTip=li{jpar,2}; 
  Time.name=RC.name; Time.Y=single(Time.Y);
  %sparse(sum(reshape(~isfinite(Time.Y),size(Time.Y,1),[]),1))
- for j2=1:size(Time.info,1);Time.info{j2,3}=datestr(Time.info{j2,3},'HH:MM:SS'); end
+ %for j2=1:size(Time.info,1);Time.info{j2,3}=datestr(Time.info{j2,3},'HH:MM:SS'); end
 
  eval(iigui({'Time','RC'},'SetInBaseC'))
  %repBlock=t_gae24('@repBlock'); Time=repBlock(Time,.9);
@@ -2115,6 +2114,37 @@ while carg<=nargin
  if isempty(val);cM=projM('Map:Slice');if isKey(cM,tag);val=cM(tag);end;end
  
 end
+elseif comstr(Cam,'jic');
+    %% #ViewJic
+  [~,RO]=sdtm.urnPar(CAM,'{}{}');
+  ci=iiplot;
+  for j1=1:length(RO.Other)
+   switch lower(RO.Other{j1})
+   case 'recep'
+   %% #ViewJicRecep : transform to receptance, place nodes
+   Test=ci.Stack{'Test'};
+   Test=fe_def('subdef',Test,Test.X{1}(:,1)>10);
+   Test=cdm.safeFreqDeriv(Test,struct('if','m/s2','to','m/N','pow',-2));
+   Test.DimPos=[1 3 2];
+   ci.Stack{'Test'}=Test;
+   case 'fixpos'
+      cf=feplot;n1=cf.CStack{'Test'}.Node+[0 0 0 0   -6.5*.6 0 0]; %shift origin
+      x=n1(:,5)/.6;
+      st1=intersect({'Test','COH','Hlog'},ci.Stack(:,2));
+      for j2=1:length(st1)
+       C1=ci.Stack{st1{j2}}; 
+       if size(C1.Y,3)~=length(x);error('not expected');end
+       C1.X{3}=x;C1.Xlab{3}={'Pos','\times 0.6m',[]};
+       ci.Stack{st1{j2}}=C1;
+      end
+   case 'plotwd'
+     gf=findobj(0,'type','figure','tag','iiplot');
+     for j2=1:length(gf)
+           cingui('plotwd',gf(j2),'@OsDic',{'ImToFigN','ImSw80','WrW49c','ImGrid'});
+     end
+ 'xxx move to osM'
+   end
+  end
 
 else; error('View%s',CAM);
 end  
@@ -2507,7 +2537,7 @@ elseif comstr(Cam,'pcin');
         '@ColorMap',{'ColorMapBand parula(4)'}}
    'd_rail.JicSpecA','initialize spectrogram',{ ...
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
-     '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inTime -NewNameSpec'')'
+     '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inNameTime -NewNameSpec'')'
     }
    'd_rail.Jic.wire.HamAcc','show config',{
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...

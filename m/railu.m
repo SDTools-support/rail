@@ -1387,7 +1387,7 @@ case 'presens'
   wire.tdof=[colM.prop.name';ta];
   wire.tdof(:,colM('M'))=[];
   try 
-   wire.name=RO.preSens{j2,1};
+   wire.name=RO.preSens{j2,1};wire.InFEM=0; 
    mt=fe_case(mt,'SensDof',RO.preSens{j2,1},wire);
    sdtu.logger.doing('SensDof,%s done',wire.name)
   catch e
