@@ -415,15 +415,15 @@ RO.li={'Name','ToolTip','meta'
   struct('wd','28_05/*_S32','In','s32b','Out','HamAcc')
  'Attaches','line of attaches', ...
   struct('wd','28_05/*_Attaches','In','sX','Out','HamAcc')
- 'vZhf','metal vertical', ...
+ 'vZHF','metal vertical', ...
   struct('wd','28_05/*metal*vertical','In','vZ52','Out','HamAcc','rep',[5*ones(1,10) 4 5*ones(1,41)])
- 'vYhf','metal lateral', ...
+ 'vYHF','metal lateral', ...
   struct('wd','28_05/*metal*lateral','In','vY52','Out','HamAcc','rep',[5*ones(1,52)])
- 'vZmf','plastique vertical', ...
+ 'vZMF','plastique vertical', ...
   struct('wd','28_05/*_plast*vertical','In','vZ13','Out','HamAcc','rep',[5*ones(1,12) 10])
- 'vYmf','plastique lateral', ...
+ 'vYMF','plastique lateral', ...
   struct('wd','28_05/*_plast*lateral','In','vY13','Out','HamAcc','rep',5*ones(1,13))
- 'vZlf','masse vertical', ...
+ 'vZLF','masse vertical', ...
   struct('wd','28_05/*_Masse*vertical','In','vZ52','Out','HamAcc','rep',5*ones(1,52))
  'trainA','train passages accel', ...
   struct('wd','*acc*/2026*/','In','','Out','TrainAcc')
@@ -2117,7 +2117,7 @@ end
 elseif comstr(Cam,'jic');
     %% #ViewJic
   [~,RO]=sdtm.urnPar(CAM,'{}{}');
-  ci=iiplot;
+  ci=iiplot(2,';');
   for j1=1:length(RO.Other)
    switch lower(RO.Other{j1})
    case 'recep'
@@ -2128,7 +2128,7 @@ elseif comstr(Cam,'jic');
    Test.DimPos=[1 3 2];
    ci.Stack{'Test'}=Test;
    case 'fixpos'
-      cf=feplot;n1=cf.CStack{'Test'}.Node+[0 0 0 0   -6.5*.6 0 0]; %shift origin
+      cf=feplot(3,';');n1=cf.CStack{'Test'}.Node+[0 0 0 0   -6.5*.6 0 0]; %shift origin
       x=n1(:,5)/.6;
       st1=intersect({'Test','COH','Hlog'},ci.Stack(:,2));
       for j2=1:length(st1)
@@ -2735,3 +2735,17 @@ end % Fill model
 end
 
 
+function EndMark(ga)
+
+if nargin==0;ga=handle(evalin('caller','gf'));else; ga=handle(ga);end
+gf=get(ga,'parent');cf=get(gf,'userdata');
+ua=get(ga,'userdata');
+XF=cf.Stack{ua.sList{1}};
+delete(findobj(ga,'tag','now'));
+h=line(min(ga.XLim)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
+    'linestyle','none','color','r','parent',ga,'tag','now');
+F=[200;1087];
+h=line(F,min(ga.YLim)*ones(size(F)),'marker','+', ...
+    'linestyle','none','color','b','parent',ga,'tag','now');
+
+end
