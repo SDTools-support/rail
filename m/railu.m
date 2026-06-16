@@ -1118,7 +1118,8 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   case 'plrange'
   %% #MeshSliceCheck.PlRange xxx sdtweb drmesh.matdb -3
 
-  prePl={'MatId','name';101 'Pad';201 'Sleeper';301,'Rail'};
+  prePl={'MatId','name';101 'Pad';201 'Sleeper';301,'Rail';
+      310,'Fish';320,'Glue'};
   if isfield(ms,'pl')&&~isempty(ms.pl)
    prePl(find(ismember(vertcat(prePl{2:end,1}),ms.pl(:,1)))+1,:)=[];
   end

@@ -2372,6 +2372,8 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'railCR',[398 fe_mat('m_elastic','SI',1) 210e3 .3 0*7800e-30];
    
     'Rail',[7 fe_mat('m_elastic','SI',1)  200e9 .3 7829  0 .004] % Rail Yield 800 MPa
+    'Fish',[310 fe_mat('m_elastic','SI',1)  200e9 .3 7829  0 .004] % fishplate
+    'Glue',[320 fe_mat('m_elastic','SI',1)  2e9 .45 1500  0 .01] % isolation glue
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
     'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
@@ -2402,7 +2404,7 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'prwEulSurf',[498 fe_mat('p_contact','SI',2) 0 2 1 3 ];% contact master    
     'Rail',p_solid('dbval 301 d3 -3')
     'Fish',p_solid('dbval 310 d3 -3')
-    'Glue',p_solid('dbval 310 d3 -3')
+    'Glue',p_solid('dbval 320 d3 -3')
     'Pad',p_solid('dbval 101 d3 -3')
     'Sleeper',p_solid('dbval 201 d3 -3')
 
