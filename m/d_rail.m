@@ -491,7 +491,9 @@ if ~isfield(RC,'In');RC.In=RC.name;end
 if isfield(RC,'Out')&&~isempty(RC.Out)
  wire=sdth.urn(RC.Out,mt);if ~isempty(wire);wire.name=RC.Out; RC.Out=wire; end
 end
-wire=sdth.urn(RC.In,mt); if ~isempty(wire);wire.name=RC.In; RC.In=wire; end
+if ~isempty(RC.In)
+ wire=sdth.urn(RC.In,mt); if ~isempty(wire);wire.name=RC.In; RC.In=wire; end
+end
 
 if contains(Cam,'reset')&&isempty(wd)
     fprintf('Missing %s\n',sdtm.toString(RC));
@@ -562,7 +564,11 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
          ta.param.FileName={'@Time'};
      end
      if ~isa(Time,'curvemodel')
-      Time.Range=ta; Time.X{1}=[0 1/Time.meta.fs]';
+      Time.Range=ta; 
+      if ~isfield(Time.meta,'fs'); 
+          Time.meta.fs=diff(Time.X{1}([1 end]))/(size(Time.X{1},1)-1);
+      end
+      Time.X{1}=[0 1/Time.meta.fs]';
       Time=feval(process_r('@SigEvt'),Time);
      end 
      eval(iigui({'Time'},'SetInBaseC')) 
