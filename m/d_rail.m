@@ -233,24 +233,30 @@ railu.MeshSlice(RT);s1=RT.nmap('s1');%
 
 %% step RedShort : reduce a short track with both section types
 
-if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
-% preMeshTrack
-RM3=struct('cf',2,'cfos',{{'@fecom', ...
+f1=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_U91.mat');
+if exist(f1,'file')
+ load(f1,'mt');%cf=feplot(2,';');fecom('load',f1)
+else
+ if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
+ % preMeshTrack
+ RM3=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
-RM3.preTrack={'slNum','SE'
+ RM3.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:10,'s1'};
-RM3.slNum0=6;% Position the sleeper origin
-RM3.Do={'GenTrack','presens','reduce'};
-DoOpt=sdtm.pcin('prero.railu.MeshTrack');
-RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
-% preRed
-RR=struct('preRed',{{'SE','Red' 
+ RM3.slNum0=6;% Position the sleeper origin
+ RM3.Do={'GenTrack','presens','reduce'};
+ DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+ RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
+ % preRed
+ RR=struct('preRed',{{'SE','Red' 
     's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2})')
     'joint',struct('RedType','Modal{fmax3000,EigOpt 5 10 1e-6,peig 5})', ...
       'Tl','s1.Tr','Tr','s1.Tl') 
-    }});
-RT.nmap('dyn_solve.reduce')=RR;
-mt=railu.MeshTrack(RT);cf=feplot(2,';'); % GenTrack,PreSens,Reduce
+    }},'store',f1);
+ RT.nmap('dyn_solve.reduce')=RR;
+ mt=railu.MeshTrack(RT);cf=feplot(2,';'); % GenTrack,PreSens,Reduce
+
+end
 
 %PA=dyn_ui('paramvh');  PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
 PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
@@ -262,21 +268,21 @@ RM4=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
 RM4.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:45,'s1'};RM4.slNum0=6;
-RM4.preSens={
-    ...%  'Train',t_gae24('ExpSensorTabTrain');
-      'Out',t_gae24('ExpSensorTabHammer');
-      'In',t_gae24('ExpLoadTab')};
-RM4.Do={'GenTrack','reduce','presens'};
+li=t_gae24('ExpSensor');  RM4.preSens=li(:,[2 1]);
+RM4.Do={'GenTrack','reduce','presens',sprintf('store{"%s"}',f1)};
 DoOpt=sdtm.pcin('prero.railu.MeshTrack');
 RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
 mt=railu.MeshTrack(RT);
-disp(cbM)
-
+% disp(cbM)
 
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', ...
-    'cf',2,'name','Fz>Az{f,pos,io}','time',{{'a'}});
+    'Out','HamAcc','In','vz52','cf',2,'name','Fz>Az{f,pos,io}','time',{{'a'}});
 PA.mt=mt; dyn_solve('eig')
+figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0])
+grid on
+
+
 eval(cbM('viewNodeLineR'))
 
 %s1=fe_case(mt,'Sens','In');d1=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
