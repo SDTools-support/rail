@@ -325,7 +325,7 @@ railu.RailSection('60-E1')
 railu.RailSection('U30_Sections.mat#ra')
 railu.RailSection(m_rail) % cleanup
 ```keywords
-{var{mdl,pl},fcn{drmesh}}
+{var{},fcn{drmesh}}
 %}
 %%
 name='';
@@ -549,8 +549,8 @@ m_rail.meta.TopNodes=n1;
   if isscalar(setdiff(unique(mpid(:,2)),0))
    mpid(mpid(:,2)~=0,2)=301; % sdtweb drMatDb
   end
-  mpid(~ismember(mpid(:,1),300:399),1)=301;
-  mpid(~ismember(mpid(:,2),300:399),2)=301;
+  mpid(~ismember(mpid(:,1),[0 300:399]),1)=301;
+  mpid(~ismember(mpid(:,2),[0 300:399]),2)=301;
   m_rail.Elt=feutil('mpid',m_rail,mpid);
   if ~isfield(m_rail,'il');m_rail=p_solid('default;',m_rail);end
   % Make sure it uses SI
@@ -1468,7 +1468,15 @@ case 'reduce'
   %% #MeshTrack.reduce perform reduction and store -3
   RR=projM('dyn_solve.reduce');RR.projM=projM;
   mt=dyn_solve('reduce',mt,RR);
-otherwise; error('%s',RO.Do{j0})
+
+otherwise;
+ if strncmpi(RO.Do{j0},'store',4)
+   [~,r1]=sdtm.urnPar(RO.Do{j0},'{}{}');r1=r1.Other;
+   if isscalar(r1);r1{end+1}={'mt>mt'};end
+   sdtm.store(r1{:})
+ else
+ error('%s',RO.Do{j0})
+ end
 end
 end % Do Loop
 if isfield(RO,'Name'); mt.name=RO.Name;end

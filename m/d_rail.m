@@ -217,6 +217,26 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 200 -1e3],'freq','@ll{10,3000,1000}');
 
 %% step MeshSlice : generate generic slice s1 and joint slice meshes
 
+if 1==2 % rail view
+    f1=d_rail('wd','UIC60_Sections.mat');load(f1{1},'sections')
+   mo1=sections('UIC60_U91ra+e');mo1.Elt=feutil('removeelt egid-1',mo1);
+   elt=feutil('objectbeamline',[ ... 
+    1 5 394 514 360 144 161 719 1235 1252 ...
+    1037 882 1036 1394 1395 1 ],[301 301]);
+   elt(1,1:8)=[Inf abs('line2') 0 -1]; mo1=feutil('addelt',mo1,elt);
+   elt=feutil('objectbeamline',[  24 40 0 1372 1356],[310 310]);
+   elt(1,1:8)=[Inf abs('line2') 0 -1]; mo1=feutil('addelt',mo1,elt);
+   sections('UIC60_U91ra+e')=mo1;
+
+  mo1=sections('UIC60_U91ra');mo1.Elt=feutil('removeelt egid-1',mo1);
+   elt=feutil('objectbeamline',[ ... 
+    1 5 394 514 360 144 161 719 1235 1252 ...
+    1037 882 1036 1394 1395 1 ],[301 301]);
+   elt(1,1:8)=[Inf abs('line2') 0 -1]; mo1=feutil('addelt',mo1,elt);
+   sections('UIC60_U91ra')=mo1;
+  sdtm.store(f1{1},'sections')
+end
+
 RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
     {struct('half',0,'RailX',-900:50:900, ...
     'SlX',[-.6 -.145 .145 .6],'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
@@ -274,6 +294,7 @@ DoOpt=sdtm.pcin('prero.railu.MeshTrack');
 RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
 mt=railu.MeshTrack(RT);
 % disp(cbM)
+% load(f1)
 
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', ...
@@ -281,6 +302,8 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', 
 PA.mt=mt; dyn_solve('eig')
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0])
 grid on
+viewDef=fe2ss('@viewDef');
+viewDef(ci.ga,struct('CurrentPoint',[300 0 0])); 
 
 
 eval(cbM('viewNodeLineR'))
