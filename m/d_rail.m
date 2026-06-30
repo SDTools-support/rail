@@ -464,14 +464,14 @@ RO.li={'Name','ToolTip','meta'
  'Ame 2 Y','P2a:y';'Ame 2 Z','P2a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
  'Ame 3 Y','P32a:y';'Ame 3 Z','P32a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
  'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';
-'Traverse 1 Z','S0e:z';
-'Traverse 2 Z','S1e:z';
-'Traverse 3 Z','S1i:z';
+'Traverse 1 Z','S0i:z';
+'Traverse 2 Z','S1i:z';
+'Traverse 3 Z','S1e:z';
 'Traverse 4 Z','S1c:z';
-'Traverse 5 Z','S2e:z';
+'Traverse 5 Z','S2i:z';
 'Traverse 6 Z','S2c:z';
-'Traverse 7 Z','S2i:z';
-'Traverse 8 Z','S3e:z'
+'Traverse 7 Z','S2e:z';
+'Traverse 8 Z','S3i:z'
 'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
  };
  RO.preLab2={'TestLab','tlab';
@@ -479,14 +479,14 @@ RO.li={'Name','ToolTip','meta'
  'Ame 2 Y','P-1a:y';'Ame 2 Z','P-1a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
  'Ame 3 Y','P1a:y';'Ame 3 Z','P1a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
  'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';'Piste 1 Z','soil0a:z';'Piste 2 Z','soil0b:z';
-'Traverse 1 Z','S0e:z';
-'Traverse 2 Z','S1e:z';
-'Traverse 3 Z','S1i:z';
+'Traverse 1 Z','S0i:z';
+'Traverse 2 Z','S1i:z';
+'Traverse 3 Z','S1e:z';
 'Traverse 4 Z','S1c:z';
-'Traverse 5 Z','S2e:z';
+'Traverse 5 Z','S2i:z';
 'Traverse 6 Z','S2c:z';
-'Traverse 7 Z','S2i:z';
-'Traverse 8 Z','S3e:z'
+'Traverse 7 Z','S2e:z';
+'Traverse 8 Z','S3i:z'
 'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
  };
 if strcmpi(Cam,'jicback'); out=RO;return;end
