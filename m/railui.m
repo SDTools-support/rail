@@ -1860,7 +1860,7 @@ if isempty(UI.gf)||~ishandle(UI.gf);
    assignin('caller','GuiGF',GuiGF);
    railui('initMain');
    [uf,gf]=clean_get_uf(GuiGF);uf.MainFcn=@railui;
-   set(gf,'userdata',[],'userdata',uf);
+   set(gf,'userdata',[],'userdata',uf);sdtw('_ewt','revise sdtm.initFig?');
 
  else;GuiGF=gf;%PARAM=v_handle('uo',gf);
  end
