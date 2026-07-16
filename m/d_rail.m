@@ -459,11 +459,19 @@ RO.li={'Name','ToolTip','meta'
  'trainM','train passages mic', ...
   struct('wd','*mic*/2026*/','In','','Out','TrainAcc')
  };
- RO.preLab={'TestLab','tlab';
-  'Ame 1 Y','P1a:y'; 'Ame 1 Z','P1a:z';
- 'Ame 2 Y','P2a:y';'Ame 2 Z','P2a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
- 'Ame 3 Y','P32a:y';'Ame 3 Z','P32a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
- 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';
+  RO.preLab={'TestLab','tlab';
+  'Ame 1 Y','P1a:y'; 
+  'Ame 1 Z','P1a:z';
+ 'Ame 2 Y','P2a:y';
+ 'Ame 2 Z','P2a:z';
+ 'Patin 1 Y','P2p:y';
+ 'Patin 1 Z','P2p:z';
+ 'Ame 3 Y','P32a:y';
+ 'Ame 3 Z','P32a:z';
+ 'Patin 2 Y','P32p:y';
+ 'Patin 2 Z','P32p:z';
+ % 'Ame 4 Z','P4a:z';
+ % 'Ame 5 Z','P32a:z';
 'Traverse 1 Z','S0i:z';
 'Traverse 2 Z','S1i:z';
 'Traverse 3 Z','S1e:z';
@@ -471,14 +479,16 @@ RO.li={'Name','ToolTip','meta'
 'Traverse 5 Z','S2i:z';
 'Traverse 6 Z','S2c:z';
 'Traverse 7 Z','S2e:z';
-'Traverse 8 Z','S3i:z'
+'Traverse 8 Z','S3i:z';
 'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
  };
+
  RO.preLab2={'TestLab','tlab';
   'Ame 1 Y','P-4a:y'; 'Ame 1 Z','P-4a:z';
  'Ame 2 Y','P-1a:y';'Ame 2 Z','P-1a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
  'Ame 3 Y','P1a:y';'Ame 3 Z','P1a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
- 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';'Piste 1 Z','soil0a:z';'Piste 2 Z','soil0b:z';
+ % 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';
+'Piste 1 Z','soil0a:z';'Piste 2 Z','soil0b:z';
 'Traverse 1 Z','S0i:z';
 'Traverse 2 Z','S1i:z';
 'Traverse 3 Z','S1e:z';
@@ -536,12 +546,13 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
   [i1,i2]=ismember(X,RO.preLab(:,1));
   if all(i2);r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);end % safe tlab
   r1.(st2{j2}).X{2}(:,2)=regexprep(r1.(st2{j2}).X{2}(:,2),'m/s$','m/s2');
+  'xxxeb'
   % Attempt to follow order
-  if isfield(r1,'Test')||length(r1.Time.X)==3
-   [ia,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(2:end-1,2));[~,i2]=sort(i2);
-   r1.(st2{j2}).Y=r1.(st2{j2}).Y(:,i2,:); 
-   r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
-  end
+  % if isfield(r1,'Test')||length(r1.Time.X)==3
+  %  [ia,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(2:end-1,2));[~,i2]=sort(i2);
+  %  r1.(st2{j2}).Y=r1.(st2{j2}).Y(:,i2,:); 
+  %  r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
+  % end
  end
  if ~isfield(r1,'Time')
  else
