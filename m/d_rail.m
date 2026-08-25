@@ -675,6 +675,7 @@ end % loop on JIC list
 elseif comstr(Cam,'stc')
 %% #LoadSTC
  li=varargin{carg};carg=carg+1;
+ RO=varargin{carg};carg=carg+1;
  ta=struct('ColumnName',{{'Time','istart','istop'}},'table',zeros(length(li),3));
  C2=struct('X',{{[],[]}},'Xlab',{{{'Time','s',[]},'Out'}}, ...
       'Y',{cell(length(li),1)},'meta',struct); j0=0; 
@@ -691,13 +692,33 @@ elseif comstr(Cam,'stc')
   ta.table(j1,1)=datenum(C1{1,'date'});
  end
  ta.param.Time=struct('LabFcn', ...
-         'sprintf(''%i(%s)'',jPar,datestr(val/24,''HH-MM-SS''))', ...
+         'sprintf(''%i(%s)'',jPar,datestr(val,''HH-MM-SS''))', ...
          'ShortFmt',1);
  ta.param.FileName={'@Time'};
  [~,i1]=sort(ta.table(:,1)); ta.table=ta.table(i1,:);C2.Y=C2.Y(i1);
  C2.Range=ta; C2.Ylab=2;
  assignin('base','C2',C2)
- C3=curvemodel.SigEvt('init',C2);iicom('curveinit','Time',C3)
+ C3=curvemodel.SigEvt('init',C2);
+ if isfield(RO,'tClip')
+  C3(:,:,RO.tClip)=[];
+ end
+ if any(strcmpi(RO.Do,'vel'))
+  C3.Source.X{2}(11,1:3)={'vel','m/s',[]}; 
+  Y=C3.Source.Y(:,8);t=(0:length(Y)-1)'/C3.Source.meta.fs;
+  it=find(diff(Y));
+  C3.Source.Y(:,11)=interp1(t(it),gradient(Y(it))./gradient(t(it))*1000,t);
+  C3.Source.Y(abs(C3.Source.Y(:,11))>200,11)=NaN;
+ end
+ if any(strcmpi(RO.Do,'station'))
+  RG=C3.Source.Range;
+  RG.ColumName{1,4}='pStation';
+  for jpar=1:size(C3.Range,1)
+    C4=C3(:,:,jpar); it=find(C4.Y(:,11)<.1);
+    RG.table(jpar,4)=mean(C4.Y(it,8));
+  end
+ end
+ iicom('curveinit','STC',C3);iicom ch11
+ if nargout>0; out=C3;end
 
 else; error('Load%s',CAM)
 end
