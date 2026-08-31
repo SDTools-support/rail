@@ -502,11 +502,11 @@ RO.li={'Name','ToolTip','meta'
 if strcmpi(Cam,'jicback'); out=RO;return;end
 
 RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
-    sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*')});
+    sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*'),'/o/sdtdata/rail19/mat/26_EssaiVoie'});
 if carg<=nargin
  %% possibly specific 
  tag=varargin{carg};carg=carg+1;
- li=RO.li(strcmpi(RO.li(:,1),regexprep(tag,'_freq','')),:);
+ li=RO.li(strcmpi(RO.li(:,1),regexprep(tag,{'_freq','\.mat'},{'',''})),:);
  if size(li,1)==1;li{1}=tag;end
 end
 for jpar=1:size(li,1)
