@@ -534,10 +534,10 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  %% actually load
  if nargin==1; continue; end % Do not load full list (init phase)
   r1=sdtm.load(FileName);
- RO.preGroup={'(P1|P2)','P32','S\d'};
- if isfield(r1,'Time')&&strncmpi(r1.Time,'vz',2)
+  RO.preGroup={'(P1|P2)','P32','S\d'};
+  if isfield(r1,'Time')&&strncmpi(r1.Time,'vz',2)
    wire=load(fullfile(RO.wda,'wires.mat'),'In51');r1.wire=wire.In51;
- end
+  end
 
  st2=intersect(fieldnames(r1),{'Time','Test','COH'});
  for j2=1:length(st2)
@@ -558,7 +558,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  else
  %% uniform time as a SigEvt
  Time=r1.Time;RO.ns=size(Time.Y,2);
- if ~isfield(Time,'Range'); error('Should be SigEvt');end
+ %if ~isfield(Time,'Range'); error('Should be SigEvt');end
  % if length(Time.X)~=2&&size(Time.Y,2)*size(Time.Y,3)==size(r1.Time.info,1)
  %  Time.info(:,5)={size(Time.X{1},1)};
  %  Time.Y=reshape(permute(Time.Y,[1 3 2]),[],size(Time.Y,2));
@@ -644,7 +644,7 @@ elseif iscell(wd)&&~isscalar(wd)
   [a,flog]=fileparts(flog{1});flog=fullfile(fileparts(a),[flog '.txt']);
  end
  if exist(flog,'file');delete(flog);end;diary(flog);
- imctermite=ufread('@imctermite');
+ imctermite=ufread('@imctermite'); % actually read 
  if contains(RC.wd,'mic');RC.oType='evtseq';else; RC.oType='rep';end
  Time=imctermite('./2026*/D*01*/*.raw',RC);
  Time.meta.ToolTip=li{jpar,2}; 
