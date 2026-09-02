@@ -1343,7 +1343,8 @@ case 'presens'
   RB.dir=zeros(size(st2,1),3);
   for j1=1:size(st2,1) % loop on positions (transform S+i)
     try;r4=eval(st2{j1,2});
-    catch;r4=0;warning('%s failed',st2{j1,2});
+    catch;
+        r4=0;warning('%s failed',st2{j1,2});
     end
     ta{j1,i1}=r4;RB.marker=ta{j1,colM('M')};
     pos=[ta{j1,RB.iXYZ}];
