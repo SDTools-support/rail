@@ -455,9 +455,9 @@ RO.li={'Name','ToolTip','meta'
  'vZLF','masse vertical', ...
   struct('wd','28_05/*_Masse*vertical','In','vZ52','Out','HamAcc','rep',5*ones(1,52))
  'trainA','train passages accel', ...
-  struct('wd','*acc*/2026*/','In','','Out','TrainAcc')
+  struct('wd','*acc*/2026*/','In','','Out','TrainAcc','PreMeta','pas*\Passage_train.csv')
  'trainM','train passages mic', ...
-  struct('wd','*mic*/2026*/','In','','Out','TrainAcc')
+  struct('wd','*mic*/2026*/','In','','Out','TrainMic','PreMeta','pas*\Passage_train.csv')
  };
   RO.preLab={'TestLab','tlab';
   'Ame 1 Y','P1a:y'; 
@@ -527,9 +527,17 @@ end
 if ~isempty(RC.In)
  wire=sdth.urn(RC.In,mt); if ~isempty(wire);wire.name=RC.In; RC.In=wire; end
 end
+c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
 
 if contains(Cam,'reset')&&isempty(wd)
     fprintf('Missing %s\n',sdtm.toString(RC));
+elseif ~isempty(c2.Stack{['Pre' RC.name]}) 
+ %% Reuse PreName 
+ Time=c2.Stack{['Pre' RC.name]};
+ Time=feval(process_r('@SigEvt'),Time);
+ iicom(c2,'curveinit','Time',Time);
+
+
 elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  %% actually load
  if nargin==1; continue; end % Do not load full list (init phase)
@@ -593,9 +601,13 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
              'ShortFmt',1);
      else
          ta.param.Time=struct('LabFcn', ...
-             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''HH-MM-SS''))', ...
+             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''dd-mm HH-MM-SS''))', ...
              'ShortFmt',1);
          ta.param.FileName={'@Time'};
+     end
+     if any(strcmpi(ta.ColumnName,'TrainType'))
+         ta.param.TrainType.ShortFmt=1;
+         ta.param.FileName={'@TrainType','@Time'};
      end
      if ~isa(Time,'curvemodel')
       Time.Range=ta; 
@@ -603,6 +615,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
           Time.meta.fs=diff(Time.X{1}([1 end]))/(size(Time.X{1},1)-1);
       end
       Time.X{1}=[0 1/Time.meta.fs]';
+      stack_set(c2,'info',['Pre' Time.name],Time);
       Time=feval(process_r('@SigEvt'),Time);
      end 
      eval(iigui({'Time'},'SetInBaseC')) 
@@ -618,9 +631,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
 
  end
 
- c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
  eval(iigui({'c2','osM','RC'},'SetInBaseC'))
-
  if isfield(RC,'In')&&isfield(RC.In,'Node');
     wire=RC.In;
     if isfinite(wire.Elt(1));wire.Elt=feutil('addelt','quad4',wire.Elt);end
@@ -692,14 +703,26 @@ elseif comstr(Cam,'stc')
   ta.table(j1,1)=datenum(C1{1,'date'});
  end
  ta.param.Time=struct('LabFcn', ...
-         'sprintf(''%i(%s)'',jPar,datestr(val,''HH-MM-SS''))', ...
+         'sprintf(''%i(%s)'',jPar,datestr(val,''dd-mm:HH-MM-SS''))', ...
          'ShortFmt',1);
  ta.param.FileName={'@Time'};
  [~,i1]=sort(ta.table(:,1)); ta.table=ta.table(i1,:);C2.Y=C2.Y(i1);
- C2.Range=ta; C2.Ylab=2;
- assignin('base','C2',C2)
+ C2.Range=ta; C2.Ylab=2; assignin('base','C2',C2) % PreSTC
  C3=curvemodel.SigEvt('init',C2);
- if isfield(RO,'tClip')
+ if ~isfield(RO,'tClip')
+ elseif strcmpi(RO.tClip,'time')
+   %% find matching trains
+   c2=get(2,'userdata');Time=c2.Stack{'Time'}; 
+   tb=Time.Source.Range;
+   i3=sdtm.indNearest(tb(:,'Time'),ta.table(:,1));
+   i4=find(sparse(i3,1,1)==1);[i5,i6]=ismember(i3,i4);
+   C3(:,:,~i5)=[];tc=C3.Source.Range;
+   Time(:,:,~ismember(1:size(Time,3),i4))=[];
+   %figure(1);plot(tc(:,'Time'),'p');hold on;plot(tb(:,'time'),'+');hold off;
+   c4=iiplot(4);iicom('curveinit','STC',C3);
+
+ else
+     dbstack; keyboard; 
   C3(:,:,RO.tClip)=[];
  end
  if any(strcmpi(RO.Do,'vel'))
@@ -2182,13 +2205,13 @@ while carg<=nargin
  
 end
 elseif comstr(Cam,'jic');
-    %% #ViewJic
+  %% #ViewJic : loop on JIC post-treatements
   [~,RO]=sdtm.urnPar(CAM,'{}{}');
-  ci=iiplot(2,';');
+  ci=iiplot(2,';');c2=ci;
   for j1=1:length(RO.Other)
    switch lower(RO.Other{j1})
    case 'recep'
-   %% #ViewJicRecep : transform to receptance, place nodes
+   %% #ViewJicRecep : transform to receptance, place nodes -3
    Test=ci.Stack{'Test'};
    Test=fe_def('subdef',Test,Test.X{1}(:,1)>10);
    Test=cdm.safeFreqDeriv(Test,struct('if','m/s2','to','m/N','pow',-2));
@@ -2210,6 +2233,34 @@ elseif comstr(Cam,'jic');
            cingui('plotwd',gf(j2),'@OsDic',{'ImToFigN','ImSw80','WrW49c','ImGrid'});
      end
  'xxx move to osM'
+   otherwise 
+    if strncmpi(RO.Other{j1},'subtime',7)
+     %% ViewJICSubTime : extract part of the train passage files
+     % d_rail('ViewJic{SubTime{nameTrainA,day,TrainTypexxx}}')
+     [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{name%s,day%31,TrainType%s,ch%s}');
+     st1=['Pre' RT.name]; 
+     Time=c2.Stack(st1); if isempty(Time);d_rail('LoadJIC',RT.name);Time=c2.Stack(st1);end
+     Time=feval(process_r('@SigEvt'),Time);
+
+     ta=Time.Source.Range;
+     if isfield(RT,'day')&&RT.day==1
+      ia=ta(:,'Time')<datenum('28-may-2026 04:00'); Time(:,:,ia)=[];
+     end
+    if ~isempty(RT.TrainType)
+     ib=ta(:,'TrainType')~=find(strcmpi(ta.param.TrainType.choices,RT.TrainType));
+     Time(:,:,ib)=[];
+    end
+    if ~isempty(RT.ch)
+      ch=find(~sdtm.regContains(Time.X{2}(:,1),RT.ch));% channels to clip
+      if isempty(ch)
+      elseif nnz(ch)==size(Time.X{2},1); warning('%s all channels > not clipping',RT.ch)
+      else
+        Time(:,ch,:)=[];
+      end
+    end
+    stack_set(c2,'curve','Time',Time);
+     eval(iigui({'Time','c2'},'SetInBaseC'))
+    end
    end
   end
 
