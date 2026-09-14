@@ -470,8 +470,8 @@ RO.li={'Name','ToolTip','meta'
  'Ame 3 Z','P32a:z';
  'Patin 2 Y','P32p:y';
  'Patin 2 Z','P32p:z';
- % 'Ame 4 Z','P4a:z';
- % 'Ame 5 Z','P32a:z';
+  'Ame 4 Z','P4a:z';
+  'Ame 5 Z','P32a:z';
 'Traverse 1 Z','S0i:z';
 'Traverse 2 Z','S1i:z';
 'Traverse 3 Z','S1e:z';
@@ -482,24 +482,10 @@ RO.li={'Name','ToolTip','meta'
 'Traverse 8 Z','S3i:z';
 'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
  };
-
- RO.preLab2={'TestLab','tlab';
-  'Ame 1 Y','P-4a:y'; 'Ame 1 Z','P-4a:z';
- 'Ame 2 Y','P-1a:y';'Ame 2 Z','P-1a:z';'Patin 1 Y','P2p:y';'Patin 1 Z','P2p:z';
- 'Ame 3 Y','P1a:y';'Ame 3 Z','P1a:z';'Patin 2 Y','P32p:y';'Patin 2 Z','P32p:z';
- % 'Ame 4 Z','P4a:z';'Ame 5 Z','P32a:z';
-'Piste 1 Z','soil0a:z';'Piste 2 Z','soil0b:z';
-'Traverse 1 Z','S0i:z';
-'Traverse 2 Z','S1i:z';
-'Traverse 3 Z','S1e:z';
-'Traverse 4 Z','S1c:z';
-'Traverse 5 Z','S2i:z';
-'Traverse 6 Z','S2c:z';
-'Traverse 7 Z','S2e:z';
-'Traverse 8 Z','S3i:z'
-'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
- };
 if strcmpi(Cam,'jicback'); out=RO;return;end
+ r3=gae24('ExpSensor'); 
+ RO.preLab=r3{strcmp(r3(:,2),'HamAcc')}.tdof(:,[2 1]);
+ RO.preLab2=r3{strcmp(r3(:,2),'TrainAcc')}.tdof(:,[2 1]);
 
 RO.wda=sdtu.f.firstdir({'D:\sdtdata\rail19\mat\26_EssaiVoie', ...
     sdtu.f.safe('@OneDrive/*/SN*/e*/26_e*'),'/o/sdtdata/rail19/mat/26_EssaiVoie'});
@@ -534,6 +520,9 @@ if contains(Cam,'reset')&&isempty(wd)
 elseif ~isempty(c2.Stack{['Pre' RC.name]}) 
  %% Reuse PreName 
  Time=c2.Stack{['Pre' RC.name]};
+ [i2,i3]=ismember(Time.X{2}(:,1),RO.preLab2(:,1));
+ Time.X{2}(i2,1)=RO.preLab(i3(i2),2);c2.Stack{['Pre' RC.name]}=Time;
+
  Time=feval(process_r('@SigEvt'),Time);
  iicom(c2,'curveinit','Time',Time);
 
@@ -551,16 +540,9 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
  for j2=1:length(st2)
   %% rename specific labels using preLab
   X=r1.(st2{j2}).X{2}(:,1);if any(strncmpi(X,'Piste',5));RO.preLab=RO.preLab2;end
-  [i1,i2]=ismember(X,RO.preLab(:,1));
+  [i1,i2]=ismember(lower(X),lower(RO.preLab(:,1)));
   if all(i2);r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);end % safe tlab
   r1.(st2{j2}).X{2}(:,2)=regexprep(r1.(st2{j2}).X{2}(:,2),'m/s$','m/s2');
-  'xxxeb'
-  % Attempt to follow order
-  % if isfield(r1,'Test')||length(r1.Time.X)==3
-  %  [ia,i2]=ismember(r1.(st2{j2}).X{2}(:,1),RO.preLab(2:end-1,2));[~,i2]=sort(i2);
-  %  r1.(st2{j2}).Y=r1.(st2{j2}).Y(:,i2,:); 
-  %  r1.(st2{j2}).X{2}=r1.(st2{j2}).X{2}(i2,:);
-  % end
  end
  if ~isfield(r1,'Time')
  else
@@ -597,7 +579,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
      if max(t)<24
          ta.table(:,1)=ta.table(:,1)+1; % File time is 1hour earlier (first train 5.29)
          ta.param.Time=struct('LabFcn', ...
-             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val/24,''HH-MM-SS''))', ...
+             'sprintf(''%i(%s)'',Range.val(1,8),datestr(val/24,''HH-MM-SS''))', ...
              'ShortFmt',1);
      else
          ta.param.Time=struct('LabFcn', ...
@@ -687,6 +669,9 @@ elseif comstr(Cam,'stc')
 %% #LoadSTC
  li=varargin{carg};carg=carg+1;
  RO=varargin{carg};carg=carg+1;
+ c4=sdth.urn('iiplot(2).clone(4)');
+ C2=c4.Stack{'PreSTC'};
+ if isempty(C2)
  ta=struct('ColumnName',{{'Time','istart','istop'}},'table',zeros(length(li),3));
  C2=struct('X',{{[],[]}},'Xlab',{{{'Time','s',[]},'Out'}}, ...
       'Y',{cell(length(li),1)},'meta',struct); j0=0; 
@@ -707,40 +692,50 @@ elseif comstr(Cam,'stc')
          'ShortFmt',1);
  ta.param.FileName={'@Time'};
  [~,i1]=sort(ta.table(:,1)); ta.table=ta.table(i1,:);C2.Y=C2.Y(i1);
- C2.Range=ta; C2.Ylab=2; assignin('base','C2',C2) % PreSTC
- C3=curvemodel.SigEvt('init',C2);
- if ~isfield(RO,'tClip')
- elseif strcmpi(RO.tClip,'time')
-   %% find matching trains
-   c2=get(2,'userdata');Time=c2.Stack{'Time'}; 
-   tb=Time.Source.Range;
-   i3=sdtm.indNearest(tb(:,'Time'),ta.table(:,1));
-   i4=find(sparse(i3,1,1)==1);[i5,i6]=ismember(i3,i4);
-   C3(:,:,~i5)=[];tc=C3.Source.Range;
-   Time(:,:,~ismember(1:size(Time,3),i4))=[];
-   %figure(1);plot(tc(:,'Time'),'p');hold on;plot(tb(:,'time'),'+');hold off;
-   c4=iiplot(4);iicom('curveinit','STC',C3);
-
- else
-     dbstack; keyboard; 
-  C3(:,:,RO.tClip)=[];
+ C2.Range=ta; C2.Ylab=2; % PreSTC
+ stack_set(c4,'info','PreSTC',C2);
  end
- if any(strcmpi(RO.Do,'vel'))
+
+ C3=curvemodel.SigEvt('init',C2);
+ if any(strncmpi(RO.Do,'vel',3))
   C3.Source.X{2}(11,1:3)={'vel','m/s',[]}; 
   Y=C3.Source.Y(:,8);t=(0:length(Y)-1)'/C3.Source.meta.fs;
   it=find(diff(Y));
   C3.Source.Y(:,11)=interp1(t(it),gradient(Y(it))./gradient(t(it))*1000,t);
   C3.Source.Y(abs(C3.Source.Y(:,11))>200,11)=NaN;
  end
- if any(strcmpi(RO.Do,'station'))
+ if any(strcmpi(RO.Do,'station')) % Find train station
   RG=C3.Source.Range;
-  RG.ColumName{1,4}='pStation';
+  RG.ColumnName{1,4}='pStation';  
+  PosVel=zeros(size(RG.table,1),1);
   for jpar=1:size(C3.Range,1)
     C4=C3(:,:,jpar); it=find(C4.Y(:,11)<.1);
+    if mean(C4.Y(:,11))>0; PosVel(jpar)=1;end
     RG.table(jpar,4)=mean(C4.Y(it,8));
   end
  end
- iicom('curveinit','STC',C3);iicom ch11
+ C3(:,:,~PosVel)=[]; % Keep trains going in the positive direction
+ if ~isfield(RO,'tClip')
+ elseif strcmpi(RO.tClip,'time')
+   %% find matching trains
+   c2=get(2,'userdata');Time=c2.Stack{'Time'}; 
+   Time=curvemodel.SigEvt('init',c2.Stack{['Pre' Time.name]}); tb=Time.Source.Range; % Reinit
+   ib=tb(:,'TrainType')~=find(strcmpi(tb.param.TrainType.choices,'Z20500'));  Time(:,:,ib)=[];
+   
+   ta=C3.Source.Range; 
+   i3=sdtm.indNearest(tb(:,'Time'),ta.table(:,1));
+   i4=find(sparse(i3,1,1)==1);[i5,i6]=ismember(i3,i4);
+   C3(:,:,~i5)=[];Time(:,:,~ismember(1:size(tb.table,1),i4))=[];
+   tc=C3.Source.Range;
+   %figure(1);plot(tc(:,'Time'),'p');hold on;plot(tb(:,'time'),'+');hold off;
+   c4=iiplot(4,';');iicom(c4,'curveinit','STC',C3);stack_set(c2,'curve','Time',Time)
+   iicom(c4,'showd_rail.JicStcA')
+
+ else
+     dbstack; keyboard; 
+  C3(:,:,RO.tClip)=[];
+ end
+ iicom(c4,'curveinit','STC',C3);iicom ch11
  if nargout>0; out=C3;end
 
 else; error('Load%s',CAM)
@@ -2237,7 +2232,7 @@ elseif comstr(Cam,'jic');
     if strncmpi(RO.Other{j1},'subtime',7)
      %% ViewJICSubTime : extract part of the train passage files
      % d_rail('ViewJic{SubTime{nameTrainA,day,TrainTypexxx}}')
-     [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{name%s,day%31,TrainType%s,ch%s}');
+     [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{name%s,day%31,TrainType%s,ch%s,jTrain%ug}');
      st1=['Pre' RT.name]; 
      Time=c2.Stack(st1); if isempty(Time);d_rail('LoadJIC',RT.name);Time=c2.Stack(st1);end
      Time=feval(process_r('@SigEvt'),Time);
@@ -2250,6 +2245,10 @@ elseif comstr(Cam,'jic');
      ib=ta(:,'TrainType')~=find(strcmpi(ta.param.TrainType.choices,RT.TrainType));
      Time(:,:,ib)=[];
     end
+    if isfield(RT,'jTrain')&&~isempty(RT.jTrain)
+     ib=~ismember(ta(:,'jTrain'),RT.jTrain);
+     Time(:,:,ib)=[];
+    end
     if ~isempty(RT.ch)
       ch=find(~sdtm.regContains(Time.X{2}(:,1),RT.ch));% channels to clip
       if isempty(ch)
@@ -2259,6 +2258,8 @@ elseif comstr(Cam,'jic');
       end
     end
     stack_set(c2,'curve','Time',Time);
+    iicom(c2,'showd_rail.JicTimeA')
+
      eval(iigui({'Time','c2'},'SetInBaseC'))
     end
    end
@@ -2657,7 +2658,19 @@ elseif comstr(Cam,'pcin');
         '@ColorMap',{'ColorMapBand parula(4)'}}
    'd_rail.JicSpecA','initialize spectrogram',{ ...
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
-     '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inNameTime -NewNameSpec'')'
+     '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inNameTime -NewNameSpec'')', ...
+     '@Link','{"iiplot(13).ax(1,4)",{ch},"ob2iiplot(2).ax(1,4)"}', ...
+     '@Link','{"iiplot(2).ax(1,4)",{ch},"ob2iiplot(13).ax(1,4)"}' ...
+    }
+   'd_rail.JicTimeA','initialize Channel',{ ...
+     '@ii_legend',{'interpreter','none'}, ...
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn','iicom(iiplot(2),''InitChannel'')'
+    }
+   'd_rail.JicStcA','initialize Channel',{ ...
+     '@ii_legend',{'interpreter','none'}, ...
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn','iicom(iiplot(4),''InitChannel'')'
     }
    'd_rail.Jic.wire.HamAcc','show config',{
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
