@@ -459,29 +459,6 @@ RO.li={'Name','ToolTip','meta'
  'trainM','train passages mic', ...
   struct('wd','*mic*/2026*/','In','','Out','TrainMic','PreMeta','pas*\Passage_train.csv')
  };
-  RO.preLab={'TestLab','tlab';
-  'Ame 1 Y','P1a:y'; 
-  'Ame 1 Z','P1a:z';
- 'Ame 2 Y','P2a:y';
- 'Ame 2 Z','P2a:z';
- 'Patin 1 Y','P2p:y';
- 'Patin 1 Z','P2p:z';
- 'Ame 3 Y','P32a:y';
- 'Ame 3 Z','P32a:z';
- 'Patin 2 Y','P32p:y';
- 'Patin 2 Z','P32p:z';
-  'Ame 4 Z','P4a:z';
-  'Ame 5 Z','P32a:z';
-'Traverse 1 Z','S0i:z';
-'Traverse 2 Z','S1i:z';
-'Traverse 3 Z','S1e:z';
-'Traverse 4 Z','S1c:z';
-'Traverse 5 Z','S2i:z';
-'Traverse 6 Z','S2c:z';
-'Traverse 7 Z','S2e:z';
-'Traverse 8 Z','S3i:z';
-'Marteau','Marteau';'Micro 1','Mic0';'Micro 2','Mic24';
- };
 if strcmpi(Cam,'jicback'); out=RO;return;end
  r3=gae24('ExpSensor'); 
  RO.preLab=r3{strcmp(r3(:,2),'HamAcc')}.tdof(:,[2 1]);
@@ -524,6 +501,24 @@ elseif ~isempty(c2.Stack{['Pre' RC.name]})
  Time.X{2}(i2,1)=RO.preLab(i3(i2),2);c2.Stack{['Pre' RC.name]}=Time;
 
  Time=feval(process_r('@SigEvt'),Time);
+ ta=Time.Source.Range;
+ i3=ta(:,'jTrain');i4=find(sparse(i3,1,1)>1);
+ M=[];mis={};
+ for j4=1:max(i3)
+  if isempty(M)
+   f1=sdtu.f.safe('@onedrive/*\SNCF_IR*\exchange\26_Es*\pas*\Passage_train.csv');
+   M = readtable(f1);
+  end
+  i5=find(i3==j4);
+  t=abs(ta(i5,'Time')-datenum(M{j4,'DateObservation'}))/(1/24/60);
+  %i6=sdtm.indNearest()
+  %i5=i5(>3); % above 3mn skip
+  if any(t<3)
+    i5(sdtm.indNearest(t,0))=[];
+  end
+  if ~isempty(i5); mis{end+1}=i5;end
+ end
+ Time(:,:,vertcat(mis{:}))=[]; % remove repeated jTrains or above 3mn
  iicom(c2,'curveinit','Time',Time);
 
 
@@ -579,17 +574,18 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
      if max(t)<24
          ta.table(:,1)=ta.table(:,1)+1; % File time is 1hour earlier (first train 5.29)
          ta.param.Time=struct('LabFcn', ...
-             'sprintf(''%i(%s)'',Range.val(1,8),datestr(val/24,''HH-MM-SS''))', ...
+             'sprintf(''(%s)'',datestr(val/24,''HH-MM-SS''))', ...
              'ShortFmt',1);
      else
          ta.param.Time=struct('LabFcn', ...
-             'sprintf(''%i(%s)'',Range.val(1,7),datestr(val,''dd-mm HH-MM-SS''))', ...
+             'sprintf(''(%s)'',datestr(val,''dd-mm HH-MM-SS''))', ...
              'ShortFmt',1);
          ta.param.FileName={'@Time'};
      end
+     ta.param.jTrain=struct('LabFcn','sprintf(''%i'',val)','ShortFmt',1);
      if any(strcmpi(ta.ColumnName,'TrainType'))
          ta.param.TrainType.ShortFmt=1;
-         ta.param.FileName={'@TrainType','@Time'};
+         ta.param.FileName={'@jTrain','@Time','@TrainType'};
      end
      if ~isa(Time,'curvemodel')
       Time.Range=ta; 
