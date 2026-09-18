@@ -504,6 +504,9 @@ elseif ~isempty(c2.Stack{['Pre' RC.name]})
  ta=Time.Source.Range;
  i3=ta(:,'jTrain');i4=find(sparse(i3,1,1)>1);
  M=[];mis={};
+ if isempty(i3)
+ end
+
  for j4=1:max(i3)
   if isempty(M)
    f1=sdtu.f.safe('@onedrive/*\SNCF_IR*\exchange\26_Es*\pas*\Passage_train.csv');
@@ -2680,6 +2683,14 @@ elseif comstr(Cam,'pcin');
      'fecom(cf,'';colorfacew-alpha0-edgealpha.1;view4;viewh+10;viewv-10;textdof'')';
      ]
     }
+   'd_rail.Jic.viewStdFig','standard 80% ratio ',{
+    '@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'}
+   }
+   'd_rail.Jic.viewVel','velocity',{
+    '@line',{'linestyle','none','marker','+'},'@title',{'interpreter','none'}, ...
+    '@axes',{'xgrid','on','ygrid','on'}, ...
+    '@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'}
+   }
    'd_rail.Jic.viewXa','x view close to JIC',{
      '@EndFcn','fecom(''viewn-x'');'};
    'd_rail.Jic.viewZa','Z view close to JIC',{
