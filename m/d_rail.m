@@ -472,6 +472,10 @@ if carg<=nargin
  li=RO.li(strcmpi(RO.li(:,1),regexprep(tag,{'_freq','\.mat'},{'',''})),:);
  if size(li,1)==1;li{1}=tag;end
 end
+
+c2=comgui('guiiiplot;',2); osM=sdtroot('paramOsM',c2);
+projM=sdth.urn('iiplot(2).nmap');
+
 for jpar=1:size(li,1)
  %% loop on files 
  if strcmpi(li{jpar,1},'name');continue;end
@@ -481,8 +485,16 @@ for jpar=1:size(li,1)
  if isempty(wd); wd=sdtu.f.safe(fullfile(RO.wda,RC.wdsrc));end
  FileName=fullfile(fileparts(wd),[RC.name '.mat']);
  flog=fullfile(wd,['./Read' RC.name '.txt']);
+
 f2=fullfile(RO.wda,[RC.name '.mat']); if exist(f2,'file');FileName=f2;end
-load(fullfile(RO.wda,'wires.mat'),'mt');
+if isKey(projM,'mt');mt=projM('mt');
+elseif evalin('base','exist(''mt'',''var'')')
+  mt=evalin('base','mt');projM('mt')=mt;
+else
+ load(fullfile(RO.wda,'wires.mat'),'mt');
+ projM('mt')=mt;
+ eval(iigui({'mt'},'SetInBaseC'))
+end
 if ~isfield(RC,'In');RC.In=RC.name;end
 if isfield(RC,'Out')&&~isempty(RC.Out)
  wire=sdth.urn(RC.Out,mt);if ~isempty(wire);wire.name=RC.Out; RC.Out=wire; end
@@ -490,18 +502,20 @@ end
 if ~isempty(RC.In)
  wire=sdth.urn(RC.In,mt); if ~isempty(wire);wire.name=RC.In; RC.In=wire; end
 end
-c2=comgui('guiiiplotreset;',2); osM=sdtroot('paramOsM',c2);
 
 if contains(Cam,'reset')&&isempty(wd)
     fprintf('Missing %s\n',sdtm.toString(RC));
 elseif ~isempty(c2.Stack{['Pre' RC.name]}) 
- %% Reuse PreName 
+ %% #LoadJIC.Reuse PreName 
  Time=c2.Stack{['Pre' RC.name]};
  [i2,i3]=ismember(Time.X{2}(:,1),RO.preLab2(:,1));
  Time.X{2}(i2,1)=RO.preLab(i3(i2),2);c2.Stack{['Pre' RC.name]}=Time;
 
  Time=feval(process_r('@SigEvt'),Time);
  ta=Time.Source.Range;
+ i3=find((ta(:,'istop')-ta(:,'istart'))*Time.X{1}(2)<5);
+ Time(:,:,i3)=[]; % Too short if below 5 s
+
  i3=ta(:,'jTrain');i4=find(sparse(i3,1,1)>1);
  M=[];mis={};
  if isempty(i3)
@@ -522,6 +536,31 @@ elseif ~isempty(c2.Stack{['Pre' RC.name]})
   if ~isempty(i5); mis{end+1}=i5;end
  end
  Time(:,:,vertcat(mis{:}))=[]; % remove repeated jTrains or above 3mn
+ f3='trainAvel'; 
+ if  ~isKey(projM,f3)
+   load(sdtu.f.safe('trainAvel.mat'),'Range');
+   ta.param=sdth.sfield('addselected',ta.param,Range.param,{'vel','vend','FileName'});
+   ta=Time.Source.Range;
+   i4=~ismember(Range.ColumnName,{'Time','WSet','istart','istop','toff','wd'});
+   if strncmpi(Time.Source.name,'trainA',6)
+    Time(:,:,~ismember(ta.table(:,1),Range.table(:,1)))=[]; % Keep selected
+    i3=~ismember(Range.table(:,1),ta.table(:,1));
+    Range.table(i3,:)=[];Range.param.vel.data(i3)=[];
+    ta.ColumnName=Range.ColumnName;
+    ta.table(:,i4)=Range.table(:,i4);
+   else % xxx RangeMerge
+    coef=24*360;i3=~(ismember(round(ta.table(:,1)*coef),round(Range.table(:,1)*coef)));
+    Time(:,:,i3)=[]; % remove those with different times
+    i3=~ismember(Range.table(:,1),ta.table(:,1));
+    Range.table(i3,:)=[];Range.param.vel.data(i3)=[];
+    [~,i3]=ismember(Range.table(:,1),ta.table(:,1));
+    ta.table(i3,i4)=Range.table(:,i4);ta.ColumnName(1,i4)=Range.ColumnName(1,i4);
+    r2=vhandle.nmap({'Ame 1 Y','W-4:y';'Micro 1','M0:p';'Micro 2','M24:p'});
+    Time.Source.X{2}(:,1)=cellfun(@(x)r2(x),Time.Source.X{2}(:,1),'uni',0);
+   end
+   %C3=load(sdtu.f.safe('@onedrive/*\SNCF_IR*\exchange\26_Es*\trainAvel.mat'));
+ end
+
  iicom(c2,'curveinit','Time',Time);
 
 
@@ -2227,9 +2266,10 @@ elseif comstr(Cam,'jic');
            cingui('plotwd',gf(j2),'@OsDic',{'ImToFigN','ImSw80','WrW49c','ImGrid'});
      end
  'xxx move to osM'
+
    otherwise 
     if strncmpi(RO.Other{j1},'subtime',7)
-     %% ViewJICSubTime : extract part of the train passage files
+     %% #ViewJICSubTime : extract part of the train passage files
      % d_rail('ViewJic{SubTime{nameTrainA,day,TrainTypexxx}}')
      [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{name%s,day%31,TrainType%s,ch%s,jTrain%ug}');
      st1=['Pre' RT.name]; 
@@ -2260,6 +2300,58 @@ elseif comstr(Cam,'jic');
     iicom(c2,'showd_rail.JicTimeA')
 
      eval(iigui({'Time','c2'},'SetInBaseC'))
+    elseif strncmpi(RO.Other{j1},'demod',6)        
+   %% #ViewJicDemod : estimate using demodulation  -3
+     [Time,ta,ev2,vel]=getShown(c2);
+     tw=vel.X{1}(vel.Y(:,2)~=0);vw=vel.Y(vel.Y(:,2)~=0,1);
+     C3=Time(:,:,ev2.jPar);C3.X{1}(:,2)=interp1(tw,vw,C3.X{1},'linear','extrap')*30;
+     C3.Xlab{1}(2,1:3)={'iFreq','Hz',[]};
+     projM=sdth.urn('iiplot(2).nmap.nmap');
+     projM('d_squeal.ViewHBV')='HBV{}'; % ,tclip 5 3,bandpass 800 1400
+     projM('HBV')=struct('projM',projM,'harm',1:5,'chRef',12:19,'jPar',ev2.jPar,'ci',2, ...
+         'do','{ReEstY}','f',C3.X{1}(:,2),'decimate',1,'dmBand',200,'ifBand',200,'aeBand',20, ...
+         'Yrem',1);
+     d_squeal('viewHbv')
+     C2=projM('ParShape');C2.name=sprintf('jTrain%i',ev2.jTrain);projM('ParShape')=C2;
+     d_squeal('viewPar{f(t,a),cuParShape}')
+     1;
+
+
+    elseif strncmpi(RO.Other{j1},'twheel',6)        
+   %% #ViewJicTWheel : wheel impulse response -3
+     [Time,ta,ev2,vel]=getShown(c2);
+     t=vel.X{1}(vel.Y(:,2)~=0);
+     C3=Time(:,:,jPar);tw=vel.X{1}(vel.Y(:,2)~=0,1);
+     C2=struct('X',{{(0:round(min(diff(t))/2/diff(Time.X{1}(1:2))))'*diff(Time.X{1}(1:2)), ...
+         C3.X{2},vel.Y(vel.Y(:,2)~=0,1)}}, ...
+         'Xlab',{{{'Time-T_{trig}','s',[]},'out','vWheel'}}, ...
+         'Y',[],'name',sprintf('jTrain%i',ev2.jTrain),'Ylab',2); 
+     for j2=1:size(C2.X{3},1)
+       it=find(C3.X{1}>tw(j2),1,'first')+(0:size(C2.X{1},1)-1)-100;
+       C2.Y(:,:,j2)=C3.Y(it,:);
+     end
+     stack_set(c2,'curve','TWheel',C2);
+     c14=sdth.urn('iiplot(2).clone(14)');iicom(c14,'iixonly','TWheel');
+     iicom(c14,'ch',{'vWheel','all'})
+  %   figure(1);h=plot(C2.X{1},C2.Y); axis tight
+      h=c14.ua.ob(1:end-1,1);cdm.lineSeq(h(1:2:end),struct('ColorGradient',[1 0 0;.5 0 0]))
+      cdm.lineSeq(h(2:2:end),struct('ColorGradient',[0 0 1;0 0 .5]))
+     cingui('plotwd',c14,'@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'});
+
+    elseif strncmpi(RO.Other{j1},'harm',4)        
+     %% #ViewJIC.Harm : d_rail('ViewJic{harm{hdof1:3,vcoef30}}')
+     [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{hdof%g,vcoef%ug}');
+     [Time,ta,ev2,vel]=getShown(c2);
+     if isempty(vel);fprint('No vel\n');return;end
+     it=vel.Y(:,2)~=0; 
+     figure(13);delete(findobj(13,'tag','vharm'))
+     t=vel.X{1}(it);
+     if all(t<min(get(get(13,'currentaxes'),'xlim')));
+         warning('No visible wheel') 
+     else
+     line(t,vel.Y(it)*RT.vcoef*RT.hdof(:)','Tag','vharm', ...
+         'linestyle','none','marker','+','Color','k');
+     end
     end
    end
   end
@@ -2660,9 +2752,17 @@ elseif comstr(Cam,'pcin');
      '@EndFcn','ii_mmif(''spectro{fmin10 2k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inNameTime -NewNameSpec'')', ...
      '@Link','{"iiplot(13).ax(1,4)",{ch},"ob2iiplot(2).ax(1,4)"}', ...
      '@Link','{"iiplot(2).ax(1,4)",{ch},"ob2iiplot(13).ax(1,4)"}' ...
+     '@ua.Edit',struct('Interp','none'), ...
+    }
+   'd_rail.JicSpecB','initialize spectrogram',{ ...
+     '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
+     '@EndFcn','ii_mmif(''spectro{fmin200 4.8k,BufTime.1, overlap.9, tmin 0 100,windowhanning} -display13 -inNameTime -NewNameSpec'')', ...
+     '@Link','{"iiplot(13).ax(1,4)",{ch},"ob2iiplot(2).ax(1,4)"}', ...
+     '@Link','{"iiplot(2).ax(1,4)",{ch},"ob2iiplot(13).ax(1,4)"}' ...
+     '@ua.Edit',struct('Interp','none'), ...
     }
    'd_rail.JicTimeA','initialize Channel',{ ...
-     '@ii_legend',{'interpreter','none'}, ...
+     '@ua.Edit',struct('Interp','none'), ...
      '@PlotWd',{'@OsDic',{'ImToFigN','ImSw80','WrW49c'}}, ...
      '@EndFcn','iicom(iiplot(2),''InitChannel'')'
     }
@@ -2888,4 +2988,19 @@ F=[200;1087];
 h=line(F,min(ga.YLim)*ones(size(F)),'marker','+', ...
     'linestyle','none','color','b','parent',ga,'tag','now');
 
+end
+
+function     [Time,ta,ev2,vel]=getShown(c2);
+ %% #getShown 
+     Time=c2.Stack{'Time'}; ta=Time.Source.Range;
+     uo=get(c2.ua.ob(1),'userdata');  jPar=uo.Sub.yRef(2).subs{3}; 
+     ev2=getEvt(ta,jPar);
+     st1=sprintf('^%i_',ev2.jTrain);     r1=ta.param.vel.data; 
+     %if length(r1)~=size(ta,1)
+      for j3=1:length(r1)
+        if isfield(r1{j3},'name')&&sdtm.regContains(r1{j3}.name,st1)
+          vel=r1{j3};break;
+        end
+      end
+     ev2.jPar=find(ta(:,'jTrain')==ev2.jTrain);
 end
