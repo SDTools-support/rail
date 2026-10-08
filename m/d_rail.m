@@ -3044,9 +3044,12 @@ XF=cf.Stack{ua.sList{1}};
 delete(findobj(ga,'tag','now'));
 h=line(min(ga.XLim)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
     'linestyle','none','color','r','parent',ga,'tag','now');
-F=[200;1087];
-h=line(F,min(ga.YLim)*ones(size(F)),'marker','+', ...
-    'linestyle','none','color','b','parent',ga,'tag','now');
+
+if contains(lower(XF.name),'mod')
+ % ABCD for model
+ F=[130;260;800;1087];
+ h=xline(F,'linestyle','--','color','k','LineWidth',2,'parent',ga,'tag','pikes');
+end
 
 if 1==2
  c13.ua.YFcn=@(Y)log10(abs(Y));
@@ -3065,7 +3068,6 @@ if 1==2
  set(c13.ua.ob(1),'ZData',Y','CData',Y')
  a=([-40 0]);zlim(a);clim(a);
 
- 
 
 end
 end
