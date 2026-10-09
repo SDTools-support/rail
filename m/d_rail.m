@@ -434,12 +434,13 @@ RO.li={'Name','ToolTip','meta'
   'S1a','coarse 12 point sleeper S+1', ...
     struct('wd','27_05/*T1*','In','s1a','Out','HamAcc','rep',10*ones(1,12))
  'S2a','coarse 12 point sleeper S+2', ... 
-  struct('wd','27_05/*_T2*','In','s2a','Out','HamAcc','rep',10*ones(1,12))
+  struct('wd','27_05/*_T2*','In','s2a','Out','HamAcc','rep',6*ones(1,12))
  'S1b','sleeper S+1', ...
   struct('wd','28_05/*_S1','In','s1b','Out','HamAcc', ...
   'rep',[6*ones(1,9) 5 6*ones(1,6) 5 6 6 6])
  'S2b','sleeper S+2', ...
-  struct('wd','28_05/*_S2','In','s2b','Out','HamAcc','rep',6*ones(1,2*18)) % xxxgae one or 2 missing strike
+  struct('wd','28_05/*_S2','In','s2b','Out','HamAcc','rep', ...
+   [6*ones(1,17) 5 6 6 6 6 6 6 6 6 6 6 7 6 6 6 6 6 6 6]) % xxxgae one or 2 missing strike
  'S32b','sleeper S+32', ...
   struct('wd','28_05/*_S32','In','s32b','Out','HamAcc','rep',6*ones(1,2*10)) % xxxgae one missing strike
  'Attaches','line of attaches', ...
@@ -548,15 +549,19 @@ elseif ~isempty(c2.Stack{['Pre' RC.name]})
     Range.table(i3,:)=[];Range.param.vel.data(i3)=[];
     ta.ColumnName=Range.ColumnName;
     ta.table(:,i4)=Range.table(:,i4);
-   else % xxx RangeMerge
+    elseif any(strcmpi(Time.Source.name,{'s2a','s2b','s1a','s1b','s32b'}))
+        return;
+    else % xxx RangeMerge
     coef=24*360;i3=~(ismember(round(ta.table(:,1)*coef),round(Range.table(:,1)*coef)));
     Time(:,:,i3)=[]; % remove those with different times
     i3=~ismember(Range.table(:,1),ta.table(:,1));
     Range.table(i3,:)=[];Range.param.vel.data(i3)=[];
     [~,i3]=ismember(Range.table(:,1),ta.table(:,1));
     ta.table(i3,i4)=Range.table(:,i4);ta.ColumnName(1,i4)=Range.ColumnName(1,i4);
-    r2=vhandle.nmap({'Ame 1 Y','W-4:y';'Micro 1','M0:p';'Micro 2','M24:p'});
-    Time.Source.X{2}(:,1)=cellfun(@(x)r2(x),Time.Source.X{2}(:,1),'uni',0);
+    if size(Time.Source.X{2},1)==3
+        r2=vhandle.nmap({'Ame 1 Y','W-4:y';'Micro 1','M0:p';'Micro 2','M24:p'});
+        Time.Source.X{2}(:,1)=cellfun(@(x)r2(x),Time.Source.X{2}(:,1),'uni',0);
+    end
    end
    %C3=load(sdtu.f.safe('@onedrive/*\SNCF_IR*\exchange\26_Es*\trainAvel.mat'));
  end
@@ -584,7 +589,14 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
   X=r1.(st2{j2}).X{2}(:,1);if any(strncmpi(X,'Piste',5));RO.preLab=RO.preLab2;end
   [i1,i2]=ismember(lower(X),lower(RO.preLab(:,1)));
   if all(i2);r1.(st2{j2}).X{2}(:,1)=RO.preLab(i2,2);end % safe tlab
-  X=regexprep(X,{'P([\d]*)a','P([\d]*)p','S([\d]*)'},{'W+$1','F+$1','S+$1'});
+  if any(strcmpi(X,'marteau'))
+    st3={'W+1:y' 'Ame 1 Y';'W+1:z' 'Ame 1 Z';'W+2:y' 'Ame 2 Y';'W+2:z' 'Ame 2 Z';'F+2:y' 'Patin 1 Y';'F+2:z' 'Patin 1 Z';'W+32:y' 'Ame 3 Y';'W+32:z' 'Ame 3 Z';'F+32:y' 'Patin 2 Y';'F+32:z' 'Patin 2 Z';
+          'S+0i:z' 'Traverse 1 Z';'S+1i:z' 'Traverse 2 Z';'S+1c:z' 'Traverse 3 Z';'S+1e:z' 'Traverse 4 Z';'S+2i:z' 'Traverse 5 Z';'S+2c:z' 'Traverse 6 Z';'S+2e:z' 'Traverse 7 Z';'S+3i:z' 'Traverse 8 Z';
+          'hammer','Marteau'};
+    [i1,i2]=ismember(X,st3(:,2));X=st3(i2);
+  else;
+   X=regexprep(X,{'P([\d]*)a','P([\d]*)p','S([\d]*)'},{'W+$1','F+$1','S+$1'});
+  end
   r1.(st2{j2}).X{2}(:,1)=X;
   r1.(st2{j2}).X{2}(:,2)=regexprep(r1.(st2{j2}).X{2}(:,2),'m/s$','m/s2');
  end
@@ -652,8 +664,9 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
       %% #checkImpacts using .rep field -2
       if ~isfield(RC,'rep');error('Need rep field');end
        eval(iigui({'Time','RC'},'SetInBaseC')) 
-       repBlock=t_gae24('@repBlock');Time=repBlock(Time,RC);
-       t_gae24('expCoh',Time,RC);
+       if ~isa(Time,'curvemodel');Time=feval(process_r('@SigEvt'),Time);end
+       repBlock=gae24('@repBlock');Time=repBlock(Time,RC);
+       gae24('expCoh',Time,RC); % _freq.mat generation
  end
 
  end
@@ -706,7 +719,6 @@ else
  %for j2=1:size(Time.info,1);Time.info{j2,3}=datestr(Time.info{j2,3},'HH:MM:SS'); end
 
  eval(iigui({'Time','RC'},'SetInBaseC'))
- %repBlock=t_gae24('@repBlock'); Time=repBlock(Time,.9);
  sdtm.store(['../' RC.name '.mat'],'Time')
  diary('off');sdtu.logger.link('open',flog)
 end
