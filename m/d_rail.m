@@ -430,9 +430,11 @@ elseif comstr(Cam,'load');[CAM,Cam]=comstr(CAM,5);
 if comstr(Cam,'jic')
  %% #LoadJIC : isolating joint experiment
 
+S1a=10*ones(1,12); S1a(2)=15; % 125 strikes
+
 RO.li={'Name','ToolTip','meta'
   'S1a','coarse 12 point sleeper S+1', ...
-    struct('wd','27_05/*T1*','In','s1a','Out','HamAcc','rep',10*ones(1,12))
+    struct('wd','27_05/*T1*','In','s1a','Out','HamAcc','rep',S1a)
  'S2a','coarse 12 point sleeper S+2', ... 
   struct('wd','27_05/*_T2*','In','s2a','Out','HamAcc','rep',6*ones(1,12))
  'S1b','sleeper S+1', ...
