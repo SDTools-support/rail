@@ -1140,9 +1140,9 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   case 'padcontact'
   %% #MeshSliceCheck.PadContact : pad/rail pad/block connections -3
    ms=fe_caseg('ConnectionSurface -matchS 123 -maxdist .1;',ms,'pad/block',...
-       'inelt{matid 101 & selface & facing>.5 0 0 -1e5}','matid 201:299');
+       'inelt{matid 101 & selface & facing>.5 0 0 -1e5}','matid 201:299 & selface & facing >.5 0 0 1e5');
    ms=fe_caseg('ConnectionSurface -matchS 123 -maxdist .1;',ms,'pad/rail',...
-       'inelt{matid 101 & selface & facing>.5 0 0 1e5}','matid 301:397');
+       'inelt{matid 101 & selface & facing>.5 0 0 1e5}','matid 301:397 & selface & facing >.5 0 0 -1e5');
 
   case 'k_ballast'
   %% #MeshSliceCheck.k_ballast : adjust undersleeper ballast stiffness -3
@@ -1275,7 +1275,8 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    if ~isfield(mt,'nmap');mt.nmap=ms.nmap;end
 
    mt=fesuper(st1,mt,ms,RA); % add with translations and node range shifting
-   mt=feutil('setpro',mt,[1000+j1-1 fe_mat('p_super','SI',1) 1. 1. 1.]);
+   i3=3;if isfield(ms,'K');i3=max(3,length(ms.K));end
+   mt=feutil('setpro',mt,[1000+j1-1 fe_mat('p_super','SI',1) ones(1,i3)]);
 
    r1=mt.bas(sdtu.fe.NNode(mt.bas(:,1),RA.bas(1)-1+(1:i4)'),[4 1 1]);
    r1(1:end-1,2)=fesuper(['s_' RB.sname]); 
@@ -1296,8 +1297,8 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    RB.bas=max(mt.bas(:,1))+1; % Leave space for an interface slice
   end % j1 for multi-slice 
 
-  preSel=sdtu.ivec.uniqueC(projM('RailSel'),'rows','stable');
-  sel=fesuper('SeBuildSel',mt,preSel);
+  preSel=sdtu.ivec.uniqueC(projM('RailSel'),'rows','stable'); % rail beams
+  sel=fesuper('SeBuildSel',mt,preSel); 
   sel.mdl=feutil('joinall',sel.mdl);
   mt.Node=sel.mdl.Node;mt.Elt=feutil('addelt',sel.mdl.Elt,mt.Elt);
   mt=feutil('setpro',mt,'d_rail(nmap.ProDb.prrLine)');

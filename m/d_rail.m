@@ -236,7 +236,7 @@ if 1==2 % rail view
    sections('UIC60_U91ra')=mo1;
   sdtm.store(f1{1},'sections')
 end
-
+% define joint xxx actually 6 sleeper need adapt
 RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
     {struct('half',0,'RailX',-900:50:900, ...
     'SlX',[-.6 -.145 .145 .6],'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
@@ -244,6 +244,7 @@ RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);projM=RT.nmap; %
+% define standard sleeper
 RM2=cingui('paramedit -DoClean2','prero.railu.MeshSlice',{struct('half',0,'RailX',-300:50:300, ...
     'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
@@ -253,10 +254,11 @@ railu.MeshSlice(RT);s1=RT.nmap('s1');%
 
 %% step RedShort : reduce a short track with both section types
 
+
 f1=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_U91.mat');
 if exist(f1,'file')
  load(f1,'mt');%cf=feplot(2,';');fecom('load',f1)
-else
+else % This reduction phase is long 
  if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
  % preMeshTrack
  RM3=struct('cf',2,'cfos',{{'@fecom', ...
@@ -278,7 +280,10 @@ else
 
 end
 
-%PA=dyn_ui('paramvh');  PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
+if 1==2 % Display modes of superelements
+  PA=dyn_ui('paramvh'); PA.mt=mt;PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
+  dyn_solve('eigSEs1 -cf21'); dyn_solve('eigSEjoint -cf20')
+end
 PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
 
 %% step preTest : assemble pretest configuration
@@ -288,7 +293,7 @@ RM4=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
 RM4.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:45,'s1'};RM4.slNum0=6;
-li=t_gae24('ExpSensor');  RM4.preSens=li(:,[2 1]);
+li=gae24('ExpSensor');  RM4.preSens=li(:,[2 1]); % Define sensors 
 RM4.Do={'GenTrack','reduce','presens',sprintf('store{"%s"}',f1)};
 DoOpt=sdtm.pcin('prero.railu.MeshTrack');
 RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
@@ -296,14 +301,18 @@ mt=railu.MeshTrack(RT);
 % disp(cbM)
 % load(f1)
 
+%% step freqResp : solve frequency response and analyze
+
 PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
 projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', ...
-    'Out','HamAcc','In','vz52','cf',2,'name','Fz>Az{f,pos,io}','time',{{'a'}});
+    'Out','HamAcc','In','vz52','cf',2,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
+    'Loss',2);
 PA.mt=mt; dyn_solve('eig')
-figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0])
-grid on
+
+
+figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
-viewDef(ci.ga,struct('CurrentPoint',[300 0 0])); 
+ci=iiplot; viewDef(ci.ga,struct('CurrentPoint',[300 0 0])); % nearest mode
 
 
 eval(cbM('viewNodeLineR'))
