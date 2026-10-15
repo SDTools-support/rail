@@ -236,15 +236,16 @@ if 1==2 % rail view
    sections('UIC60_U91ra')=mo1;
   sdtm.store(f1{1},'sections')
 end
-% define joint xxx actually 6 sleeper need adapt
+%% define joint (actually 6 sleepers)
 RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
-    {struct('half',0,'RailX',-900:50:900, ...
-    'SlX',[-.6 -.145 .145 .6],'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
+    {struct('half',0,'RailX',-1500:50:1500, ...
+    'SlX',[-1207.5 -637.5 -155 155 637.5 1207.5]/1000, ... % cumsum([155 482.5 570])
+    'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
     'PadType','SN','store','joint', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',2,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);projM=RT.nmap; %
-% define standard sleeper
+%% define standard sleeper
 RM2=cingui('paramedit -DoClean2','prero.railu.MeshSlice',{struct('half',0,'RailX',-300:50:300, ...
     'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
     'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
@@ -254,11 +255,11 @@ railu.MeshSlice(RT);s1=RT.nmap('s1');%
 
 %% step RedShort : reduce a short track with both section types
 
-
 f1=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_U91.mat');
 if exist(f1,'file')
  load(f1,'mt');%cf=feplot(2,';');fecom('load',f1)
-else % This reduction phase is long 
+elseif 1==1
+ %% This reduction phase is long 
  if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
  % preMeshTrack
  RM3=struct('cf',2,'cfos',{{'@fecom', ...
@@ -266,15 +267,54 @@ else % This reduction phase is long
  RM3.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:10,'s1'};
  RM3.slNum0=6;% Position the sleeper origin
+
  RM3.Do={'GenTrack','presens','reduce'};
  DoOpt=sdtm.pcin('prero.railu.MeshTrack');
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
  % preRed
  RR=struct('preRed',{{'SE','Red' 
-    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2})')
-    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 10 1e-6,peig 5})', ...
+    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig5 50})')
+    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 10 -1e6,peig 5})', ...
       'Tl','s1.Tr','Tr','s1.Tl') 
     }},'store',f1);
+ RT.nmap('dyn_solve.reduce')=RR;
+ mt=railu.MeshTrack(RT);cf=feplot(2,';'); % GenTrack,PreSens,Reduce
+
+ % DebugRedP2=1
+ % sdtweb fe_homo order_terms_with_kept_energy 
+%{
+
+Fastening_IG90220.pdf
+
+Nabla approximation de la raideur latérale 
+% cisaillement 
+S=1e-2*8e-2;h=4e-3;G=2e6/2/1.3;G*S/h
+
+% approximation vis (très raide)
+A=1e-2^2*pi;G=210e9/2/1.3;L=3e-3; 5/6*G*A/L
+
+% Stage Hassan 
+
+% Cisaillement semelle
+S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
+
+%}
+
+elseif 1==2
+ %% #tuojic.Redshorts1 Only (does not yet work) -2
+ f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_S1.mat');
+ if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
+ % preMeshTrack
+ RM3=struct('cf',2,'cfos',{{'@fecom', ...
+     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
+ RM3.preTrack={'slNum','SE',1:20,'s1';};RM3.slNum0=6;% skip joint
+ RM3.Do={'GenTrack','presens','reduce'};
+ DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+ RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
+ % preRed
+ RR=struct('preRed',{{'SE','Red' 
+     's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2})')
+     }},'store',f2);
  RT.nmap('dyn_solve.reduce')=RR;
  mt=railu.MeshTrack(RT);cf=feplot(2,';'); % GenTrack,PreSens,Reduce
 
@@ -288,25 +328,31 @@ PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
 
 %% step preTest : assemble pretest configuration
 
-if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
-RM4=struct('cf',2,'cfos',{{'@fecom', ...
+f3=sdtu.f.safe('@tempdir/TutoJIC/MtRedPre_UIC60_U91.mat');
+if exist(f3,'file')
+    load(f3,mt)
+else
+ if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
+ RM4=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
-RM4.preTrack={'slNum','SE'
+ RM4.preTrack={'slNum','SE'
     1:5,'s1';6,'joint';7:45,'s1'};RM4.slNum0=6;
-li=gae24('ExpSensor');  RM4.preSens=li(:,[2 1]); % Define sensors 
-RM4.Do={'GenTrack','reduce','presens',sprintf('store{"%s"}',f1)};
-DoOpt=sdtm.pcin('prero.railu.MeshTrack');
-RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
-mt=railu.MeshTrack(RT);
+ li=gae24('ExpSensor');  RM4.preSens=li(:,[2 1]); % Define sensors 
+ RM4.Do={'GenTrack','reduce','presens',sprintf('store{"%s"}',f3)};
+ DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+ RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
+ mt=railu.MeshTrack(RT);
+end
 % disp(cbM)
 % load(f1)
 
 %% step freqResp : solve frequency response and analyze
 
-PA=dyn_ui('paramvh');projM=PA.nmap;osM=dyn_ui('paramosM');
-projM('dyn_solve.eig')=struct('EigOpt',[5 400 -1e4],'freq','@ll{50,3000,1000}', ...
+% d_rail('TutoJIC-s{init,PreTest};')
+PA=dyn_ui('paramvh');projM=PA.nmap;%osM=dyn_ui('paramosM');
+projM('dyn_solve.eig')=struct('EigOpt',[5 800 -1e4],'freq','@ll{50,3000,1000}', ...
     'Out','HamAcc','In','vz52','cf',2,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
-    'Loss',2);
+    'Loss',2,'ci',3);
 PA.mt=mt; dyn_solve('eig')
 
 
@@ -2308,7 +2354,7 @@ elseif comstr(Cam,'jic');
    COH.X{1}(iw)=[];COH.Y(iw,:,:)=[]; c2.Stack{'COH'}=COH;
    ci.Stack{'Test'}=Test;
     elseif strncmpi(RO.Other{j1},'subtime',7)
-     %% #ViewJICSubTime : extract part of the train passage files
+     %% #ViewJICSubTime : extract part of the train passage files -3
      % d_rail('ViewJic{SubTime{nameTrainA,day,TrainTypexxx}}')
      [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{name%s,day%31,TrainType%s,ch%s,jTrain%ug}');
      st1=['Pre' RT.name]; 
@@ -2389,7 +2435,7 @@ elseif comstr(Cam,'jic');
       cdm.lineSeq(h(2:2:end),struct('ColorGradient',[0 0 1;0 0 .5]))
      cingui('plotwd',c14,'@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'});
     elseif strncmpi(RO.Other{j1},'pspec',4)        
-     %% #ViewJIC.pspec : position spectrum xxx
+     %% #ViewJIC.pspec : position spectrum xxx -3
      [Time,ta,ev2,vel]=getShown(c2);jPar=ev2.jPar;
      t=vel.X{1}(vel.Y(:,2)~=0); it=vel.Y(:,2)~=0; v=vel.Y(it,1);
      C3=Time(:,:,jPar);tw=vel.X{1}(vel.Y(:,2)~=0,1);
@@ -2404,7 +2450,7 @@ elseif comstr(Cam,'jic');
      
 
     elseif strncmpi(RO.Other{j1},'harm',4)        
-     %% #ViewJIC.Harm : d_rail('ViewJic{harm{hdof1:3,vcoef30}}')
+     %% #ViewJIC.Harm : d_rail('ViewJic{harm{hdof1:3,vcoef30}}') -3
      [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{hdof%g,vcoef%ug}');
      [Time,ta,ev2,vel]=getShown(c2);
      if isempty(vel);fprint('No vel\n');return;end
@@ -2651,6 +2697,7 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Glue',[320 fe_mat('m_elastic','SI',1)  2e9 .45 1500  0 .01] % isolation glue
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
+    'PadOld',[9 fe_mat('m_elastic','SI',1)  100e6 .49 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
     'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
     'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
       1000  0 0 0 0 .05]

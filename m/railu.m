@@ -1108,7 +1108,7 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   %% #MeshSliceCheck : loop on slice checks -2
 
   if nargin<2||~isfield(RC,'Do');
-    RC.Do={'EltId','plrange','railtop'}
+    RC.Do={'EltId','plrange','railtop'};
   end
   for j0=1:length(RC.Do)
   switch lower(RC.Do{j0})
@@ -1154,6 +1154,14 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    il(15)=.1; % default loss
    ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
    ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
+
+  n2=ms.Node;
+   a=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)>0,:),6);
+   b=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)<0,:),6);
+  ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
+  'FlatSleeper'
+
+
 
    %elt(:,3)=-123;  elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
   case 'railtop'
@@ -1562,6 +1570,7 @@ function RM=MeshSleeper(name,evt);
  mo2.unit='SI'; mo2.meta=struct('mass',235,'zOff',-.3512); 
  mo2=railu.MeshSleeper('setpro',mo2);
  
+
  elseif strncmpi(name,'m450pi',4)
  %  #MeshSleeper.M450pi    sdtu.f.open('@onedrive/*/sncf*/e*/21*/doc/Sleeper_IN00213.pdf#page=116') -3
  RO=struct;
@@ -1647,7 +1656,7 @@ function RM=MeshSleeper(name,evt);
        m_rail.Elt=feutil('setsel matid 398 proid 398',m_rail,'matid399');
        evt.prePl(j1+1,1:3)={['railC' st1(end)],398,m_rail.pl};
    end
-   mo2=feutil('addtest-noori;',mo2,m_rail);
+   mo2=feutil('addtest-noori -keepTest;',mo2,m_rail);
    rot=rot*diag([1 -1 -1]);
    bas=[400-j1 1 0    r3  rot(:)']; % left or right basis 
    nameM(sprintf('bas:%i',bas(1)))=st1;
