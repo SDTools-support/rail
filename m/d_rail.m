@@ -2772,6 +2772,10 @@ li={'prrLine',[399 fe_mat('p_beam','SI',1) 2e-12 1e-4 1e-4 1e-6];% small place h
     'M450beam',[301 fe_mat('p_beam','SI',1) 3.5506e-05 3.0383e-5 5.123e-6 0.00767];
     'SleeperA',p_beam('dbval 201 rect .26 .22'); % rect base height 
 
+    'Mod3Ballast',[401 fe_mat('p_spring','SI',1) 50e6 0 0 0.2 0];
+    'Mod3Sleeper',p_beam('dbval 201 rect .26 .22'); % rect base height 
+    'Mod3Pad', [501 fe_mat('p_spring','SI',1) 250e6 0 0 0.1 0];
+    'Mod3Rail',[301 fe_mat('p_beam','SI',1) 1e-5 1.8e-5 3.05e-5 60/8000];
     };  
 
 r2=vhandle.nmap(li,'Map:ProDb');
@@ -3128,9 +3132,66 @@ delete(findobj(ga,'tag','now'));
 h=line(min(ga.XLim)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
     'linestyle','none','color','r','parent',ga,'tag','now');
 
-if contains(lower(XF.name),'mod')
+c13=iiplot(13,';'); i1=find(contains(c13.Stack(:,2),'SF'));
+C1=c13.Stack{i1,3};
+% find sensor position
+'xxxgae to be adapted'
+if contains(C1.name,'vzHf')
+ PosAcc=([4.4000 4.4000 4.8000 4.8000 22.8000 22.8000 4.8000 4.8000 22.8000 ...
+  22.8000 4.0400 4.5000 4.5000 4.4500 5.1000 5.1000 5.0500 5.7000]-3.9)/0.6;
+elseif contains(lower(C1.name),'vzlf')|contains(lower(C1.name),'vyhf')
+ PosAcc=([4.4000 4.4000 4.8000 4.8000 4.8000 4.8000 22.8000 22.8000 22.8000 ...
+  22.8000 4.0400 4.5000 4.5000 4.4500 5.1000 5.1000 5.0500 5.7000]-3.9)/0.6;
+elseif contains(lower(C1.name),'mod3')
+ PosAcc=[0.3 0.9 1.2 1.5]/0.6;
+else
+ PosAcc=[];
+end
+
+if ~isempty(PosAcc)
+ h = findobj(gca,'Type','ConstantLine');
+ if ~isempty(h)
+  i2=find(contains({h.InterceptAxis},'y'));
+  h(i2).Value = PosAcc(c13.ua.ch);
+ else
+  yline(PosAcc(c13.ua.ch),'b--','LineWidth',1.5);
+ end
+end
+if isstr(C1.X{3})
+ % reverse plot for S+32 sensors
+ if contains(C1.X{3}(c13.ua.ch,1),'32')
+  set(gca,'YDir','reverse')
+ end
+end
+
+% % Phase normalization Phi(y(xs))=0
+%  C3=c13.Stack{i1,3}; i2=sdtm.indNearest(C3.X{2},PosAcc(c13.ua.ch)*0.6);
+%  C3.Y(:,:,c13.ua.ch)=C3.Y(:,:,c13.ua.ch)./exp(1i*angle(C3.Y(:,i2,c13.ua.ch)));
+%  c13.Stack{i1,3}=C3;
+%  drawnow;
+
+ % figure(22); plot(angle(squeeze(C3.Y(:,i2,c13.ua.ch)))); hold on;
+ % plot(squeeze(phi));
+% else
+%   h = findobj(gca,'Type','ConstantLine');
+%  if ~isempty(h)
+%   delete(h(1));
+%  end
+% end
+
+% C3=c13.Stack{i1,3};
+% [ymax, idx] = max(abs(squeeze(C3.Y(:,:,c13.ua.ch))),[], 'all');
+% [~,j]=ind2sub(size(squeeze(C3.Y(:,:,1))),idx);
+% h = findobj(gca,'Type','ConstantLine');
+% if ~isempty(h)
+%  h(1).Value = C3.X{2}(j);
+% else
+%  yline(C3.X{2}(j),'b--','LineWidth',1.5);
+% end
+
+if contains(lower(XF.name),'mod')&c13.ua.ch==1
  % ABCD for model
- F=[130;260;800;1087];
+ F=[130;260;445;1087];
  h=xline(F,'linestyle','--','color','k','LineWidth',2,'parent',ga,'tag','pikes');
 end
 
