@@ -332,6 +332,7 @@ f3=sdtu.f.safe('@tempdir/TutoJIC/MtRedPre_UIC60_U91.mat');
 if exist(f3,'file')
     load(f3,mt)
 else
+ %  d_rail('TutoJIC-s{init,MeshSlice,RedShort,PreTest};');
  if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
  RM4=struct('cf',2,'cfos',{{'@fecom', ...
     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
@@ -342,6 +343,15 @@ else
  DoOpt=sdtm.pcin('prero.railu.MeshTrack');
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
  mt=railu.MeshTrack(RT);
+
+ for j1=1:size(mt.Stack,1)
+  if ~strcmpi(mt.Stack{j1,1},'se');continue;end
+  SE=mt.Stack{j1,3};SE=stack_rm(SE,'info','p2sets');SE=stack_rm(SE,'curve','Learn');
+  SE.TR.def=sparse(SE.TR.def);
+  mt.Stack{j1,3}=SE;
+ end
+ sdthdf('Pointerlistsortm [-Mb]',mt);
+ sdtm.store(f3,'mt>mt')
 end
 % disp(cbM)
 % load(f1)
@@ -355,6 +365,9 @@ projM('dyn_solve.eig')=struct('EigOpt',[5 800 -1e4],'freq','@ll{50,3000,1000}', 
     'Loss',2,'ci',3);
 PA.mt=mt; dyn_solve('eig')
 
+
+ci=iiplot(3,';');i1=strncmpi(ci.Stack(:,2),'Fz>',3);ci.Stack{i1,2}='Test';
+gae24('expsf{modulus}')
 
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');

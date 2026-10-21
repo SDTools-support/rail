@@ -1158,9 +1158,11 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   n2=ms.Node;
    a=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)>0,:),6);
    b=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)<0,:),6);
-  ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
-  'FlatSleeper'
-
+  if size(a,1)<100
+   ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
+  else
+   'FlatSleeper'
+  end
 
 
    %elt(:,3)=-123;  elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
