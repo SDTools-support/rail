@@ -2354,7 +2354,7 @@ elseif comstr(Cam,'jic');
     if strncmpi(RO.Other{j1},'recep',5)
    %% #ViewJicRecep : transform to receptance, place nodes -3
      [~,RT]=sdtm.urnPar(RO.Other{j1},'{}{fmin%ug,accRatio%ug}');
-   Test=c2.Stack{'Test'};
+   Test=c2.Stack{'Test'};Test.Xlab{1}='Frequency [Hz]';
    Test=fe_def('subdef',Test,Test.X{1}(:,1)>RT.fmin);
    if isfield(RT,'accRatio')
     r1=RT.accRatio*max(abs(Test.Y(:)));
@@ -3129,6 +3129,7 @@ gf=get(ga,'parent');cf=get(gf,'userdata');
 ua=get(ga,'userdata');
 XF=cf.Stack{ua.sList{1}};
 delete(findobj(ga,'tag','now'));
+
 h=line(min(ga.XLim)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
     'linestyle','none','color','r','parent',ga,'tag','now');
 
@@ -3148,6 +3149,10 @@ else
  PosAcc=[];
 end
 
+  % c13.ID={struct('marker','horizontal','po',[PosAcc(c13.ua.ch)],...
+  % 'LineProp',{{'LineStyle','--','color','b'}})};
+  % iicom('curveinit','Temp',c13);
+
 if ~isempty(PosAcc)
  h = findobj(gca,'Type','ConstantLine');
  if ~isempty(h)
@@ -3157,7 +3162,7 @@ if ~isempty(PosAcc)
   yline(PosAcc(c13.ua.ch),'b--','LineWidth',1.5);
  end
 end
-if isstr(C1.X{3})
+if isstr(C1.X{3}{1,1})
  % reverse plot for S+32 sensors
  if contains(C1.X{3}(c13.ua.ch,1),'32')
   set(gca,'YDir','reverse')
