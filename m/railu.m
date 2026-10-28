@@ -434,7 +434,9 @@ if ~isempty(name);
     [name,RB]=sdtm.urnPar(name,DoOpt);
   end
   sdtu.logger.doing(dbstack,name);
-  sectionM=[];if isKey(nmap,'Map:Sections');sectionM=nmap('Map:Sections');end
+  sectionM=[];
+  if ~isKey(nmap,'Map:Sections');append(nmap,railu.getNmap);end
+  sectionM=nmap('Map:Sections');
   if isempty(sectionM)
      sectionM
      who
@@ -1155,11 +1157,17 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
    ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
 
-  n2=ms.Node;
-   a=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)>0,:),6);
-   b=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)<0,:),6);
-  ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
-  'FlatSleeper'
+  
+   if 1==2 % equal z
+    n2=ms.Node;
+    a=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)>0,:),6);
+    b=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)<0,:),6);
+    ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
+   else % Middle does not move horizontally
+    n2=feutil('getnodematid201:299',ms);n2(~ismember(round(n2(:,5)*1000),round(ms.meta.SlX*1000)),:)=[];
+    ms=fe_case(ms,'FixDof','SleeperVert',n2(:,1)+.01);
+   end
+
 
 
 
