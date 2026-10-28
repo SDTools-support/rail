@@ -1156,7 +1156,6 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    il(15)=.1; % default loss
    ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
    ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
-
   
    if 1==2 % equal z
     n2=ms.Node;
@@ -1167,9 +1166,6 @@ function   ms=MeshSliceCheck(ms,RC,RO)
     n2=feutil('getnodematid201:299',ms);n2(~ismember(round(n2(:,5)*1000),round(ms.meta.SlX*1000)),:)=[];
     ms=fe_case(ms,'FixDof','SleeperVert',n2(:,1)+.01);
    end
-
-
-
 
    %elt(:,3)=-123;  elt(:,7)=RC.k_ballast/size(n2,1)*length(ms.meta.SlX);
   case 'railtop'
