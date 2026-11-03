@@ -3149,55 +3149,29 @@ else
  PosAcc=[];
 end
 
-  % c13.ID={struct('marker','horizontal','po',[PosAcc(c13.ua.ch)],...
-  % 'LineProp',{{'LineStyle','--','color','b'}})};
-  % iicom('curveinit','Temp',c13);
-
 if ~isempty(PosAcc)
  h = findobj(gca,'Type','ConstantLine');
  if ~isempty(h)
   i2=find(contains({h.InterceptAxis},'y'));
   h(i2).Value = PosAcc(c13.ua.ch);
  else
-  yline(PosAcc(c13.ua.ch),'b--','LineWidth',1.5);
+  yline(PosAcc(c13.ua.ch),'k--','LineWidth',1.5);
  end
 end
-if isstr(C1.X{3}{1,1})
- % reverse plot for S+32 sensors
- if contains(C1.X{3}(c13.ua.ch,1),'32')
-  set(gca,'YDir','reverse')
- end
+ 
+% reverse plot for S+32 sensors
+if isstr(C1.X{3}{1,1})&contains(C1.X{3}(c13.ua.ch,1),'32')
+ set(gca,'YDir','reverse')
 end
-
-% % Phase normalization Phi(y(xs))=0
-%  C3=c13.Stack{i1,3}; i2=sdtm.indNearest(C3.X{2},PosAcc(c13.ua.ch)*0.6);
-%  C3.Y(:,:,c13.ua.ch)=C3.Y(:,:,c13.ua.ch)./exp(1i*angle(C3.Y(:,i2,c13.ua.ch)));
-%  c13.Stack{i1,3}=C3;
-%  drawnow;
-
- % figure(22); plot(angle(squeeze(C3.Y(:,i2,c13.ua.ch)))); hold on;
- % plot(squeeze(phi));
-% else
-%   h = findobj(gca,'Type','ConstantLine');
-%  if ~isempty(h)
-%   delete(h(1));
-%  end
-% end
-
-% C3=c13.Stack{i1,3};
-% [ymax, idx] = max(abs(squeeze(C3.Y(:,:,c13.ua.ch))),[], 'all');
-% [~,j]=ind2sub(size(squeeze(C3.Y(:,:,1))),idx);
-% h = findobj(gca,'Type','ConstantLine');
-% if ~isempty(h)
-%  h(1).Value = C3.X{2}(j);
-% else
-%  yline(C3.X{2}(j),'b--','LineWidth',1.5);
-% end
 
 if contains(lower(XF.name),'mod')&c13.ua.ch==1
  % ABCD for model
  F=[130;260;445;1087];
- h=xline(F,'linestyle','--','color','k','LineWidth',2,'parent',ga,'tag','pikes');
+ RGB = orderedcolors("gem");
+ xline(ga,F(1),'Color','b','LineWidth',2);
+ xline(ga,F(2),'Color','g','LineWidth',2);
+ xline(ga,F(3),'Color','y','LineWidth',2)
+ xline(ga,F(4),'Color','r','LineWidth',2)
 end
 
 if 1==2
@@ -3216,8 +3190,6 @@ if 1==2
  go=handle(c13.ua.ob(1));
  set(c13.ua.ob(1),'ZData',Y','CData',Y')
  a=([-40 0]);zlim(a);clim(a);
-
-
 end
 end
 
