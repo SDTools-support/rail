@@ -328,9 +328,10 @@ PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
 
 %% step preTest : assemble pretest configuration
 
+% scp elan:/o/balmes/scratch/TutoJIC/MtRedPre_UIC60_U91.mat /cygdrive/d/scratch/TutoJIC/.
 f3=sdtu.f.safe('@tempdir/TutoJIC/MtRedPre_UIC60_U91.mat');
 if exist(f3,'file')
-    load(f3,mt)
+    load(f3,'mt')
 else
  %  d_rail('TutoJIC-s{init,MeshSlice,RedShort,PreTest};');
  if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
@@ -360,11 +361,10 @@ end
 
 % d_rail('TutoJIC-s{init,PreTest};')
 PA=dyn_ui('paramvh');projM=PA.nmap;%osM=dyn_ui('paramosM');
-projM('dyn_solve.eig')=struct('EigOpt',[5 800 -1e4],'freq','@ll{50,3000,1000}', ...
+projM('dyn_solve.eig')=struct('EigOpt',[5 900 -1e4],'freq','@ll{50,3000,1000}', ...
     'Out','HamAcc','In','vz52','cf',2,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
     'Loss',2,'ci',3);
 PA.mt=mt; dyn_solve('eig')
-
 
 ci=iiplot(3,';');i1=strncmpi(ci.Stack(:,2),'Fz>',3);ci.Stack{i1,2}='Test';
 gae24('expsf{modulus}')
@@ -378,6 +378,13 @@ eval(cbM('viewNodeLineR'))
 
 %s1=fe_case(mt,'Sens','In');d1=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
 %s1=fe_case(mt,'Sens','Out');d2=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
+
+%% step SleperResp : solve frequency response and analyze
+d_rail('TutoJIC-s{init,PreTest};')
+projM('dyn_solve.eig')=struct('EigOpt',[5 800 -1e4],'freq','@ll{50,3000,1000}', ...
+    'Out','HamAcc','In','s2a','cf',2,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
+    'Loss',2,'ci',3);
+PA.mt=mt; dyn_solve('eig')
 
 
 %% step Impact : compute impact responses 
@@ -665,7 +672,7 @@ elseif ~iscell(FileName)&&exist(FileName,'file')&&~contains(Cam,'reset')
           'hammer','Marteau'};
     [i1,i2]=ismember(X,st3(:,2));X=st3(i2);
   else;
-   X=regexprep(X,{'P([\d]*)a','P([\d]*)p','S([\d]*)'},{'W+$1','F+$1','S+$1'});
+   X=regexprep(X,{'P([\d]*)a','P([\d]*)p','S(?:\+)([\d]*)'},{'W+$1','F+$1','S+$1'});
   end
   r1.(st2{j2}).X{2}(:,1)=X;
   r1.(st2{j2}).X{2}(:,2)=regexprep(r1.(st2{j2}).X{2}(:,2),'m/s$','m/s2');
@@ -2931,7 +2938,9 @@ elseif comstr(Cam,'pcin');
      ]
     }
    'd_rail.Jic.viewStdFig','standard 80% ratio ',{
-    '@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'}
+    '@OsDic(SDT Root)',{'ImToFigN','ImSw80','WrW49c'}}
+   'd_rail.Jic.WW80','what you see it what you get',{
+    '@PlotWd',{'@OsDic',{'ImSw80{@line,""}','WrW49c'}}, ...
    }
    'd_rail.Jic.viewVel','velocity',{
     '@line',{'linestyle','none','marker','+'},'@title',{'interpreter','none'}, ...
