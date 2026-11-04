@@ -330,7 +330,7 @@ PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
 
 f3=sdtu.f.safe('@tempdir/TutoJIC/MtRedPre_UIC60_U91.mat');
 if exist(f3,'file')
-    load(f3,mt)
+    load(f3,'mt')
 else
  %  d_rail('TutoJIC-s{init,MeshSlice,RedShort,PreTest};');
  if ~exist('RM3','var');d_rail('TutoJIC-s{init,MeshSlice,RedShort};');end
@@ -368,6 +368,10 @@ PA.mt=mt; dyn_solve('eig')
 
 ci=iiplot(3,';');i1=strncmpi(ci.Stack(:,2),'Fz>',3);ci.Stack{i1,2}='Test';
 gae24('expsf{modulus}')
+
+gae24('expsf{modulus}')
+
+
 
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
