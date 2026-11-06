@@ -301,7 +301,7 @@ S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
 %}
 
 elseif 1==2
- %% #tuojic.Redshorts1 Only (does not yet work) -2
+ %% #tutojic.Redshorts1 Only (does not yet work) -2
  f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_S1.mat');
  if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
  % preMeshTrack
