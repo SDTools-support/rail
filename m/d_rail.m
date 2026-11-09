@@ -204,7 +204,7 @@ end
 %% EndTuto
 
 elseif comstr(Cam,'jic')
-%% #TutoJIC: glued isolating joint example
+%% #TutoJIC: Isolating rail joint example
 
 %% Step init : initialize interface
 % keywords{var{projM,osM},fcn{}}
@@ -361,7 +361,6 @@ end
 
 %% step freqResp : solve frequency response and analyze
 
-
 s1=s1a; i1=fe_c(s1.DOF,feutil('findnode proid201',s1),'ind');s1.K{4}(i1,i1)=s1.K{4}(i1,i1)*5;
 j1=joa; i1=fe_c(j1.DOF,feutil('findnode proid201',j1),'ind');j1.K{4}(i1,i1)=j1.K{4}(i1,i1)*5;
 mt=stack_set(mt,'SE','s1',s1);mt=stack_set(mt,'SE','joint',j1);
@@ -379,7 +378,8 @@ ci=iiplot(2,';');ci.Stack{'Test'}=[];ci.Stack{'COH'}=[];i1=strncmpi(ci.Stack(:,2
 gae24('expsf{modulus,ci13,"chW+32:z"}')
 
 % W32_Recep > gae24('viewW32_recep')
-X=ci.Stack{'Test'}.X{3};iicom(ci,'ch',{'Out','W+32:z';'In',X(X>=29.75)})
+X=ci.Stack{'Test'}.X{3};iicom(ci,'iixonly',{'Test'});
+iicom(ci,'ch',{'Out','W+32:z';'In',X(X>=29.75)})
 
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
