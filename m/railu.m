@@ -1153,7 +1153,7 @@ function   ms=MeshSliceCheck(ms,RC,RO)
    ms=feutil('addelt',ms,'cbush',elt);
    il=[290 fe_mat('p_spring',ms.unit,2)  ...
      RC.k_ballast/size(n2,1)*length(ms.meta.SlX)*[100 100 1 0 0 0]];
-   il(15)=.1; % default loss
+   il(15)=.4; % default k_ballast loss
    ms=feutil('setpro',ms,struct('PreIl',{{'name','il';'k_ballast',il}}));
    ms=fe_case(ms,'fixdof','RotBallast','proid290 -DOF 4 5 6');
   
@@ -1162,7 +1162,7 @@ function   ms=MeshSliceCheck(ms,RC,RO)
     a=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)>0,:),6);
     b=sortrows(n2(abs(n2(:,7)-min(n2(:,7)))<1e-4&n2(:,5)<0,:),6);
     ms=fe_caseg('Connection EqualDOF',ms,'FlatSleeper',a(:,1)+.03,b(:,1)+.03);
-   else % Middle does not move horizontally
+   elseif 1==3 % Middle does not move horizontally
     n2=feutil('getnodematid201:299',ms);n2(~ismember(round(n2(:,5)*1000),round(ms.meta.SlX*1000)),:)=[];
     ms=fe_case(ms,'FixDof','SleeperVert',n2(:,1)+.01);
    end
@@ -1301,7 +1301,7 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    if isscalar(r3);r3=r3+(0:RA.opt(1)-1)*ms.meta.sw;end 
    r3=r3(:);r3(:,2)=size(RB.PreSleeper,1)+(1:length(r3))-1;
    RB.PreSleeper(end+r3(:,2)-r3(1,2)+1,1:2)=num2cell(r3);
-   if isequal(ev1.slNum,RO.slNum0) % Force origin 
+   if ~isfield(RB,'sGamma0')||isequal(ev1.slNum,RO.slNum0) % Force origin 
      RB.sGamma0=r1(1)-RB.xmin; 
    end
 
