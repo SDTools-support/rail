@@ -204,7 +204,7 @@ end
 %% EndTuto
 
 elseif comstr(Cam,'jic')
-%% #TutoJIC: glued isolating joint example
+%% #TutoJIC: Isolating rail joint example
 
 %% Step init : initialize interface
 % keywords{var{projM,osM},fcn{}}
@@ -285,7 +285,7 @@ S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
 %}
 
 elseif 1==2
- %% #tuojic.Redshorts1 Only (does not yet work) -2
+ %% #tutojic.Redshorts1 Only (does not yet work) -2
  f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_S1.mat');
  if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
  % preMeshTrack
@@ -366,10 +366,7 @@ ci=iiplot(2,';');%ci.Stack{'COH'}=[];i1=strncmpi(ci.Stack(:,2),'Fz>',3);ci.Stack
 gae24('expsf{modulus,ci13,"chW+32:z"}')
 
 gae24('viewW32_recep')% W32_Recep > 
-
 gae24('expsf{modulus}')
-
-
 
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
