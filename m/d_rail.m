@@ -287,21 +287,23 @@ S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
 elseif 1==2
  %% #tutojic.Redshorts1 Only (does not yet work) -2
  f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_S1.mat');
- if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');end
+ if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');s10=RT.nmap('s1');end
  % preMeshTrack
  RM3=struct('cf',3,'cfos',{{'@fecom', ...
      ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
- RM3.preTrack={'slNum','SE',1:20,'s1';};RM3.slNum0=6;% skip joint
+ RM3.preTrack={'slNum','SE';1:20,'s1';};RM3.slNum0=6;% skip joint
  RM3.Do={'GenTrack','presens','reduce'};
  DoOpt=sdtm.pcin('prero.railu.MeshTrack');
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
  % preRed
  RR=struct('preRed',{{'SE','Red' 
-     's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2})')
+     's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2})')
      }},'store',f2);
- RT.nmap('dyn_solve.reduce')=RR;
- mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
+ RT.nmap('dyn_solve.reduce')=RR;RT.nmap('s1')=s10;
+ mt=railu.MeshTrack(RT);cf=feplot(3,';');s1=RT.nmap('s1'); % GenTrack,PreSens,Reduce
+ d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
 
+ PA.mt=mt; dyn_solve('eig{peig2,cf21,SEs1}');
 end
 
 if 1==2 % Display modes of superelements

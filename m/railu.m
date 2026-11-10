@@ -1261,7 +1261,7 @@ mt=struct('Node',[],'Elt',[],'bas',[]);
    % - basid=100+index_slice for the slices : last row end of track with no s_
    % the s(j)i(k) use the j+100 basid
    % - NodeId of s(j) s(j)i(j) overlap by data.IntNodes 
-
+  if size(RO.preTrack,1)==1; error('Expecting preTrack');end
   for j1=2:size(RO.preTrack,1) % Deal with multiple slices
    ev1=vhandle.tab.getValEvt(RO.preTrack,j1);RB.sname=ev1.SE;
    ms=projM(ev1.SE);
