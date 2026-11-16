@@ -1096,7 +1096,8 @@ function   ms=MeshSlice(RO);
 
   mo2=railu.MeshSleeper(RO,struct('rail',m_rail,'Slice',RO,'MdlMap',RT.MdlMap)); % combine rails
   mo2.Elt=feutil('separateByProp -max 1e5 -join',mo2);
-  RC=struct;RC.Do={'plrange','eltid','doPeriod','padcontact'};
+  RC=sdth.sfield('addmissing',struct,RO,{'k_ballast','repMat'});
+  RC.Do={'plrange','eltid','doPeriod','padcontact'};  
   if isfield(RO,'k_ballast')&&~isempty(RO.k_ballast)
     RC.k_ballast=RO.k_ballast; RC.Do{end+1}='k_ballast';
   end
@@ -1116,7 +1117,14 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   switch lower(RC.Do{j0})
   case 'eltid'
   %% #MeshSliceCheck.EltId fix eltids -3
-   [u1,ms.Elt]=feutil('EltIdFix;',ms);
+
+  elt=feutil('selelt eltname beam1 & egid-1',ms);
+  if isempty(elt)
+   elt=feutil('set group1 egid-1',feutil('selelt matid201:289&seledge',ms));
+   ms=feutil('addelt',ms,elt);
+  end
+  [u1,ms.Elt]=feutil('EltIdFix;',ms);
+   
   case 'plrange'
   %% #MeshSliceCheck.PlRange xxx sdtweb drmesh.matdb -3
 
@@ -1127,7 +1135,9 @@ function   ms=MeshSliceCheck(ms,RC,RO)
   end
   if size(prePl,1)>1
    % fix property defaults
-   ms=feutil('setmat',ms,struct('PrePl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
+   RM=struct('PrePl',{prePl(:,[2 1])},'projM',d_rail('nmap'));
+   if isfield(RC,'repMat');RM.repMat=RC.repMat;end
+   ms=feutil('setmat',ms,RM);
    prePl{1}='ProId';ms=p_solid('default;',ms);
    ms=feutil('setpro',ms,struct('PreIl',{prePl(:,[2 1])},'projM',d_rail('nmap')));
   end
@@ -1480,6 +1490,7 @@ case 'presens'
   return
 case 'reduce'
   %% #MeshTrack.reduce perform reduction and store -3
+  % see sdtweb d_dynavoie RedCfg
   RR=projM('dyn_solve.reduce');RR.projM=projM;
   mt=dyn_solve('reduce',mt,RR);
 

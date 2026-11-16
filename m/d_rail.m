@@ -229,12 +229,14 @@ RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',3,'os',{{'@fecom','view2'}}
 railu.MeshSlice(RT);projM=RT.nmap; %
 % define standard sleeper
 RM2=cingui('paramedit -DoClean2','prero.railu.MeshSlice',{struct('half',0,'RailX',-300:50:300, ...
-    'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG','PadType','SN','store','s1', ...
-    'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+    'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG', ...
+    'PadType','SN','store','s1', ...
+    'repMat','{Pad<PadOrtho}','k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',3,'os',{{'@fecom','view2'}});
-railu.MeshSlice(RT);s1=RT.nmap('s1');%
+railu.MeshSlice(RT);s10=RT.nmap('s1');%
 if 1==2
-  PA.ms=s1;dyn_solve('Eig{SEms,peig2,EigOpt5 20 -1e6}');
+  PA.ms=s10;dyn_solve('Eig{SEms,peig2,EigOpt5 20 -1e6}');c20=feplot(20);c20.sel='egid-1';
+  PA.ms=s10;dyn_solve('Eig{SEms,peig50,EigOpt5 20 -1e6}');c20=feplot(20);c20.sel='egid-1';
   % ms=s1;d1=fe_eig(ms,[5 100 1e3]);feplot(ms,d1)
 end
 
@@ -259,8 +261,8 @@ elseif 1==1
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
  % preRed
  RR=struct('preRed',{{'SE','Red' 
-    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2 5 50})')
-    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 40 -1e6,peig 5})', ...
+    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2 5 50,stat0})')
+    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 40 -1e6,peig 5,stat0})', ...
       'Tl','s1.Tr','Tr','s1.Tl') 
     }},'store',f1);
  RT.nmap('dyn_solve.reduce')=RR;
@@ -283,27 +285,45 @@ A=1e-2^2*pi;G=210e9/2/1.3;L=3e-3; 5/6*G*A/L
 S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
 
 %}
+end
+%% step Redshorts1 Only  -2
+if 1==2
+    f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShortS1_UIC60_U91.mat');
+    RM3=struct('cf',3,'cfos',{{'@fecom', ...
+        ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
+    RM3.preTrack={'slNum','SE';1:2,'s1'};
+    RM3.slNum0=1;% Position the sleeper origin
 
-elseif 1==2
- %% #tutojic.Redshorts1 Only (does not yet work) -2
- f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_S1.mat');
- if ~exist('RM2','var');d_rail('TutoJIC-s{init,MeshSlice};');s10=RT.nmap('s1');end
- % preMeshTrack
- RM3=struct('cf',3,'cfos',{{'@fecom', ...
-     ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
- RM3.preTrack={'slNum','SE';1:20,'s1';};RM3.slNum0=6;% skip joint
- RM3.Do={'GenTrack','presens','reduce'};
- DoOpt=sdtm.pcin('prero.railu.MeshTrack');
- RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
- % preRed
- RR=struct('preRed',{{'SE','Red' 
-     's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2})')
+    RM3.Do={'GenTrack','presens','reduce'};
+    DoOpt=sdtm.pcin('prero.railu.MeshTrack');
+    RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
+    % preRed
+    RR=struct('preRed',{{'SE','Red'
+     's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2,static-1})')
      }},'store',f2);
- RT.nmap('dyn_solve.reduce')=RR;RT.nmap('s1')=s10;
- mt=railu.MeshTrack(RT);cf=feplot(3,';');s1=RT.nmap('s1'); % GenTrack,PreSens,Reduce
- d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
+    RT.nmap('dyn_solve.reduce')=RR;
+    mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
 
- PA.mt=mt; dyn_solve('eig{peig2,cf21,SEs1}');
+ %d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
+ %PA.mt=mt; dyn_solve('eig{peig2,cf21,SEs1}');
+
+ s1=mt.Stack{end};%PA.ms=s1;
+
+ RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
+    'fmax',3e3,'ModalFilter',20,'Group',{{'Name','Indices','color'; 
+      'H.Bending',1:4,[1 0 0];'V.Bending',5:8,[0 .8 0];'Torsion',9:12,[0 0 1]}}, ...
+    'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
+ projM('fe_homo.dftDisp')=RO; % store option
+ RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
+    'cios',{{'@line',{'marker','.','linestyle','none'}}},...
+    'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3, ...
+    'sel','egid-1');
+ projM('fe_homo.dftInitSelDef')=RD;
+ fe_homo('dftDisp',s1,RO);fe_homo('dfpInitSelDef',struct('projM',projM))
+ xlim([0 1500]);
+ % comgui('imwrite',112,'R26_S1_Disp.png')
+
+
 end
 
 if 1==2 % Display modes of superelements
@@ -358,7 +378,7 @@ end
 
 % d_rail('TutoJIC-s{init,PreTest};')
 PA=dyn_ui('paramvh');projM=PA.nmap;%osM=dyn_ui('paramosM');
-projM('dyn_solve.eig')=struct('EigOpt',[5 900 -1e4],'freq','@ll{50,3000,1000}', ...
+projM('dyn_solve.eig')=struct('EigOpt',[5 1200 -1e4],'freq','@ll{50,3000,1000}', ...
     'Out','HamAcc','In','vz52','cf',3,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
     'Loss',2,'ci',2);
 
@@ -390,10 +410,10 @@ PA.mt=mt; dyn_solve('eig')
 
 %% step Impact : compute impact responses 
 
+%xxx 
 
-
-if 1==2 
 %% step UIC60View : generate coarse view 
+if 1==2 
     f1=d_rail('wd','UIC60_Sections.mat');load(f1{1},'sections')
    mo1=sections('UIC60_U91ra+e');mo1.Elt=feutil('removeelt egid-1',mo1);
    elt=feutil('objectbeamline',[ ... 
@@ -2742,10 +2762,10 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
     'PadOld',[9 fe_mat('m_elastic','SI',1)  100e6 .49 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
-    'Pad',[9 fe_mat('m_elastic','SI',1)  2e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
-    'PadV1',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
-    'PadAniso',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
-      1000  0 0 0 0 .05]
+    'Pad2',[9 fe_mat('m_elastic','SI',1)  2e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
+    'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
+    'PadOrtho',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
+      1000e-9  0 0 0 0 .05]
 
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500 0 .02] % sleeper  E nu rho
     'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500 0 .02] % Rigid sleeper
