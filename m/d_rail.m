@@ -286,8 +286,16 @@ S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
 
 %}
 end
-%% step Redshorts1 Only  -2
-if 1==2
+%% step RedS1 Only  -2
+if sdtweb('_TutoNeed','s1')
+    %d_rail('tutoJIC -s{Init,RedS1} -need{s1}')
+    RM2=cingui('paramedit -DoClean2','prero.railu.MeshSlice',{struct('half',0,'RailX',-300:50:300, ...
+        'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG', ...
+        'PadType','SN','store','s1', ...
+        'repMat','{Pad<Pad8}','k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+    RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',3,'os',{{'@fecom','view2'}});
+    railu.MeshSlice(RT);s10=RT.nmap('s1');%
+% Pad<PadOrtho
     f2=sdtu.f.safe('@tempdir/TutoJIC/MtRedShortS1_UIC60_U91.mat');
     RM3=struct('cf',3,'cfos',{{'@fecom', ...
         ';colorfacew-alpha0-edgealpha.1;view2;showbas{deflen,.1}'}});
@@ -299,20 +307,23 @@ if 1==2
     RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
     % preRed
     RR=struct('preRed',{{'SE','Red'
-     's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2,static-1})')
+     's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2,static-1})','CoorFmax',2e5)
      }},'store',f2);
     RT.nmap('dyn_solve.reduce')=RR;
     mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
 
  %d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
- %PA.mt=mt; dyn_solve('eig{peig2,cf21,SEs1}');
+ %PA.mt=mt; dyn_solve('eig{peig2.0408,cf21,SEs1}');
 
  s1=mt.Stack{end};%PA.ms=s1;
-
  RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
     'fmax',3e3,'ModalFilter',20,'Group',{{'Name','Indices','color'; 
       'H.Bending',1:4,[1 0 0];'V.Bending',5:8,[0 .8 0];'Torsion',9:12,[0 0 1]}}, ...
     'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
+ RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
+     'fmax',3e3,'ModalFilter',1/.49,'Group',{{'Name','Indices','color'; 
+     'H.Bending',12+(1:8),[1 0 0];'V.Bending',37:44,[0 .8 0];'Torsion',[25:28 33:36],[0 0 1]}}, ...
+     'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
  projM('fe_homo.dftDisp')=RO; % store option
  RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
     'cios',{{'@line',{'marker','.','linestyle','none'}}},...
@@ -322,6 +333,7 @@ if 1==2
  fe_homo('dftDisp',s1,RO);fe_homo('dfpInitSelDef',struct('projM',projM))
  xlim([0 1500]);
  % comgui('imwrite',112,'R26_S1_Disp.png')
+ % comgui('imwrite',112,'R26_S1_DispPad8.png')
 
 
 end
@@ -2762,7 +2774,7 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
     'PadOld',[9 fe_mat('m_elastic','SI',1)  100e6 .49 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
-    'Pad2',[9 fe_mat('m_elastic','SI',1)  2e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
+    'Pad8',[9 fe_mat('m_elastic','SI',1)  8e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
     'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
     'PadOrtho',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
       1000e-9  0 0 0 0 .05]
