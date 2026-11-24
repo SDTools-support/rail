@@ -261,9 +261,9 @@ elseif 1==1
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM3);
  % preRed
  RR=struct('preRed',{{'SE','Red' 
-    's1',struct('RedType','Modal{fmax3000,EigOpt5 10 -1e6,peig2 5 50,stat0})')
-    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 40 -1e6,peig 5,stat0})', ...
-      'Tl','s1.Tr','Tr','s1.Tl') 
+    's1',struct('RedType','Modal{fmax3000,EigOpt5 40 -1e6,peig2,static-1})')
+    'joint',struct('RedType','Modal{fmax3000,EigOpt 5 40 -1e6,peig 5,static-1})', ...
+      'Tl','s1.Tr','Tr','s1.Tl','CoorFmax',2e5) 
     }},'store',f1);
  RT.nmap('dyn_solve.reduce')=RR;
  mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
@@ -350,6 +350,7 @@ end
 
 % scp elan:/o/balmes/scratch/TutoJIC/MtRedPre_UIC60_U91.mat /cygdrive/d/scratch/TutoJIC/.
 f3=sdtu.f.safe('@tempdir/TutoJIC/MtRedPre_UIC60_U91.mat');
+% JicReset=1; d_rail('TutoJIC-s{init,MeshSlice,RedShort};');% force reset
 % JicReset=1; d_rail('TutoJIC-s{preTest,FreqResp};');% force reset
 if exist(f3,'file')&&~evalin('base','exist(''JicReset'',''var'')')
     load(f3,'mt')
@@ -405,6 +406,11 @@ gae24('expsf{modulus}')
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
 ci=iiplot; viewDef(ci.ga,struct('CurrentPoint',[300 0 0])); % nearest mode
+
+
+ci.Stack{end}.ID=struct('po',RT.nmap('Learns1').data([2 3 7:10 13 15:18 20:end],1)*[1 0]);iiplot
+
+c22=feplot(22);feplot(c22,s10);c22.def=RT.nmap('Learns1');c22.sel={'egid-1','showficevalz'};
 
 
 % eval(cbM('viewNodeLineR'))
