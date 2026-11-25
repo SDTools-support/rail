@@ -418,7 +418,7 @@ c22=feplot(22);feplot(c22,s10);c22.def=RT.nmap('Learns1');c22.sel={'egid-1','sho
 %s1=fe_case(mt,'Sens','In');d1=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
 %s1=fe_case(mt,'Sens','Out');d2=struct('def',s1.cta','DOF',s1.DOF,'lab',{s1.lab});
 
-%% step SleperResp : solve frequency response and analyze
+%% step SleeperResp : solve frequency response and analyze
 d_rail('TutoJIC-s{init,PreTest};')
 projM('dyn_solve.eig')=struct('EigOpt',[5 800 -1e4],'freq','@ll{50,3000,1000}', ...
     'Out','HamAcc','In','s2a','cf',2,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
@@ -2403,7 +2403,7 @@ elseif comstr(Cam,'jic');
   for j1=1:length(RO.Other)
    switch lower(RO.Other{j1})
    case 'fixpos'
-      cf=feplot(3,';');n1=cf.CStack{'Test'}.Node+[0 0 0 0   -6.5*.6 0 0]; %shift origin
+      cf=feplot(3,';');n1=cf.CStack{'Test'}.Node+[0 0 0 0   -7.5*.6 0 0]; %shift origin
       x=n1(:,5)/.6;
       st1=intersect({'Test','COH','Hlog'},ci.Stack(:,2));
       for j2=1:length(st1)
@@ -3232,7 +3232,7 @@ if ~isempty(PosAcc)
 end
  
 % reverse plot for S+32 sensors
-if isstr(C1.X{3}{1,1})&contains(C1.X{3}(c13.ua.ch,1),'32')
+if iscell(C1.X{3})&contains(C1.X{3}(c13.ua.ch,1),'32')
  set(gca,'YDir','reverse')
 end
 
