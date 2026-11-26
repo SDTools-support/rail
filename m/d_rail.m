@@ -223,15 +223,15 @@ RM=cingui('paramedit -DoClean2','prero.railu.MeshSlice', ...
     {struct('half',0,'RailX',-1500:50:1500, ...
     'SlX',[-1200 -630 -150 150 630 1200]/1000, ... % cumsum([150 480 570])
     'RailName','UIC60_Sections.mat#UIC60_U91ra+e','SleeperName','COSTU31NAG', ...
-    'PadType','SN','store','joint', ...
-    'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+    'PadType','SN','repMat','{Pad<Pad20}','store','joint', ...
+    'SMass',600,'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM,'cf',3,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);projM=RT.nmap; %
 % define standard sleeper
 RM2=cingui('paramedit -DoClean2','prero.railu.MeshSlice',{struct('half',0,'RailX',-300:50:300, ...
     'SlX',0,'RailName','UIC60_Sections.mat#UIC60_U91ra','SleeperName','COSTU31NAG', ...
-    'PadType','SN','store','s1', ...
-    'repMat','{Pad<PadOrtho}','k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
+    'PadType',RM.PadType,'repMat',RM.repMat,'store','s1', ...
+    'SMass',RM.SMass,'k_ballast',2e8,'Or_tr',[0 759.4 0.2]/1000),[]});
 RT.nmap('railu.MeshSlice')=struct('CurSlice',RM2,'cf',3,'os',{{'@fecom','view2'}});
 railu.MeshSlice(RT);s10=RT.nmap('s1');%
 if 1==2
@@ -244,6 +244,7 @@ end
 
 f1=sdtu.f.safe('@tempdir/TutoJIC/MtRedShort_UIC60_U91.mat');
 % JicReset=1; d_rail('TutoJIC-s{init,MeshSlice,RedShort};');% force reset
+% d_rail('TutoJIC-s{DispS1};')
 if exist(f1,'file')&&~evalin('base','exist(''JicReset'',''var'')');
  load(f1,'mt');%cf=feplot(3,';');fecom('load',f1)
 elseif 1==1
@@ -267,25 +268,23 @@ elseif 1==1
     }},'store',f1);
  RT.nmap('dyn_solve.reduce')=RR;
  mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
-
- % DebugRedP2=1
- % sdtweb fe_homo order_terms_with_kept_energy 
-%{
-Fastening_IG90220.pdf
-Nabla approximation de la raideur latérale 
-% cisaillement 
-S=1e-2*8e-2;h=4e-3;G=2e6/2/1.3;G*S/h
-
-% approximation vis (très raide)
-A=1e-2^2*pi;G=210e9/2/1.3;L=3e-3; 5/6*G*A/L
-
-% Stage Hassan 
-
-% Cisaillement semelle
-S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
-
-%}
+ sdtu.logger.link('s','d_rail(''TutoJIC-s{DispS1};'')','DispS1');
 end
+if evalin('base','exist(''JicReset'',''var'')')
+ PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
+end
+
+% DebugRedP2=1  sdtweb fe_homo order_terms_with_kept_energy 
+%{
+%Fastening_IG90220.pdf Nabla approximation de la raideur latérale  cisaillement 
+ S=1e-2*8e-2;h=4e-3;G=2e9/2/1.3;G*S/h
+% approximation vis (très raide)
+ A=1e-2^2*pi;G=210e9/2/1.3;L=3e-3; 5/6*G*A/L
+% Stage Hassan  Cisaillement semelle
+ S=.19*.12;h=9e-3; G=14e6/2/1.49; G*S/h
+%}
+
+
 %% step RedS1 Only  -2
 if sdtweb('_TutoNeed','s1')
     %d_rail('tutoJIC -s{Init,RedS1} -need{s1}')
@@ -312,39 +311,8 @@ if sdtweb('_TutoNeed','s1')
     RT.nmap('dyn_solve.reduce')=RR;
     mt=railu.MeshTrack(RT);cf=feplot(3,';'); % GenTrack,PreSens,Reduce
 
- %d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
- %PA.mt=mt; dyn_solve('eig{peig2.0408,cf21,SEs1}');
-
- s1=mt.Stack{end};%PA.ms=s1;
- RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
-    'fmax',3e3,'ModalFilter',20,'Group',{{'Name','Indices','color'; 
-      'H.Bending',1:4,[1 0 0];'V.Bending',5:8,[0 .8 0];'Torsion',9:12,[0 0 1]}}, ...
-    'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
- RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
-     'fmax',3e3,'ModalFilter',1/.49,'Group',{{'Name','Indices','color'; 
-     'H.Bending',12+(1:8),[1 0 0];'V.Bending',37:44,[0 .8 0];'Torsion',[25:28 33:36],[0 0 1]}}, ...
-     'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
- projM('fe_homo.dftDisp')=RO; % store option
- RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
-    'cios',{{'@line',{'marker','.','linestyle','none'}}},...
-    'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3, ...
-    'sel','egid-1');
- projM('fe_homo.dftInitSelDef')=RD;
- fe_homo('dftDisp',s1,RO);fe_homo('dfpInitSelDef',struct('projM',projM))
- xlim([0 1500]);
- % comgui('imwrite',112,'R26_S1_Disp.png')
- % comgui('imwrite',112,'R26_S1_DispPad8.png')
-
-
 end
 
-if 1==2 % Display modes of superelements
-  PA=dyn_ui('paramvh'); PA.mt=mt;PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
-  dyn_solve('eigSEs1 -cf21'); dyn_solve('eigSEjoint -cf20')
-end
-if evalin('base','exist(''JicReset'',''var'')')
- PA.mt=fe_case(mt,'stack_rm','SensDof'); dyn_solve('eig')
-end
 
 %% step preTest : assemble pretest configuration
 
@@ -369,14 +337,6 @@ else
  RT.nmap('railu.MeshTrack')=cingui('paramedit -DoClean2',DoOpt,RM4);
  mt=railu.MeshTrack(RT);
 
- for j1=1:size(mt.Stack,1)
-  if ~strcmpi(mt.Stack{j1,1},'se');continue;end
-  SE=mt.Stack{j1,3};SE=stack_rm(SE,'info','p2sets');SE=stack_rm(SE,'curve','Learn');
-  SE.TR.def=sparse(SE.TR.def);
-  mt.Stack{j1,3}=SE;
- end
- sdthdf('Pointerlistsortm [-Mb]',mt);
- sdtm.store(f3,'mt>mt')
 end
 % disp(cbM)
 % load(f1)
@@ -391,17 +351,18 @@ end
 
 % d_rail('TutoJIC-s{init,PreTest};')
 PA=dyn_ui('paramvh');projM=PA.nmap;%osM=dyn_ui('paramosM');
-projM('dyn_solve.eig')=struct('EigOpt',[5 1200 -1e4],'freq','@ll{50,3000,1000}', ...
+NM=1200;
+projM('dyn_solve.eig')=struct('EigOpt',[5 NM -1e4],'freq','@ll{50,3000,1000}', ...
     'Out','HamAcc','In','vz52','cf',3,'name','Fz>Az{f,pos,io}','time',{{'u'}}, ...
-    'Loss',2,'ci',2);
+    'Loss',0,'ci',2); % Loss2 cpx
 
 PA.mt=mt; dyn_solve('eig')
 
 ci=iiplot(2,';');%ci.Stack{'COH'}=[];i1=strncmpi(ci.Stack(:,2),'Fz>',3);ci.Stack{i1,2}='Test';
-gae24('expsf{modulus,ci13,"chW+32:z"}')
-
+gae24('expsf{modulus,ci13,"chW+32:z",,xlim100 1500}')
+gae24('expsf{nline,ci14,"chW+32:z",xlim80 1500}');
 gae24('viewW32_recep')% W32_Recep > 
-gae24('expsf{modulus}')
+%iimouse('view',gca,[ 0.5 0.5 9.16 0.5 0.5 0.5 0.00 1.00 0.00 6.61]);
 
 figure(1);semilogy(cf.def.data(:,1),'+');axis tight;ii_plp((size(cf.def.data,1)-52)*[1 0]);grid on
 viewDef=fe2ss('@viewDef');
@@ -450,6 +411,38 @@ if 1==2
    sections('UIC60_U91ra')=mo1;
   sdtm.store(f1{1},'sections')
 end
+
+%% step dispS1
+
+ %d1=stack_get(s1,'','Learn','g');c22=feplot(22,';');feplot(c22,s10,fe_def('subdef',d1,d1.data(:,2)==2));
+ %PA.mt=mt; dyn_solve('eig{peig2.0408,cf21,SEs1}');
+
+ s1=stack_get(mt.Stack,'','s1','g');%PA.ms=s1;
+ RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
+    'fmax',3e3,'ModalFilter',20,'Group',{{'Name','Indices','color'; 
+      'H.Bending',1:4,[1 0 0];'V.Bending',5:8,[0 .8 0];'Torsion',9:12,[0 0 1]}}, ...
+    'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
+ RO=struct('Range',struct('ncx',1./linspace(.05,.49,100)), ...
+     'fmax',3e3,'ModalFilter',1/.49,'Group',{{'Name','Indices','color'; 
+     'H.Bending',12+(1:8),[1 0 0];'V.Bending',37:44,[0 .8 0];'Torsion',[25:28 33:36],[0 0 1]}}, ...
+     'EigOpt',[2 80 0],'projM',projM,'UseLong',1);
+ projM('fe_homo.dftDisp')=RO; % store option
+ RD=struct('mno',(0:10)','cf',102,'ci',112,'ktype','kc','unit','SI', ...
+    'cios',{{'@line',{'marker','.','linestyle','none'}}},...
+    'cfos',{{'d.',{'FiCevalZ'},'p.',{'ImToFigN','WrW49c'}}},'fmax',3e3, ...
+    'sel','egid-1');
+ projM('fe_homo.dftInitSelDef')=RD;
+ fe_homo('dftDisp',s1,RO);fe_homo('dfpInitSelDef',struct('projM',projM))
+ xlim([0 1500]);
+ % comgui('imwrite',112,'R26_S1_Disp.png')
+ % comgui('imwrite',112,'R26_S1_DispPad8.png')
+
+if 1==2 % Display modes of superelements
+  PA=dyn_ui('paramvh'); PA.mt=mt;PA.nmap('dyn_solve.eig')=struct('EigOpt',[5 100 -1e5]);
+  dyn_solve('eigSEs1 -cf21'); dyn_solve('eigSEjoint -cf20')
+end
+
+
 
 
 %% EndTuto
@@ -2780,12 +2773,13 @@ li={'Shaft',[1 fe_mat('m_elastic','SI',1)  200e9 .3 7829];
     'Wheel',[8 fe_mat('m_elastic','SI',1)  200e9 .3 7829 0 .004] % Roue Yield 800 MPa
     
     'PadOld',[9 fe_mat('m_elastic','SI',1)  100e6 .49 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
-    'Pad8',[9 fe_mat('m_elastic','SI',1)  8e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
+    'Pad20',[9 fe_mat('m_elastic','SI',1)  20e6 .3 1000 0 .1] % rail pad, damping 0.1 kN/(m/s)
     'Pad',[9 fe_mat('m_elastic','SI',1)  14e6 .49 1000 0 .05] % rail pad, damping 0.1 kN/(m/s)
     'PadOrtho',[9  fe_mat('m_elastic','MM',6) 14e3 14e3 14e3 0.45 .45 .45 50e3 50e3 14e3 ...
-      1000e-9  0 0 0 0 .05]
+      1000e-9  0 0 0 0 .1]
 
     'Sleeper',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500 0 .02] % sleeper  E nu rho
+    'SleepB',[10 fe_mat('m_elastic','SI',1)  20e9 .2 2500 0 .02] % sleeper  E nu rho
     'RSleeper',[10 fe_mat('m_elastic','SI',1)  20e9*1e6 .2 2500 0 .02] % Rigid sleeper
 
     'Ballast',[9 fe_mat('m_elastic','SI',1)  14e6 .45 1000 0 .1] 
@@ -3195,24 +3189,23 @@ end
 
 
 function EndMark(ga)
-
+%% #EndMark : space frequency cleanup
 if nargin==0;ga=handle(evalin('caller','gf'));else; ga=handle(ga);end
 gf=get(ga,'parent');cf=get(gf,'userdata');
 ua=get(ga,'userdata');
 XF=cf.Stack{ua.sList{1}};
 delete(findobj(ga,'tag','now'));
-
-h=line(min(ga.XLim)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
+if isfield(ua,'XSetLim');x=ua.XSetLim;else; x=ga.XLim;end
+h=line((min(x)*1.005+max(x)*-.005)*ones(size(XF.Y,2),1), XF.X{2},'marker','.', ...
     'linestyle','none','color','r','parent',ga,'tag','now');
-
+axis tight;
 c13=iiplot(13,';'); i1=find(contains(c13.Stack(:,2),'SF'));
 C1=c13.Stack{i1,3};
 % find sensor position
-'xxxgae to be adapted'
 if contains(C1.name,'vzHf')
  PosAcc=([4.4000 4.4000 4.8000 4.8000 22.8000 22.8000 4.8000 4.8000 22.8000 ...
   22.8000 4.0400 4.5000 4.5000 4.4500 5.1000 5.1000 5.0500 5.7000]-3.9)/0.6;
-elseif contains(lower(C1.name),'vzlf')|contains(lower(C1.name),'vyhf')
+elseif contains(lower(C1.name),'vzlf')||contains(lower(C1.name),'vyhf')
  PosAcc=([4.4000 4.4000 4.8000 4.8000 4.8000 4.8000 22.8000 22.8000 22.8000 ...
   22.8000 4.0400 4.5000 4.5000 4.4500 5.1000 5.1000 5.0500 5.7000]-3.9)/0.6;
 elseif contains(lower(C1.name),'mod3')
