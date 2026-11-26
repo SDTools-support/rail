@@ -1498,6 +1498,13 @@ otherwise;
  if strncmpi(RO.Do{j0},'store',4)
    [~,r1]=sdtm.urnPar(RO.Do{j0},'{}{}');r1=r1.Other;
    if isscalar(r1);r1{end+1}={'mt>mt'};end
+   for j1=1:size(mt.Stack,1) % minimize storage
+    if ~strcmpi(mt.Stack{j1,1},'se');continue;end
+    SE=mt.Stack{j1,3};SE=stack_rm(SE,'info','p2sets');SE=stack_rm(SE,'curve','Learn');
+    SE.TR.def=sparse(SE.TR.def);
+    mt.Stack{j1,3}=SE;
+   end
+   sdthdf('Pointerlistsortm [-Mb]',mt);
    sdtm.store(r1{:})
  else
  error('%s',RO.Do{j0})
@@ -1582,7 +1589,9 @@ function RM=MeshSleeper(name,evt);
  mo2=feutil('addtest -noori;',mo2,feutil('symsel 1  0 1 0',mo2));
  mo2.Elt=feutil('orient;',mo2);
  [n2,i2]=feutil('addnode',[],mo2.Node);mo2=feutil('renumber',mo2,n2(i2,1));
- mo2.unit='SI'; mo2.meta=struct('mass',235,'zOff',-.3512); 
+ mo2.unit='SI'; 
+ if evt.Slice.SMass==0;evt.Slice.SMass=235;end
+ mo2.meta=struct('mass',evt.Slice.SMass,'zOff',-.3512); 
  mo2=railu.MeshSleeper('setpro',mo2);
  
 
